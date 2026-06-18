@@ -208,10 +208,10 @@ const setting = ref({
   ],
 })
 const ArtplayerStyle = {
-  width: '100%',
-  height: window.innerWidth <= 768 ? '56.25vw' : '56.25vw',
-  maxHeight: window.innerWidth <= 768 ? 'calc(100vh - 100px)' : 'calc(100vh - 150px)',
-  margin: '0 auto',
+  width: '100vw',
+  height: '100vh',
+  maxHeight: '100vh',
+  margin: '0',
 }
 
 const debounce = (fn, delay) => {
@@ -247,6 +247,27 @@ function getDanmuparams() {
 
 function getDanmuSourceLabel(value = danmuSource.value) {
   return danmuSourceOptions.find(item => item.value === value)?.html || '自建弹幕'
+}
+
+function getPlayerTitle() {
+  if (!playInfo.value) {
+    return ''
+  }
+  if (playInfo.value.type === 'Movie') {
+    return playInfo.value.title || ''
+  }
+  const showTitle = playInfo.value.tv_title || ''
+  const episodeTitle = playInfo.value.title ? ` ${playInfo.value.title}` : ''
+  const episodeNumber = playInfo.value.episode_number ? `第${playInfo.value.episode_number}集` : ''
+  return `${showTitle} ${episodeNumber}${episodeTitle}`.trim()
+}
+
+function goBack() {
+  if (window.history.length > 1) {
+    proxy.$router.back()
+    return
+  }
+  proxy.$router.push({path: '/'})
 }
 
 function resetDanmuLoadState(currentTime = 0) {
@@ -1204,6 +1225,12 @@ onMounted(async () => {
 <template>
   <div v-if="loading" class="load"></div>
   <div v-else class="content">
+    <div class="player-topbar">
+      <button class="player-back-button" type="button" @click="goBack">
+        <i class='bx bx-left-arrow-alt'></i>
+      </button>
+      <div class="player-topbar-title">{{ getPlayerTitle() }}</div>
+    </div>
     <n-grid cols="1" item-responsive responsive="screen">
       <n-grid-item span="12 m:12 l:9 xl:9 2xl:9">
         <div class="player">
@@ -1378,11 +1405,79 @@ h1 {
   padding: auto;
 }
 
+.content {
+  min-height: 100vh;
+  padding: 0 !important;
+  overflow: hidden;
+  color: #fff;
+  background: #000;
+}
 
 .player .art-player {
   background-color: black;
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+}
+
+.player {
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+}
+
+.player-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  aspect-ratio: 16/9;
+  height: 58px;
+  padding: 0 18px;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.64), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+
+.player-back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  font-size: 28px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.player-back-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.player-topbar-title {
+  min-width: 0;
+  max-width: min(720px, calc(100vw - 86px));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.showContainer {
+  display: none;
 }
 
 .data-content {

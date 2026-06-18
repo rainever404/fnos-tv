@@ -23,6 +23,9 @@ const showSort = ref(false);
 const size = ref(48);
 const page = ref(1);
 const MediaDbInfo = ref(null);
+const galleryTitle = computed(() => {
+  return MediaDbData.list.find(item => item.guid === guid.value)?.title || '媒体库'
+})
 
 
 const instance = getCurrentInstance();
@@ -104,6 +107,16 @@ async function NextPage() {
   await GetMediaDbInfos();
 }
 
+function openVideoItem(item) {
+  proxy.$router.push({
+    path: '/video',
+    query: {
+      guid: item.guid,
+      gallery_type: item.type
+    }
+  })
+}
+
 onBeforeRouteUpdate(async (to, from) => {
   guid.value = to.query.gallery_uid;
   // gallery_type.value = to.query.gallery_type;
@@ -120,27 +133,31 @@ onMounted(async () => {
 <template>
 
   <div class="content">
-    <div class="seriesTab">
+    <div class="list-toolbar">
+      <div>
+        <div class="list-title">{{ galleryTitle }}</div>
+        <div class="list-subtitle">第 {{ page }} 页</div>
+      </div>
       <div class="seriesTab-list">
         <div class="seriesTab-item">
-          <n-button @click="BackPage()" strong secondary circle>
+          <n-button @click="BackPage()" quaternary circle>
             <i class='bx bx-left-arrow-alt'></i>
           </n-button>
         </div>
         <div class="seriesTab-item">
-          <n-button @click="NextPage()" strong secondary circle>
+          <n-button @click="NextPage()" quaternary circle>
             <i class='bx bx-right-arrow-alt'></i>
           </n-button>
         </div>
         <div class="seriesTab-item">
-          <n-button @click="showSort = !showSort" strong secondary circle>
+          <n-button @click="showSort = !showSort" quaternary circle>
             <i class='bx bx-align-middle'></i>
           </n-button>
         </div>
       </div>
     </div>
     <div class="card-show-content view-card-list">
-      <div class="view-item" v-for="item in MediaDbInfo">
+      <div class="view-item" v-for="item in MediaDbInfo" :key="item.guid" @click="openVideoItem(item)">
         <router-link :to="{
                     path: '/video', query: {
                         guid: item.guid,
@@ -209,43 +226,74 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.seriesTab {
-  margin-top: 20px;
-  margin-bottom: 20px;
-  text-align: center;
-  padding: 0 10px;
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
 }
 
-.seriesTab .seriesTab-list {
+.list-title {
+  color: var(--fn-text);
+  font-size: 22px;
+  font-weight: 750;
+}
+
+.list-subtitle {
+  margin-top: 4px;
+  color: var(--fn-soft);
+  font-size: 13px;
+}
+
+.seriesTab-list {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+
+.seriesTab-list :deep(.n-button) {
+  width: 36px;
+  height: 36px;
+  color: var(--fn-text);
+  background: var(--fn-top-control);
+  border: 1px solid var(--fn-border);
+}
+
+.seriesTab-list :deep(.n-button:hover) {
+  background: var(--fn-top-control-hover);
 }
 
 .sort-title {
-  font-size: 1.2em;
+  color: var(--fn-text);
+  font-size: 15px;
+  font-weight: 700;
   margin-top: 12px;
   margin-bottom: 12px;
 }
 
 .sort-list .sort-item {
-  font-size: 1.2em;
+  font-size: 14px;
   margin-top: 4px;
   margin-bottom: 4px;
 }
 
 .view-card-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  grid-gap: 12px;
-  padding: 0 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 176px));
+  grid-gap: 24px 20px;
+  padding: 0;
 }
 
 .view-item {
   text-align: center;
   position: relative;
+  color: var(--fn-text);
+  cursor: pointer;
+}
+
+.view-item a {
+  color: inherit;
 }
 
 .view-card-list img.carousel-img {
@@ -253,12 +301,16 @@ onMounted(async () => {
   aspect-ratio: 11/16;
   border-radius: 8px;
   object-fit: cover;
+  background: var(--fn-panel);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .view-item-title {
-  font-size: 0.9em;
+  color: var(--fn-text);
+  font-size: 14px;
+  font-weight: 650;
   margin-top: 8px;
-  line-height: 1.4;
+  line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -268,20 +320,19 @@ onMounted(async () => {
 }
 
 .view-card-list .view-item {
-  transform: translateY(0) scale(1);
-  transition: all .2s ease-in-out;
+  transition: transform 0.18s ease;
 }
 
 .view-card-list .view-item:hover {
-  transform: translateY(-4px) scale(0.95);
-  transition: all .2s ease-in-out;
+  transform: translateY(-3px);
 }
 
 .view-item-header {
   position: absolute;
-  width: 95%;
-  padding: 8px;
-  z-index: 1;
+  inset: 0 0 auto;
+  padding: 7px;
+  z-index: 2;
+  pointer-events: none;
 }
 
 .view-item-tag-list {
@@ -292,10 +343,10 @@ onMounted(async () => {
 }
 
 .view-item-tag-list .count {
-  background-color: #2d8cf0 !important;
+  background-color: var(--fn-blue) !important;
   border-radius: 50%;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   color: white;
   display: flex;
   align-items: center;
@@ -309,13 +360,12 @@ onMounted(async () => {
 /* 移动端适配 */
 @media (max-width: 768px) {
   .view-card-list {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    grid-gap: 8px;
-    padding: 0 8px;
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    grid-gap: 18px 12px;
   }
 
   .view-item-title {
-    font-size: 0.8em;
+    font-size: 13px;
     margin-top: 6px;
   }
 
@@ -329,7 +379,7 @@ onMounted(async () => {
   }
 
   .sort-title {
-    font-size: 1em;
+    font-size: 14px;
     margin-top: 8px;
     margin-bottom: 8px;
   }

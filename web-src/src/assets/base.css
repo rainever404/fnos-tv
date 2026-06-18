@@ -4,9 +4,9 @@
   --vt-c-white-soft: #f8f8f8;
   --vt-c-white-mute: #f2f2f2;
 
-  --vt-c-black: #181818;
-  --vt-c-black-soft: #222222;
-  --vt-c-black-mute: #282828;
+  --vt-c-black: #151515;
+  --vt-c-black-soft: #1b1b1b;
+  --vt-c-black-mute: #242424;
 
   --vt-c-indigo: #2c3e50;
 
@@ -62,10 +62,8 @@ body {
   min-height: 100vh;
   color: var(--color-text);
   background: var(--color-background);
-  transition:
-          color 0.5s,
-          background-color 0.5s;
-  line-height: 1.6;
+  transition: color 0.2s, background-color 0.2s;
+  line-height: 1.45;
   font-family:
           Inter,
           -apple-system,
@@ -79,7 +77,7 @@ body {
           'Droid Sans',
           'Helvetica Neue',
           sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

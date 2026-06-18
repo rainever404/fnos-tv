@@ -1,12 +1,12 @@
 <script setup>
 import {useMediaDbData} from '../store'
-import {getCurrentInstance, onMounted, ref, onUnmounted, h} from "vue";
+import {getCurrentInstance, onMounted, ref, onUnmounted, h, computed} from "vue";
 import {useMessage, NIcon, NProgress} from 'naive-ui'
 
 const MediaDbData = useMediaDbData()
 const message = useMessage()
-const per_view = ref(window.innerWidth <= 768 ? 2 : 5);
-const per_card = ref(window.innerWidth <= 768 ? 3 : 8);
+const per_view = ref(4);
+const per_card = ref(10);
 const instance = getCurrentInstance();
 const proxy = instance.appContext.config.globalProperties;
 const COMMON = proxy.$COMMON;
@@ -36,6 +36,34 @@ const dropdownOptions = [
     icon: renderIcon('🗑')
   }
 ]
+
+function updateCarouselDensity() {
+  const width = window.innerWidth;
+  const usable = Math.max(320, width - 320);
+  per_view.value = width <= 768 ? 1 : Math.max(2, Math.floor(usable / 350));
+  per_card.value = width <= 768 ? 3 : Math.max(5, Math.floor(usable / 205));
+}
+
+updateCarouselDensity();
+
+const visibleLibraries = computed(() => {
+  return (MediaDbData.list || []).filter(item => item.category !== 'Others')
+})
+
+function getLibraryPreview(guid) {
+  const source = MediaDbData.info?.[guid]?.list || []
+  return source.filter(item => item.poster).slice(0, 3)
+}
+
+function openVideoItem(item) {
+  proxy.$router.push({
+    path: '/video',
+    query: {
+      guid: item.guid,
+      gallery_type: item.type
+    }
+  })
+}
 
 // 处理右键菜单点击
 const handleContextMenu = (e, item) => {
@@ -86,8 +114,7 @@ const handleClickOutside = () => {
 
 // 监听窗口大小变化
 window.addEventListener('resize', () => {
-  per_view.value = window.innerWidth <= 768 ? 2 : 5;
-  per_card.value = window.innerWidth <= 768 ? 3 : 8;
+  updateCarouselDensity();
 });
 
 async function GetPlayList() {
@@ -121,7 +148,38 @@ onUnmounted(() => {
 
 <template>
   <div class="content">
+    <div class="home-page-title">首页</div>
     <div class="card-list">
+      <div class="card-shows media-libraries" v-if="visibleLibraries.length > 0">
+        <div class="card-show-title">媒体库</div>
+        <div class="library-grid">
+          <router-link
+              class="library-card"
+              v-for="item in visibleLibraries"
+              :key="item.guid"
+              :to="{
+                path: '/list', query: {
+                  gallery_uid: item.guid,
+                  gallery_type: item.category
+                }
+              }"
+          >
+            <div class="library-posters">
+              <img
+                  v-for="poster in getLibraryPreview(item.guid)"
+                  :key="poster.guid"
+                  loading="lazy"
+                  v-lazy='COMMON.imgUrl +  "/92/17/" + poster.poster + "?w=200"'
+                  alt=""
+              >
+              <div v-if="getLibraryPreview(item.guid).length === 0" class="library-empty">
+                <i class='bx bx-film'></i>
+              </div>
+            </div>
+            <div class="library-label">{{ item.title }}</div>
+          </router-link>
+        </div>
+      </div>
       <div class="card-shows" v-if="playList && playList.length > 0">
         <div class="card-show-title">
           继续观看
@@ -156,10 +214,10 @@ onUnmounted(() => {
                   <div v-if="play_item_guid === item.guid" class="play-icon">
                     <i class="bx bx-play"></i>
                   </div>
-                  <div class="view-item-title">
-                    {{ item.type === 'Episode' ? item.tv_title : item.title }}
-                  </div>
-                  <div v-if="item.type === 'Episode'" class="view-item-title"
+                <div class="view-item-title landscape-title">
+                  {{ item.type === 'Episode' ? item.tv_title : item.title }}
+                </div>
+                <div v-if="item.type === 'Episode'" class="view-item-title"
                        style="font-size: 0.8em;color:rgba(0, 0, 0, 0.4);">
                     第 {{ item.season_number }} 季·第 {{ item.episode_number }} 集
                   </div>
@@ -180,12 +238,13 @@ onUnmounted(() => {
       <div class="card-shows" v-for="(key, index) in Object.keys(MediaDbData.info)" :key="index">
         <div v-if="MediaDbData.list.find((item) => item.guid === key).category !== 'Others'">
           <div class="card-show-title">
-            {{ MediaDbData.list.find((item) => item.guid === key).title }}
+            {{ MediaDbData.list.find((item) => item.guid === key).title }} <i class='bx bx-chevron-right'></i>
           </div>
           <div class="card-show-content view-card">
             <n-carousel :show-dots="false" show-arrow :slides-per-view="per_card" :space-between="20" :loop="false"
                         draggable>
-              <div class="view-item" v-for="item in MediaDbData.info[key].list" :key="item.id">
+              <div class="view-item" v-for="item in MediaDbData.info[key].list" :key="item.id"
+                   @click="openVideoItem(item)">
                 <div class="view-item-header">
                   <div class="view-item-tag-list">
                     <div class="view-item-tag rating">
@@ -381,6 +440,7 @@ img.carousel-img {
   position: absolute;
   width: 95%;
   padding-left: 4px;
+  pointer-events: none;
 }
 
 .view-item-tag-list {
@@ -590,5 +650,242 @@ img.carousel-img {
 .gallery-img {
   border-radius: 10px !important;
   transition: transform 0.3s;
+}
+
+.home-page-title {
+  margin-bottom: 28px;
+  color: var(--fn-text);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.card-list {
+  max-width: 100%;
+}
+
+.card-shows {
+  margin-bottom: 34px;
+}
+
+.card-show-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  margin-bottom: 14px;
+  color: var(--fn-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.card-show-title i {
+  color: var(--fn-soft);
+  font-size: 20px;
+}
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(252px, 1fr));
+  gap: 20px;
+}
+
+.library-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 126px;
+  color: var(--fn-text);
+  background: var(--fn-panel);
+  border: 1px solid var(--fn-border);
+  border-radius: 8px;
+  transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.library-card:hover {
+  transform: translateY(-2px);
+  background: var(--fn-panel-hover);
+  border-color: rgba(10, 132, 255, 0.32);
+}
+
+.library-posters {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: 102px;
+  overflow: hidden;
+}
+
+.library-posters::after {
+  content: "";
+  position: absolute;
+  inset: 52% 0 0;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.62));
+}
+
+.library-posters img {
+  width: 100%;
+  height: 102px;
+  object-fit: cover;
+}
+
+.library-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 102px;
+  color: var(--fn-soft);
+  font-size: 34px;
+}
+
+.library-label {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  color: #fff;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72));
+  font-weight: 700;
+}
+
+.carousel-container {
+  margin: 0;
+}
+
+.view-item {
+  position: relative;
+  color: var(--fn-text);
+  cursor: pointer;
+}
+
+.view-item a {
+  color: inherit;
+}
+
+.gallery-img,
+img.carousel-img,
+.view-card img.carousel-img {
+  overflow: hidden;
+  background: var(--fn-panel);
+  border-radius: 8px !important;
+  object-fit: cover;
+}
+
+.gallery-img {
+  aspect-ratio: 16 / 9;
+}
+
+.view-card img.carousel-img {
+  aspect-ratio: 2 / 3;
+}
+
+.view-item-title {
+  margin-top: 8px;
+  padding: 0 2px;
+  color: var(--fn-text);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.landscape-title {
+  margin-top: 9px;
+}
+
+.view-item .view-item-title + .view-item-title {
+  margin-top: 3px;
+  color: var(--fn-soft) !important;
+  font-size: 12px !important;
+  font-weight: 500;
+}
+
+.view-item-tag-list {
+  justify-content: space-between;
+  padding: 7px;
+}
+
+.view-item-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 22px;
+  padding: 0 6px;
+  color: #ffd327;
+  background: rgba(0, 0, 0, 0.68);
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.view-item-tag-list .count {
+  min-width: 22px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: #fff;
+  background: var(--fn-blue) !important;
+}
+
+.play-icon {
+  width: 48px;
+  height: 48px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 34px;
+}
+
+.view-item:hover .gallery-img,
+.view-card .view-item:hover {
+  transform: translateY(-2px);
+}
+
+.view-card .view-item:hover {
+  scale: 1;
+}
+
+.custom-arrow {
+  top: -42px;
+  right: 0;
+}
+
+.custom-arrow button,
+.carousel-arrow {
+  color: var(--fn-text);
+  background: var(--fn-top-control);
+  border: 1px solid var(--fn-border);
+}
+
+.custom-arrow button:hover,
+.carousel-arrow:hover {
+  background: var(--fn-top-control-hover);
+}
+
+@media (max-width: 768px) {
+  .home-page-title {
+    margin-bottom: 18px;
+    font-size: 20px;
+  }
+
+  .library-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .card-shows {
+    margin-bottom: 26px;
+    padding: 0;
+  }
+
+  .view-item-title {
+    font-size: 13px;
+  }
 }
 </style>

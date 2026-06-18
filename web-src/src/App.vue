@@ -1,5 +1,5 @@
 <script setup>
-import {getCurrentInstance, onMounted, ref, watch} from 'vue'
+import {computed, getCurrentInstance, onMounted, ref, watch} from 'vue'
 import VueCookies from 'vue-cookies';
 import {darkTheme} from "naive-ui";
 
@@ -15,32 +15,49 @@ let UserInfo = ref({})
 let load = ref(true)
 let title = COMMON.title
 let collapsed = ref(false);
-const dark = ref(false);
-const theme = ref(null);
 const data = ref(null)
 const MediaDbSum = ref({})
 const MediaDbInfo = ref({})
 const ConfigData = ref({})
 const route = useRoute();
+const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+const systemDark = ref(systemThemeQuery.matches);
+const legacyDark = VueCookies.get("dark");
+const themeMode = ref(VueCookies.get("theme_mode") || (legacyDark === "true" ? "dark" : legacyDark === "false" ? "light" : "system"));
+const dark = computed(() => themeMode.value === "dark" || (themeMode.value === "system" && systemDark.value));
+const theme = computed(() => dark.value ? darkTheme : null);
 const options = ref([
   {
     label: '注销登录',
     key: "out"
   },
 ])
+const themeOptions = ref([
+  {
+    label: '跟随系统',
+    key: 'system'
+  },
+  {
+    label: '浅色',
+    key: 'light'
+  },
+  {
+    label: '深色',
+    key: 'dark'
+  }
+])
 
 if (COMMON.isMo) {
   collapsed.value = true;
 }
-const them = VueCookies.get("dark");
 const collapsedItem = VueCookies.get("collapsed");
-if (them === "true") {
-  dark.value = true;
-  theme.value = darkTheme;
-}
 if (collapsedItem === "true") {
   collapsed.value = true;
 }
+
+systemThemeQuery.addEventListener('change', event => {
+  systemDark.value = event.matches;
+});
 
 // 添加移动端检测
 const isMobile = ref(window.innerWidth <= 768);
@@ -135,22 +152,10 @@ function Home() {
   })
 }
 
-function toggDark() {
-  if (this.theme == null) {
-    this.theme = darkTheme;
-    VueCookies.set("dark", "true", 60 * 60 * 24 * 30);
-    this.dark = true;
-    return
-  }
-  if (this.theme.name === "dark") {
-    this.theme = null;
-    VueCookies.set("dark", "false", 60 * 60 * 24 * 30);
-    this.dark = false;
-  } else {
-    this.theme = darkTheme;
-    VueCookies.set("dark", "true", 60 * 60 * 24 * 30);
-    this.dark = true;
-  }
+function setThemeMode(mode) {
+  themeMode.value = mode;
+  VueCookies.set("theme_mode", mode, 60 * 60 * 24 * 365);
+  VueCookies.set("dark", dark.value ? "true" : "false", 60 * 60 * 24 * 365);
 }
 
 function handleSelect(key) {
@@ -209,6 +214,13 @@ watch(
     }
 );
 
+watch(
+    dark,
+    (value) => {
+      document.documentElement.dataset.theme = value ? "dark" : "light";
+    },
+    {immediate: true}
+)
 
 </script>
 
@@ -218,7 +230,8 @@ watch(
     <n-message-provider>
       <n-notification-provider>
         <n-dialog-provider>
-          <n-layout v-if="route.path !== '/login'" :class='[dark ? "dark" : "light", "home"]'>
+          <router-view v-if="route.path === '/player'"/>
+          <n-layout v-else-if="route.path !== '/login'" :class='[dark ? "dark" : "light", "home"]'>
             <n-layout-header bordered>
               <div class="header-content">
                 <n-space>
@@ -232,12 +245,16 @@ watch(
                   </div>
                 </n-space>
                 <n-space justify="end" class="header-right">
-                  <n-button quaternary @click="toggDark()" circle>
-                    <template #icon>
-                      <i v-if="dark" class='bx bx-sun'></i>
-                      <i v-else class='bx bx-moon'></i>
-                    </template>
-                  </n-button>
+                  <n-dropdown trigger="click" placement="bottom-end" :options="themeOptions"
+                              @select="setThemeMode">
+                    <n-button quaternary circle>
+                      <template #icon>
+                        <i v-if="themeMode === 'system'" class='bx bx-desktop'></i>
+                        <i v-else-if="dark" class='bx bx-moon'></i>
+                        <i v-else class='bx bx-sun'></i>
+                      </template>
+                    </n-button>
+                  </n-dropdown>
 
                   <n-dropdown trigger="hover" placement="bottom-start" :options="options"
                               @select="handleSelect">
@@ -248,19 +265,23 @@ watch(
                 </n-space>
               </div>
             </n-layout-header>
-            <n-layout position="absolute" :style="{ top: '60px' }" has-sider>
+            <n-layout position="absolute" :style="{ top: '0' }" has-sider>
               <n-layout-sider
                 :collapsed="collapsed"
                 collapse-mode="width"
                 :collapsed-width="0"
-                :width="240"
+                :width="256"
                 :native-scrollbar="false"
                 bordered
                 :show-collapsed-content="false"
                 :class="{ 'mobile-sider': isMobile }"
               >
+                <div class="sidebar-brand" @click="Home">
+                  <div class="brand-mark"><i class='bx bxs-videos'></i></div>
+                  <div class="brand-text">{{ title }}</div>
+                </div>
                 <div class="sider-item">
-                  <div class="sider-item-title">个人中心</div>
+                  <div class="sider-item-title">导航</div>
                   <div class="navigation">
                     <ul class="nav-links">
                       <li>
@@ -676,5 +697,220 @@ span.n-avatar {
 
 .dark .n-layout-sider::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.2);
+}
+
+:root,
+html[data-theme="light"] {
+  --fn-bg: #ffffff;
+  --fn-sidebar: #f3f4f6;
+  --fn-panel: #f7f8fa;
+  --fn-panel-hover: #eef0f4;
+  --fn-border: rgba(15, 23, 42, 0.08);
+  --fn-text: rgba(15, 23, 42, 0.9);
+  --fn-muted: rgba(15, 23, 42, 0.62);
+  --fn-soft: rgba(15, 23, 42, 0.42);
+  --fn-top-control: rgba(15, 23, 42, 0.06);
+  --fn-top-control-hover: rgba(15, 23, 42, 0.1);
+  --fn-nav-hover: rgba(15, 23, 42, 0.06);
+  --fn-nav-active: #ffffff;
+  --fn-blue: #0a84ff;
+}
+
+html[data-theme="dark"] {
+  --fn-bg: #151515;
+  --fn-sidebar: #101113;
+  --fn-panel: #1d1d1f;
+  --fn-panel-hover: #242426;
+  --fn-border: rgba(255, 255, 255, 0.07);
+  --fn-text: rgba(255, 255, 255, 0.88);
+  --fn-muted: rgba(255, 255, 255, 0.58);
+  --fn-soft: rgba(255, 255, 255, 0.38);
+  --fn-top-control: rgba(255, 255, 255, 0.08);
+  --fn-top-control-hover: rgba(255, 255, 255, 0.14);
+  --fn-nav-hover: rgba(255, 255, 255, 0.06);
+  --fn-nav-active: rgba(255, 255, 255, 0.07);
+}
+
+body {
+  background: var(--fn-bg);
+  color: var(--fn-text);
+}
+
+.home,
+.home .n-layout,
+.home .n-layout-scroll-container {
+  background: var(--fn-bg) !important;
+  color: var(--fn-text);
+}
+
+.home > .n-layout-header {
+  position: fixed;
+  top: 18px;
+  right: 24px;
+  left: auto;
+  width: auto;
+  height: 36px;
+  padding: 0;
+  line-height: 36px;
+  background: transparent !important;
+  border: 0 !important;
+  z-index: 20;
+}
+
+.header-content {
+  align-items: center;
+  gap: 12px;
+}
+
+.header-content > .n-space:first-child {
+  display: none;
+}
+
+.header-right {
+  gap: 8px !important;
+}
+
+.header-right .n-button,
+.header-right .n-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  color: var(--fn-text);
+  background: var(--fn-top-control) !important;
+  border: 0;
+}
+
+.header-right .n-button:hover {
+  background: var(--fn-top-control-hover) !important;
+}
+
+.home .n-layout-sider {
+  background: var(--fn-sidebar) !important;
+  border-right: 1px solid var(--fn-border) !important;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 76px;
+  padding: 0 22px;
+  color: var(--fn-text);
+  cursor: pointer;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--fn-blue);
+  font-size: 24px;
+}
+
+.brand-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.sider-item {
+  margin-bottom: 18px;
+}
+
+.sider-item-title {
+  padding: 14px 22px 8px;
+  color: var(--fn-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.navigation ul li {
+  padding: 0 14px;
+  margin: 3px 0;
+}
+
+.navigation ul li:hover {
+  background: transparent;
+}
+
+.navigation ul li a {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  color: var(--fn-muted) !important;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.navigation ul li a:hover {
+  color: var(--fn-text) !important;
+  background: var(--fn-nav-hover);
+}
+
+.navigation ul li a.active {
+  color: var(--fn-blue) !important;
+  background: var(--fn-nav-active) !important;
+}
+
+.navigation ul li a .icon i {
+  min-width: 28px;
+  font-size: 18px;
+  line-height: 1;
+  text-align: left;
+}
+
+.navigation ul li a .title {
+  height: auto;
+  min-width: 0;
+  line-height: 1;
+  color: inherit !important;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.navigation ul li a .title:last-child {
+  color: var(--fn-soft) !important;
+  font-size: 13px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.content {
+  min-height: 100vh;
+  padding: 32px 44px 72px;
+}
+
+.content a {
+  color: inherit;
+}
+
+@media (max-width: 768px) {
+  .home > .n-layout-header {
+    top: 10px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+
+  .header-content > .n-space:first-child {
+    display: flex;
+  }
+
+  .header-content > .n-space:first-child .title {
+    display: none;
+  }
+
+  .mobile-sider {
+    top: 0;
+    height: 100vh;
+  }
+
+  .content {
+    padding: 64px 14px 40px;
+  }
 }
 </style>
