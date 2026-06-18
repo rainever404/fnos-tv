@@ -19,12 +19,17 @@ const order = computed({
     MediaDbData.sort_type = value;
   }
 });
-const showSort = ref(false);
-const size = ref(48);
-const page = ref(1);
+const size = ref(240);
+const totalCount = ref(0);
 const MediaDbInfo = ref(null);
 const galleryTitle = computed(() => {
   return MediaDbData.list.find(item => item.guid === guid.value)?.title || '媒体库'
+})
+
+const listSubtitle = computed(() => {
+  const loaded = MediaDbInfo.value?.length || 0
+  const total = totalCount.value || loaded
+  return total ? `${loaded} / ${total} 个项目` : '加载中'
 })
 
 
@@ -64,6 +69,23 @@ const orders = [
   }
 ]
 
+function formatRating(item) {
+  const rating = Number(item?.vote_average)
+  if (!Number.isFinite(rating) || rating <= 0) {
+    return ''
+  }
+  return String(Math.floor(rating * 10) / 10)
+}
+
+function releaseYear(item) {
+  const source = item?.release_date || item?.year || item?.premiere_date || item?.create_time || ''
+  const match = String(source).match(/\d{4}/)
+  return match ? match[0] : ''
+}
+
+function displayTitle(item) {
+  return item?.title || item?.name || ''
+}
 
 async function GetMediaDbInfos() {
   let api = '/api/v1/item/list'
@@ -78,53 +100,50 @@ async function GetMediaDbInfos() {
         "Video"
       ]
     },
-    "exclude_grouped_video": page.value,
+    "exclude_grouped_video": 1,
     "sort_type": MediaDbData.sort_type,
     "sort_column": MediaDbData.sort_column,
     "page_size": size.value
   }
   let res = await COMMON.requests("POST", api, true, _data);
-  MediaDbInfo.value = res.list
+  MediaDbInfo.value = res.list || []
 
+}
+
+async function GetMediaDbCount() {
+  let api = '/api/v1/mediadb/sum'
+  const res = await COMMON.requests("GET", api, true);
+  const count = Number(res?.[guid.value] || 0)
+  totalCount.value = Number.isFinite(count) ? count : 0
+  if (totalCount.value > 0) {
+    size.value = totalCount.value
+  }
 }
 
 async function handleChange() {
-  page.value = 1;
   await GetMediaDbInfos();
 }
 
-async function BackPage() {
-  this.page = this.page - 1;
-  if (this.page <= 0) {
-    COMMON.ShowMsg("已经是第1页啦!")
-    this.page = 1;
-  }
-  await GetMediaDbInfos();
+async function setSortMode(value) {
+  MediaDbData.sort_column = value
+  await GetMediaDbInfos()
 }
 
-async function NextPage() {
-  this.page = this.page + 1;
-  await GetMediaDbInfos();
-}
-
-function openVideoItem(item) {
-  proxy.$router.push({
-    path: '/video',
-    query: {
-      guid: item.guid,
-      gallery_type: item.type
-    }
-  })
+async function setSortOrder(value) {
+  MediaDbData.sort_type = value
+  await GetMediaDbInfos()
 }
 
 onBeforeRouteUpdate(async (to, from) => {
   guid.value = to.query.gallery_uid;
   // gallery_type.value = to.query.gallery_type;
+  await GetMediaDbCount();
   await GetMediaDbInfos();
 });
 
 onMounted(async () => {
   // 获取每个分类的列表
+  await GetMediaDbCount();
   await GetMediaDbInfos();
 
 })
@@ -136,29 +155,45 @@ onMounted(async () => {
     <div class="list-toolbar">
       <div>
         <div class="list-title">{{ galleryTitle }}</div>
-        <div class="list-subtitle">第 {{ page }} 页</div>
+        <div class="list-subtitle">{{ listSubtitle }}</div>
       </div>
       <div class="seriesTab-list">
         <div class="seriesTab-item">
-          <n-button @click="BackPage()" quaternary circle>
-            <i class='bx bx-left-arrow-alt'></i>
-          </n-button>
-        </div>
-        <div class="seriesTab-item">
-          <n-button @click="NextPage()" quaternary circle>
-            <i class='bx bx-right-arrow-alt'></i>
-          </n-button>
-        </div>
-        <div class="seriesTab-item">
-          <n-button @click="showSort = !showSort" quaternary circle>
-            <i class='bx bx-align-middle'></i>
-          </n-button>
+          <div class="sort-menu">
+            <input id="video-list-sort-toggle" class="sort-toggle" type="checkbox">
+            <label class="sort-trigger" for="video-list-sort-toggle" aria-label="排序">
+              <i class='bx bx-align-middle'></i>
+            </label>
+            <div class="sort-popover" role="dialog" aria-label="排序">
+              <div class="sort-popover-header">排序</div>
+              <div class="sort-title">
+                排序方式
+              </div>
+              <div class="sort-list">
+                <label class="sort-item" v-for="item in modes" :key="item.value">
+                  <input type="radio" name="sort-mode" :value="item.value" :checked="mode === item.value"
+                         @change="setSortMode(item.value)">
+                  <span>{{ item.label }}</span>
+                </label>
+              </div>
+              <div class="sort-title">
+                排序顺序
+              </div>
+              <div class="sort-list">
+                <label class="sort-item" v-for="item in orders" :key="item.value">
+                  <input type="radio" name="sort-order" :value="item.value" :checked="order === item.value"
+                         @change="setSortOrder(item.value)">
+                  <span>{{ item.label }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
     <div class="card-show-content view-card-list">
-      <div class="view-item" v-for="item in MediaDbInfo" :key="item.guid" @click="openVideoItem(item)">
-        <router-link :to="{
+      <div class="view-item" v-for="item in MediaDbInfo" :key="item.guid">
+        <router-link class="view-item-link" :to="{
                     path: '/video', query: {
                         guid: item.guid,
                         gallery_type: item.type
@@ -166,11 +201,7 @@ onMounted(async () => {
                 }">
           <div class="view-item-header">
             <div class="view-item-tag-list">
-              <!--              <div class="view-item-tag rating">{{ isNaN(Math.floor(item.vote_average * 100) / 100) ?-->
-              <!--                  "" :-->
-              <!--                  Math.floor(item.vote_average * 100) / 100-->
-              <!--                }}-->
-              <!--              </div>-->
+              <div v-if="formatRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
               <div v-if="item.played" class="view-item-tag count">
                 <i class='bx bx-check'></i>
               </div>
@@ -180,48 +211,12 @@ onMounted(async () => {
                v-lazy=' COMMON.imgUrl + "/92/17/" + item.poster + "?w=200"'>
           <img v-else loading="lazy" class='carousel-img' v-lazy="'/images/not_video.jpg'">
           <div class="view-item-title">
-            {{ item.title }}
+            {{ displayTitle(item) }}
           </div>
+          <div class="view-item-year">{{ releaseYear(item) }}</div>
         </router-link>
       </div>
     </div>
-    <n-modal v-model:show="showSort" transform-origin="center">
-      <n-card style="width: 600px;" title="排序" :bordered="false" size="huge" role="dialog" aria-modal="true">
-        <template #header-extra>
-          <n-button @click="showSort = !showSort" strong secondary circle>
-            <i class='bx bx-x'></i>
-          </n-button>
-        </template>
-        <div class="sort-list">
-          <div class="sort-title">
-            排序方式
-          </div>
-          <div class="sort-list">
-            <n-radio-group v-model:value="mode" name="radiogroup">
-              <n-space vertical>
-                <n-radio @change="handleChange" class="sort-item" v-for="item in modes"
-                         :checked="mode === item.value" :key="item.value" :value="item.value">
-                  {{ item.label }}
-                </n-radio>
-              </n-space>
-            </n-radio-group>
-          </div>
-          <div class="sort-title">
-            排序顺序
-          </div>
-          <div class="sort-list">
-            <n-radio-group v-model:value="order" name="radiogroup">
-              <n-space vertical>
-                <n-radio @change="handleChange" class="sort-item" v-for="item in orders"
-                         :checked="order === item.value" :key="item.value" :value="item.value">
-                  {{ item.label }}
-                </n-radio>
-              </n-space>
-            </n-radio-group>
-          </div>
-        </div>
-      </n-card>
-    </n-modal>
   </div>
 </template>
 
@@ -252,16 +247,61 @@ onMounted(async () => {
   gap: 8px;
 }
 
-.seriesTab-list :deep(.n-button) {
+.sort-menu {
+  position: relative;
+}
+
+.sort-toggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sort-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 36px;
   height: 36px;
   color: var(--fn-text);
   background: var(--fn-top-control);
   border: 1px solid var(--fn-border);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
 
-.seriesTab-list :deep(.n-button:hover) {
+.sort-trigger:hover,
+.sort-toggle:checked + .sort-trigger {
   background: var(--fn-top-control-hover);
+}
+
+.sort-popover {
+  position: absolute;
+  top: 46px;
+  right: 0;
+  z-index: 30;
+  width: 260px;
+  padding: 16px;
+  color: var(--fn-text);
+  background: var(--fn-panel);
+  border: 1px solid var(--fn-border);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+  text-align: left;
+}
+
+.sort-toggle:not(:checked) ~ .sort-popover {
+  display: none;
+}
+
+.sort-popover-header {
+  color: var(--fn-text);
+  font-size: 16px;
+  font-weight: 750;
 }
 
 .sort-title {
@@ -273,15 +313,24 @@ onMounted(async () => {
 }
 
 .sort-list .sort-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
   margin-top: 4px;
   margin-bottom: 4px;
+  color: var(--fn-text);
+  cursor: pointer;
+}
+
+.sort-list input[type="radio"] {
+  accent-color: var(--fn-blue);
 }
 
 .view-card-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 176px));
-  grid-gap: 24px 20px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-gap: 26px 20px;
   padding: 0;
 }
 
@@ -292,31 +341,44 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-.view-item a {
+.view-item-link {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
   color: inherit;
+  text-decoration: none;
 }
 
 .view-card-list img.carousel-img {
   width: 100%;
-  aspect-ratio: 11/16;
+  aspect-ratio: 2/3;
   border-radius: 8px;
   object-fit: cover;
   background: var(--fn-panel);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 
 .view-item-title {
   color: var(--fn-text);
   font-size: 14px;
   font-weight: 650;
-  margin-top: 8px;
+  margin-top: 10px;
   line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
+  width: 100%;
   padding: 0 4px;
+}
+
+.view-item-year {
+  min-height: 18px;
+  margin-top: 2px;
+  color: var(--fn-soft);
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .view-card-list .view-item {
@@ -324,7 +386,12 @@ onMounted(async () => {
 }
 
 .view-card-list .view-item:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
+}
+
+.view-card-list .view-item:hover img.carousel-img {
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+  filter: brightness(1.02);
 }
 
 .view-item-header {
@@ -338,11 +405,28 @@ onMounted(async () => {
 .view-item-tag-list {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 4px;
+  min-height: 22px;
+}
+
+.view-item-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 22px;
+  padding: 0 7px;
+  color: #f8c52c;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .view-item-tag-list .count {
+  margin-left: auto;
   background-color: var(--fn-blue) !important;
   border-radius: 50%;
   width: 22px;
@@ -354,7 +438,7 @@ onMounted(async () => {
 }
 
 .rating {
-  color: yellow;
+  color: #f8c52c;
 }
 
 /* 移动端适配 */
@@ -388,14 +472,9 @@ onMounted(async () => {
     font-size: 1em;
   }
 
-  /* 调整模态框在移动端的样式 */
-  :deep(.n-card) {
-    width: 90% !important;
-    max-width: 400px;
-  }
-
-  :deep(.n-modal) {
-    padding: 16px;
+  .sort-popover {
+    right: -8px;
+    width: min(280px, calc(100vw - 32px));
   }
 }
 

@@ -917,7 +917,7 @@ body {
 
 .content {
   min-height: 100vh;
-  padding: 32px 44px 72px;
+  padding: 60px 44px 72px;
 }
 
 .content a {
