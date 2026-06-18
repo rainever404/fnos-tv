@@ -65,6 +65,21 @@ function openVideoItem(item) {
   })
 }
 
+function getPlaybackParentGuid(item) {
+  return item?.parent_guid || item?.guid || ''
+}
+
+function getPlaybackRoute(item) {
+  return {
+    path: '/player',
+    query: {
+      gallery_type: item.type,
+      guid: getPlaybackParentGuid(item),
+      episode_guid: item.guid
+    }
+  }
+}
+
 // 处理右键菜单点击
 const handleContextMenu = (e, item) => {
   e.preventDefault()
@@ -82,14 +97,7 @@ const handleDropdownSelect = async (key) => {
   switch (key) {
     case 'continue':
       // 跳转到播放页面
-      proxy.$router.push({
-        path: '/player',
-        query: {
-          gallery_type: item.type,
-          guid: item.parent_guid ?? item.guid,
-          episode_guid: item.guid
-        }
-      })
+      proxy.$router.push(getPlaybackRoute(item))
       break
     case 'remove':
       try {
@@ -193,13 +201,7 @@ onUnmounted(() => {
                  @mouseleave="play_item_guid = null"
                  @contextmenu="handleContextMenu($event, item)">
               <div>
-                <router-link :to="{
-                    path: '/player', query: {
-                        gallery_type: item.type,
-                        guid: item.parent_guid??item.guid,
-                        episode_guid: item.guid
-                    }
-                }">
+                <router-link :to="getPlaybackRoute(item)">
                   <img v-if="item.poster.length > 0" loading="lazy" class='gallery-img'
                        v-lazy='COMMON.imgUrl + item.poster' style="border-radius:10px">
                   <img v-else loading="lazy" class='gallery-img' v-lazy="'/images/not_gellery.png'">

@@ -27,6 +27,10 @@ const legacyDark = VueCookies.get("dark");
 const themeMode = ref(VueCookies.get("theme_mode") || (legacyDark === "true" ? "dark" : legacyDark === "false" ? "light" : "system"));
 const dark = computed(() => themeMode.value === "dark" || (themeMode.value === "system" && systemDark.value));
 const theme = computed(() => dark.value ? darkTheme : null);
+const userInitial = computed(() => {
+  const username = UserInfo.value?.username || '';
+  return username ? username.slice(0, 1).toUpperCase() : 'U';
+});
 const options = ref([
   {
     label: '注销登录',
@@ -258,20 +262,20 @@ watch(
           <n-layout v-else-if="route.path !== '/login'" :class='[dark ? "dark" : "light", "home"]'>
             <n-layout-header bordered>
               <div class="header-content">
-                <n-space>
+                <div class="header-left">
                   <div @click="toggDrawer" class="menu-button">
-                    <n-button circle>
+                    <n-button class="topbar-control" circle>
                       <i class='bx bx-menu'></i>
                     </n-button>
                   </div>
                   <div @click="Home" class="title">
                     {{ title }}
                   </div>
-                </n-space>
-                <n-space justify="end" class="header-right">
+                </div>
+                <div class="header-right">
                   <n-dropdown trigger="click" placement="bottom-end" :options="themeOptions"
                               @select="setThemeMode">
-                    <n-button quaternary circle>
+                    <n-button class="topbar-control" quaternary circle aria-label="切换主题">
                       <template #icon>
                         <i v-if="themeMode === 'system'" class='bx bx-desktop'></i>
                         <i v-else-if="dark" class='bx bx-moon'></i>
@@ -282,11 +286,11 @@ watch(
 
                   <n-dropdown trigger="hover" placement="bottom-start" :options="options"
                               @select="handleSelect">
-                    <n-avatar circle size="medium" :style="{backgroundColor:'#468DF1'}">
-                      {{ UserInfo !== undefined ? UserInfo.username : '' }}
+                    <n-avatar class="topbar-control user-avatar" circle :title="UserInfo?.username || ''">
+                      {{ userInitial }}
                     </n-avatar>
                   </n-dropdown>
-                </n-space>
+                </div>
               </div>
             </n-layout-header>
             <n-layout position="absolute" :style="{ top: '0' }" has-sider>
@@ -466,13 +470,9 @@ a {
 
 .header-content {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-}
-
-span.n-avatar {
-  position: relative;
-  top: 8px;
+  flex-wrap: nowrap;
 }
 
 .navigation ul {
@@ -786,41 +786,70 @@ body {
   gap: 12px;
 }
 
-.header-content > .n-space:first-child {
+.header-left {
   display: none !important;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  height: 36px;
 }
 
 .header-right {
+  display: flex;
   align-items: center !important;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
   height: 36px;
   line-height: 0;
-  gap: 8px !important;
+  gap: 16px !important;
+  white-space: nowrap;
 }
 
 .header-right > div {
   display: flex;
   align-items: center;
+  justify-content: center;
   height: 36px;
+  width: 36px;
+  flex: 0 0 36px;
 }
 
-.header-right .n-button,
-.header-right .n-avatar {
+.topbar-control.n-button,
+.topbar-control.n-avatar {
   width: 36px !important;
   height: 36px !important;
+  min-width: 36px !important;
   color: var(--fn-text);
   background: var(--fn-top-control) !important;
   border: 0;
+  box-sizing: border-box;
+  padding: 0 !important;
 }
 
-.header-right .n-avatar {
-  position: static;
+.topbar-control.n-avatar {
+  position: relative;
   top: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  color: var(--fn-text);
+  border-radius: 9999px;
+  font-size: 14px !important;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
-.header-right .n-button:hover {
+.topbar-control.n-avatar .n-avatar__text {
+  left: 50% !important;
+  top: 50% !important;
+  line-height: 1 !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+.topbar-control.n-button:hover {
   background: var(--fn-top-control-hover) !important;
 }
 
@@ -950,12 +979,16 @@ body {
     width: auto;
   }
 
-  .header-content > .n-space:first-child {
+  .header-left {
     display: flex !important;
   }
 
-  .header-content > .n-space:first-child .title {
+  .header-left .title {
     display: none;
+  }
+
+  .header-right {
+    gap: 10px !important;
   }
 
   .mobile-sider {
