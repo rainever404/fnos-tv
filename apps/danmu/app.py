@@ -7,6 +7,8 @@ from flask import Blueprint
 from flask import request
 from loguru import logger
 
+import Config
+from Fuction import request_data
 import core.danmu as danmu_base
 import core.videoSearch as videoSearch
 from core.danmu.base import GetDanmuBase
@@ -84,6 +86,149 @@ def fetch_danmu(url, episode_key):
         return {"key": episode_key, "data": None}
 
 
+def _to_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _to_float(value, default=0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalize_custom_mode(mode):
+    mode = _to_int(mode, 1)
+    match mode:
+        case 4:
+            return 2
+        case 5:
+            return 1
+        case _:
+            return 0
+
+
+def _normalize_custom_color(color):
+    if color is None:
+        return "#FFFFFF"
+    color_text = str(color).strip().replace('"', '')
+    if color_text.startswith("#"):
+        return color_text
+    try:
+        return f"#{int(float(color_text)):06X}"
+    except (TypeError, ValueError):
+        return "#FFFFFF"
+
+
+def _build_custom_match_candidates(title, season_number, episode_number, episode_title):
+    if not title:
+        return []
+
+    candidates = []
+    episode = _to_int(episode_number, 0)
+    season = _to_int(season_number, 1)
+
+    if episode > 0:
+        candidates.append(f"{title} S{season:02d}E{episode:02d}")
+        candidates.append(f"{title} E{episode:02d}")
+        candidates.append(f"{title} 第{episode}集")
+        if episode_title:
+            candidates.append(f"{title} {episode_title}")
+    else:
+        candidates.append(title)
+
+    deduped = []
+    for candidate in candidates:
+        candidate = str(candidate).strip()
+        if candidate and candidate not in deduped:
+            deduped.append(candidate)
+    return deduped
+
+
+def _custom_comment_to_art_danmu(item):
+    if not isinstance(item, dict):
+        return None
+
+    if "p" in item:
+        p_values = str(item.get("p") or "").split(",")
+        time_value = item.get("t", p_values[0] if len(p_values) > 0 else 0)
+        mode_value = p_values[1] if len(p_values) > 1 else 1
+        color_value = p_values[2] if len(p_values) > 2 else 16777215
+        text = item.get("m", "")
+    else:
+        time_value = item.get("time", item.get("timepoint", item.get("progress", 0)))
+        if "progress" in item:
+            time_value = _to_float(time_value) / 1000
+        mode_value = item.get("mode", item.get("ct", 1))
+        color_value = item.get("color", 16777215)
+        text = item.get("text", item.get("content", item.get("m", "")))
+
+    text = str(text or "").strip()
+    if not text:
+        return None
+
+    return {
+        "text": text,
+        "time": _to_float(time_value),
+        "mode": _normalize_custom_mode(mode_value),
+        "color": _normalize_custom_color(color_value),
+        "border": False,
+        "style": {}
+    }
+
+
+def _fetch_custom_api_danmu(title, season_number, episode_number, episode_title):
+    api_base = Config.custom_danmu_api_url
+    episode_key = str(_to_int(episode_number, 1) or 1)
+    if not api_base:
+        logger.warning("CUSTOM_DANMU_API_URL is empty, skip custom danmu source")
+        return {episode_key: []}
+
+    episode_id = None
+    for candidate in _build_custom_match_candidates(title, season_number, episode_number, episode_title):
+        try:
+            res = request_data(
+                "POST",
+                f"{api_base}/api/v2/match",
+                json={"fileName": candidate},
+                headers={"Content-Type": "application/json"},
+                timeout=120
+            )
+            if not res or res.status_code >= 400:
+                continue
+            data = res.json()
+            matches = data.get("matches") or []
+            if matches:
+                episode_id = matches[0].get("episodeId")
+                logger.info(f"custom danmu matched: {candidate} -> {episode_id}")
+                break
+        except Exception as e:
+            logger.error(f"custom danmu match failed: {str(e)}")
+
+    if episode_id is None:
+        return {episode_key: []}
+
+    try:
+        res = request_data("GET", f"{api_base}/api/v2/comment/{episode_id}?format=json", timeout=120)
+        if not res or res.status_code >= 400:
+            return {episode_key: []}
+        data = res.json()
+        comments = data.get("comments", data if isinstance(data, list) else [])
+        danmu_list = []
+        for item in comments:
+            converted = _custom_comment_to_art_danmu(item)
+            if converted:
+                danmu_list.append(converted)
+        danmu_list.sort(key=lambda x: x["time"])
+        return {episode_key: danmu_list}
+    except Exception as e:
+        logger.error(f"custom danmu comment failed: {str(e)}")
+        return {episode_key: []}
+
+
 def get_url_dict(douban_id, title=None, season_number=None, episode_number=None, season=None, guid=None,
                  episode_title=None, parent_guid=None):
     if episode_number:
@@ -135,11 +280,15 @@ def get_danmu():
         guid = request.args.get('guid', None)
         parent_guid = request.args.get('parent_guid', None)
         _type = request.args.get('type', 'json')
+        danmu_source = request.args.get('danmu_source', 'custom')
     except Exception as e:
         return {
             "code": -1,
             "msg": '解析参数失败'
         }
+
+    if danmu_source in ("custom", "default"):
+        return _fetch_custom_api_danmu(title, season_number, episode_number, episode_title)
 
     if url is not None and url != "":
         danmu_data: RetDanMuType = download_barrage(url)

@@ -1,0 +1,17 @@
+FROM 2513002960/fntv:latest
+
+WORKDIR /app
+
+ENV TZ=Asia/Shanghai
+VOLUME ["/app/data"]
+
+COPY . .
+COPY config/nginx.conf.template /etc/nginx/nginx.conf.template
+COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY config/entrypoint.sh /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+
+EXPOSE 80
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

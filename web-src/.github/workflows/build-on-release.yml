@@ -1,0 +1,50 @@
+name: Build Vue Project on Release
+
+# 当发布版本时触发
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 克隆代码仓库
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 设置 Node.js 环境（这里使用 Node.js v14，你可以根据需要更换版本）
+      - name: 设置 Node.js 环境
+        uses: actions/setup-node@v2
+        with:
+          node-version: '19.9.0'
+
+      # 安装项目依赖
+      - name: 安装依赖
+        run: npm install
+
+      # 进行项目构建（Vue 项目一般通过 npm run build 进行构建，如果构建脚本不一样，请自行调整）
+      - name: 构建项目
+        run: npm run build
+
+      - name: 打包
+        run: zip -r dist.zip dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: dist/
+      - name: 创建 GitHub Release 并上传构建产物
+        uses: softprops/action-gh-release@v2
+        with:
+          files:
+            dist.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

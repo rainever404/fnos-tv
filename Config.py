@@ -5,6 +5,7 @@ from flask_caching import Cache
 cache = Cache()
 
 fnos_url = os.environ.get("FNOS_URL", 'http://localhost:5666')
+custom_danmu_api_url = os.environ.get("CUSTOM_DANMU_API_URL", '').rstrip('/')
 config = configparser.ConfigParser(interpolation=None)
 current_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(current_dir,'data', 'config.ini')
