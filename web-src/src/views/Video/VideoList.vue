@@ -22,14 +22,23 @@ const order = computed({
 const size = ref(240);
 const totalCount = ref(0);
 const MediaDbInfo = ref(null);
+const layoutMode = ref('official');
 const galleryTitle = computed(() => {
   return MediaDbData.list.find(item => item.guid === guid.value)?.title || '媒体库'
 })
 
-const listSubtitle = computed(() => {
+const listCountText = computed(() => {
   const loaded = MediaDbInfo.value?.length || 0
   const total = totalCount.value || loaded
-  return total ? `${loaded} / ${total} 个项目` : '加载中'
+  return total ? `共 ${total} 项` : '加载中'
+})
+
+const sortModeLabel = computed(() => {
+  return modes.find(item => item.value === mode.value)?.label || '添加日期'
+})
+
+const layoutClass = computed(() => {
+  return `layout-${layoutMode.value}`
 })
 
 
@@ -66,6 +75,21 @@ const orders = [
   {
     value: 'DESC',
     label: '降序'
+  }
+]
+
+const layoutOptions = [
+  {
+    value: 'compact',
+    label: '紧凑'
+  },
+  {
+    value: 'official',
+    label: '默认'
+  },
+  {
+    value: 'large',
+    label: '大卡片'
   }
 ]
 
@@ -134,6 +158,10 @@ async function setSortOrder(value) {
   await GetMediaDbInfos()
 }
 
+function setLayoutMode(value) {
+  layoutMode.value = value
+}
+
 onBeforeRouteUpdate(async (to, from) => {
   guid.value = to.query.gallery_uid;
   // gallery_type.value = to.query.gallery_type;
@@ -152,17 +180,28 @@ onMounted(async () => {
 <template>
 
   <div class="content">
+    <div class="list-title">{{ galleryTitle }}</div>
     <div class="list-toolbar">
-      <div>
-        <div class="list-title">{{ galleryTitle }}</div>
-        <div class="list-subtitle">{{ listSubtitle }}</div>
-      </div>
       <div class="seriesTab-list">
         <div class="seriesTab-item">
           <div class="sort-menu">
+            <input id="video-list-filter-toggle" class="sort-toggle" type="checkbox">
+            <label class="toolbar-pill" for="video-list-filter-toggle" aria-label="筛选">
+              <span>筛选</span>
+              <i class='bx bx-chevron-down'></i>
+            </label>
+            <div class="sort-popover filter-popover" role="dialog" aria-label="筛选">
+              <div class="sort-popover-header">筛选</div>
+              <div class="filter-empty">当前媒体库暂无可用筛选条件</div>
+            </div>
+          </div>
+        </div>
+        <div class="seriesTab-item">
+          <div class="sort-menu">
             <input id="video-list-sort-toggle" class="sort-toggle" type="checkbox">
-            <label class="sort-trigger" for="video-list-sort-toggle" aria-label="排序">
-              <i class='bx bx-align-middle'></i>
+            <label class="toolbar-pill" for="video-list-sort-toggle" aria-label="排序">
+              <span>{{ sortModeLabel }}</span>
+              <i class='bx bx-chevron-down'></i>
             </label>
             <div class="sort-popover" role="dialog" aria-label="排序">
               <div class="sort-popover-header">排序</div>
@@ -189,9 +228,29 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+        <div class="seriesTab-item">
+          <div class="sort-menu">
+            <input id="video-list-layout-toggle" class="sort-toggle" type="checkbox">
+            <label class="toolbar-pill" for="video-list-layout-toggle" aria-label="布局">
+              <span>布局</span>
+              <i class='bx bx-chevron-down'></i>
+            </label>
+            <div class="sort-popover layout-popover" role="dialog" aria-label="布局">
+              <div class="sort-popover-header">布局</div>
+              <div class="sort-list">
+                <label class="sort-item" v-for="item in layoutOptions" :key="item.value">
+                  <input type="radio" name="layout-mode" :value="item.value" :checked="layoutMode === item.value"
+                         @change="setLayoutMode(item.value)">
+                  <span>{{ item.label }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+      <div class="list-total">{{ listCountText }}</div>
     </div>
-    <div class="card-show-content view-card-list">
+    <div class="card-show-content view-card-list" :class="layoutClass">
       <div class="view-item" v-for="item in MediaDbInfo" :key="item.guid">
         <router-link class="view-item-link" :to="{
                     path: '/video', query: {
@@ -224,28 +283,31 @@ onMounted(async () => {
 .list-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-right: 116px;
-  margin-bottom: 28px;
+  justify-content: flex-start;
+  gap: 18px;
+  margin-bottom: 24px;
 }
 
 .list-title {
+  margin-bottom: 24px;
   color: var(--fn-text);
-  font-size: 22px;
-  font-weight: 750;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 24px;
 }
 
-.list-subtitle {
-  margin-top: 4px;
+.list-total {
+  margin-left: auto;
   color: var(--fn-soft);
   font-size: 13px;
+  line-height: 36px;
+  white-space: nowrap;
 }
 
 .seriesTab-list {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
 }
 
 .sort-menu {
@@ -258,6 +320,38 @@ onMounted(async () => {
   height: 1px;
   opacity: 0;
   pointer-events: none;
+}
+
+.toolbar-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  min-width: 84px;
+  padding: 0 18px;
+  color: var(--fn-text);
+  background: var(--fn-bg);
+  border: 1px solid var(--fn-border);
+  border-radius: 999px;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.toolbar-pill i {
+  color: var(--fn-muted);
+  font-size: 16px;
+}
+
+.toolbar-pill:hover,
+.sort-toggle:checked + .toolbar-pill {
+  background: var(--fn-panel);
+  border-color: rgba(10, 132, 255, 0.2);
 }
 
 .sort-trigger {
@@ -295,6 +389,11 @@ onMounted(async () => {
   text-align: left;
 }
 
+.filter-popover,
+.layout-popover {
+  width: 220px;
+}
+
 .sort-toggle:not(:checked) ~ .sort-popover {
   display: none;
 }
@@ -328,11 +427,29 @@ onMounted(async () => {
   accent-color: var(--fn-blue);
 }
 
+.filter-empty {
+  margin-top: 12px;
+  color: var(--fn-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .view-card-list {
+  --poster-card-width: 170px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--poster-card-width), 1fr));
   grid-gap: 26px 20px;
   padding: 0;
+}
+
+.view-card-list.layout-compact {
+  --poster-card-width: 150px;
+  grid-gap: 22px 18px;
+}
+
+.view-card-list.layout-large {
+  --poster-card-width: 200px;
+  grid-gap: 30px 22px;
 }
 
 .view-item {
@@ -451,6 +568,31 @@ onMounted(async () => {
 
   .list-toolbar {
     padding-right: 0;
+    flex-wrap: wrap;
+  }
+
+  .list-title {
+    margin-bottom: 16px;
+    font-size: 20px;
+  }
+
+  .list-total {
+    width: 100%;
+    margin-left: 0;
+    line-height: 18px;
+  }
+
+  .seriesTab-list {
+    gap: 8px;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .toolbar-pill {
+    min-width: auto;
+    padding: 0 14px;
+    white-space: nowrap;
   }
 
   .view-item-title {

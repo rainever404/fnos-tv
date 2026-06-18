@@ -13,7 +13,7 @@ const instance = getCurrentInstance();
 const COMMON = instance.appContext.config.globalProperties.$COMMON;
 let UserInfo = ref({})
 let load = ref(true)
-let title = COMMON.title
+let title = COMMON.title === 'FnTv' ? '飞牛影视' : COMMON.title
 let collapsed = ref(false);
 const data = ref(null)
 const MediaDbSum = ref({})
@@ -27,6 +27,8 @@ const legacyDark = VueCookies.get("dark");
 const themeMode = ref(VueCookies.get("theme_mode") || (legacyDark === "true" ? "dark" : legacyDark === "false" ? "light" : "system"));
 const dark = computed(() => themeMode.value === "dark" || (themeMode.value === "system" && systemDark.value));
 const theme = computed(() => dark.value ? darkTheme : null);
+const searchOpen = ref(false);
+const searchKeyword = ref('');
 const userInitial = computed(() => {
   const username = UserInfo.value?.username || '';
   return username ? username.slice(0, 1).toUpperCase() : 'U';
@@ -51,6 +53,125 @@ const themeOptions = ref([
     key: 'dark'
   }
 ])
+const settingsOptions = ref([
+  {
+    label: '跟随系统',
+    key: 'system'
+  },
+  {
+    label: '浅色模式',
+    key: 'light'
+  },
+  {
+    label: '深色模式',
+    key: 'dark'
+  }
+])
+
+const allLibraryItems = computed(() => {
+  return (MediaDbData.list || []).filter(item => item.category !== 'Others')
+})
+
+const otherLibrary = computed(() => {
+  return (MediaDbData.list || []).find(item => item.category === 'Others')
+})
+
+const mediaTotalCount = computed(() => {
+  return (MediaDbData.list || []).reduce((sum, library) => {
+    const count = Number(MediaDbSum.value?.[library.guid] || 0)
+    return sum + (Number.isFinite(count) ? count : 0)
+  }, 0)
+})
+
+const flattenedMediaItems = computed(() => {
+  const items = []
+  const seen = new Set()
+  for (const library of MediaDbData.list || []) {
+    const source = MediaDbData.info?.[library.guid]?.list || []
+    for (const item of source) {
+      if (!item?.guid || seen.has(item.guid)) {
+        continue
+      }
+      seen.add(item.guid)
+      items.push({
+        ...item,
+        library_title: library.title,
+        library_category: library.category
+      })
+    }
+  }
+  return items
+})
+
+const categoryNavItems = computed(() => {
+  const items = flattenedMediaItems.value
+  const movieCount = items.filter(item => item.type === 'Movie').length
+  const tvCount = items.filter(item => ['TV', 'season', 'Episode'].includes(item.type)).length
+  const otherCount = Math.max(0, mediaTotalCount.value - movieCount - tvCount)
+  const movieLibrary = allLibraryItems.value.find(item => item.category === 'Movie')
+  const tvLibrary = allLibraryItems.value.find(item => item.category === 'TV')
+  return [
+    {
+      label: '全部',
+      icon: 'bx bx-grid-alt',
+      count: mediaTotalCount.value,
+      to: '/'
+    },
+    {
+      label: '电影',
+      icon: 'bx bx-film',
+      count: movieCount || 0,
+      to: movieLibrary ? {
+        path: '/list',
+        query: {
+          gallery_uid: movieLibrary.guid,
+          gallery_type: movieLibrary.category
+        }
+      } : null
+    },
+    {
+      label: '电视节目',
+      icon: 'bx bx-tv',
+      count: tvCount || 0,
+      to: tvLibrary ? {
+        path: '/list',
+        query: {
+          gallery_uid: tvLibrary.guid,
+          gallery_type: tvLibrary.category
+        }
+      } : null
+    },
+    {
+      label: '电视直播',
+      icon: 'bx bx-desktop',
+      count: 0,
+      to: null
+    },
+    {
+      label: '其他',
+      icon: 'bx bx-folder',
+      count: otherCount,
+      to: otherLibrary.value ? {
+        path: '/list',
+        query: {
+          gallery_uid: otherLibrary.value.guid,
+          gallery_type: otherLibrary.value.category
+        }
+      } : null
+    }
+  ]
+})
+
+const searchResults = computed(() => {
+  const keyword = searchKeyword.value.trim().toLowerCase()
+  if (!keyword) {
+    return []
+  }
+  return flattenedMediaItems.value.filter(item => {
+    const title = [item.title, item.name, item.tv_title, item.library_title].filter(Boolean).join(' ').toLowerCase()
+    return title.includes(keyword)
+  }).slice(0, 18)
+})
 
 if (COMMON.isMo) {
   collapsed.value = true;
@@ -196,6 +317,30 @@ function handleSelect(key) {
   }
 }
 
+function handleSettingsSelect(key) {
+  setThemeMode(key)
+}
+
+function getSearchRoute(item) {
+  return {
+    path: '/video',
+    query: {
+      guid: item.guid,
+      gallery_type: item.type
+    }
+  }
+}
+
+function searchTitle(item) {
+  return item?.title || item?.name || item?.tv_title || ''
+}
+
+function searchYear(item) {
+  const source = item?.release_date || item?.year || item?.create_time || ''
+  const match = String(source).match(/\d{4}/)
+  return match ? match[0] : item?.library_title || ''
+}
+
 async function runFunByPath(path, fun) {
   if (route.path !== path) {
     await fun()
@@ -273,22 +418,27 @@ watch(
                   </div>
                 </div>
                 <div class="header-right">
-                  <n-dropdown trigger="click" placement="bottom-end" :options="themeOptions"
-                              @select="setThemeMode">
-                    <n-button class="topbar-control" quaternary circle aria-label="切换主题">
-                      <template #icon>
-                        <i v-if="themeMode === 'system'" class='bx bx-desktop'></i>
-                        <i v-else-if="dark" class='bx bx-moon'></i>
-                        <i v-else class='bx bx-sun'></i>
-                      </template>
-                    </n-button>
-                  </n-dropdown>
+                  <n-button class="topbar-control" quaternary circle aria-label="搜索"
+                            @click="searchOpen = true">
+                    <template #icon>
+                      <i class='bx bx-search'></i>
+                    </template>
+                  </n-button>
 
                   <n-dropdown trigger="hover" placement="bottom-start" :options="options"
                               @select="handleSelect">
                     <n-avatar class="topbar-control user-avatar" circle :title="UserInfo?.username || ''">
                       {{ userInitial }}
                     </n-avatar>
+                  </n-dropdown>
+
+                  <n-dropdown trigger="click" placement="bottom-end" :options="settingsOptions"
+                              @select="handleSettingsSelect">
+                    <n-button class="topbar-control" quaternary circle aria-label="设置">
+                      <template #icon>
+                        <i class='bx bx-cog'></i>
+                      </template>
+                    </n-button>
                   </n-dropdown>
                 </div>
               </div>
@@ -298,7 +448,7 @@ watch(
                 :collapsed="collapsed"
                 collapse-mode="width"
                 :collapsed-width="0"
-                :width="256"
+                :width="260"
                 :native-scrollbar="false"
                 bordered
                 :show-collapsed-content="false"
@@ -329,6 +479,15 @@ watch(
                       <!--                          <span class="title">收藏</span>-->
                       <!--                        </router-link>-->
                       <!--                      </li>-->
+                      <li>
+                        <span class="nav-link is-muted">
+                          <span class="icon">
+                            <i class='bx bx-heart'></i>
+                          </span>
+                          <span class="title">收藏</span>
+                          <span class="title nav-count">0</span>
+                        </span>
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -336,8 +495,8 @@ watch(
                   <div class="sider-item-title">媒体库</div>
                   <div class="navigation more">
                     <ul class="nav-links">
-                      <li v-for="(item, index) in data" :key="index">
-                        <div v-if="item.category !== 'Others'">
+                      <li v-for="(item, index) in allLibraryItems" :key="index">
+                        <div>
                           <router-link :class="{ 'is-active': isLibraryActive(item) }" :to="{
                                                     path: '/list', query: {
                                                         gallery_uid: item.guid,
@@ -360,11 +519,64 @@ watch(
                     </ul>
                   </div>
                 </div>
+                <div class="sider-item category-list">
+                  <div class="sider-item-title">分类</div>
+                  <div class="navigation more">
+                    <ul class="nav-links">
+                      <li v-for="item in categoryNavItems" :key="item.label">
+                        <router-link v-if="item.to" :to="item.to">
+                          <span class="icon">
+                            <i :class='item.icon'></i>
+                          </span>
+                          <span class="title">{{ item.label }}</span>
+                          <span class="title nav-count">{{ item.count }}</span>
+                        </router-link>
+                        <span v-else class="nav-link is-muted">
+                          <span class="icon">
+                            <i :class='item.icon'></i>
+                          </span>
+                          <span class="title">{{ item.label }}</span>
+                          <span class="title nav-count">{{ item.count }}</span>
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </n-layout-sider>
               <n-layout :native-scrollbar="false" :class="{ 'mobile-content': isMobile }">
                 <router-view/>
               </n-layout>
             </n-layout>
+            <n-modal v-model:show="searchOpen" preset="card" class="search-modal" :bordered="false"
+                     :segmented="false" title="搜索">
+              <div class="search-panel">
+                <n-input v-model:value="searchKeyword" clearable placeholder="搜索片名、剧名或媒体库">
+                  <template #prefix>
+                    <i class='bx bx-search'></i>
+                  </template>
+                </n-input>
+                <div class="search-result-list" v-if="searchResults.length > 0">
+                  <router-link
+                      class="search-result-item"
+                      v-for="item in searchResults"
+                      :key="item.guid"
+                      :to="getSearchRoute(item)"
+                      @click="searchOpen = false"
+                  >
+                    <img v-if="item.poster" loading="lazy"
+                         v-lazy='COMMON.imgUrl + "/92/17/" + item.poster + "?w=120"' alt="">
+                    <img v-else loading="lazy" v-lazy="'/images/not_video.jpg'" alt="">
+                    <div class="search-result-meta">
+                      <div class="search-result-title">{{ searchTitle(item) }}</div>
+                      <div class="search-result-subtitle">{{ searchYear(item) }} · {{ item.library_title }}</div>
+                    </div>
+                  </router-link>
+                </div>
+                <div v-else class="search-empty">
+                  {{ searchKeyword.trim() ? '没有匹配的内容' : '输入关键词后搜索媒体库内容' }}
+                </div>
+              </div>
+            </n-modal>
           </n-layout>
           <router-view v-else/>
         </n-dialog-provider>
@@ -768,8 +980,8 @@ body {
 
 .home .n-layout-header {
   position: fixed;
-  top: 18px;
-  right: 24px;
+  top: 23px;
+  right: 44px;
   left: auto;
   width: auto;
   height: 36px;
@@ -899,15 +1111,17 @@ body {
 }
 
 .navigation ul li {
-  padding: 0 14px;
+  padding: 0 20px;
   margin: 3px 0;
+  box-sizing: border-box;
 }
 
 .navigation ul li:hover {
   background: transparent;
 }
 
-.navigation ul li a {
+.navigation ul li a,
+.navigation ul li .nav-link {
   display: flex;
   align-items: center;
   height: 40px;
@@ -915,6 +1129,7 @@ body {
   color: var(--fn-muted) !important;
   border-radius: 8px;
   font-weight: 600;
+  box-sizing: border-box;
 }
 
 .navigation ul li a:hover {
@@ -928,14 +1143,16 @@ body {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
-.navigation ul li a .icon i {
+.navigation ul li a .icon i,
+.navigation ul li .nav-link .icon i {
   min-width: 28px;
   font-size: 18px;
   line-height: 1;
   text-align: left;
 }
 
-.navigation ul li a .title {
+.navigation ul li a .title,
+.navigation ul li .nav-link .title {
   height: auto;
   min-width: 0;
   line-height: 1;
@@ -944,13 +1161,24 @@ body {
   font-weight: 600;
 }
 
-.navigation ul li a .nav-count {
+.navigation ul li a .nav-count,
+.navigation ul li .nav-link .nav-count {
   position: absolute;
   right: 12px;
   color: var(--fn-soft) !important;
   font-size: 13px !important;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.navigation ul li .nav-link {
+  position: relative;
+  width: 100%;
+  color: var(--fn-muted) !important;
+}
+
+.navigation ul li .nav-link.is-muted {
+  cursor: default;
 }
 
 .navigation ul li a.is-active .icon,
@@ -964,7 +1192,7 @@ body {
 
 .content {
   min-height: 100vh;
-  padding: 60px 44px 72px;
+  padding: 32px 44px 72px;
 }
 
 .content a {
@@ -999,5 +1227,68 @@ body {
   .content {
     padding: 64px 14px 40px;
   }
+}
+
+.search-modal {
+  width: min(680px, calc(100vw - 32px));
+  border-radius: 10px;
+}
+
+.search-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.search-result-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(62vh, 620px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.search-result-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  color: var(--fn-text);
+  border-radius: 8px;
+}
+
+.search-result-item:hover {
+  background: var(--fn-nav-hover);
+}
+
+.search-result-item img {
+  width: 42px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 5px;
+  background: var(--fn-panel);
+}
+
+.search-result-title {
+  overflow: hidden;
+  color: var(--fn-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-result-subtitle,
+.search-empty {
+  margin-top: 3px;
+  color: var(--fn-soft);
+  font-size: 13px;
+}
+
+.search-empty {
+  padding: 28px 8px 18px;
+  text-align: center;
 }
 </style>

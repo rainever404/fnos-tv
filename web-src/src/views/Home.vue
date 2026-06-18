@@ -39,9 +39,9 @@ const dropdownOptions = [
 
 function updateCarouselDensity() {
   const width = window.innerWidth;
-  const usable = Math.max(320, width - 320);
-  per_view.value = width <= 768 ? 1 : Math.max(2, Math.floor(usable / 350));
-  per_card.value = width <= 768 ? 3 : Math.max(5, Math.floor(usable / 205));
+  const usable = width <= 768 ? Math.max(320, width - 28) : Math.max(720, width - 348);
+  per_view.value = width <= 768 ? 1 : Math.max(2, Math.min(6.6, usable / 349));
+  per_card.value = width <= 768 ? 3 : Math.max(5, Math.min(11.2, usable / 203));
 }
 
 updateCarouselDensity();
@@ -653,7 +653,7 @@ img.carousel-img {
 }
 
 .home-page-title {
-  margin-bottom: 28px;
+  margin-bottom: 20px;
   color: var(--fn-text);
   font-size: 22px;
   font-weight: 700;
@@ -665,6 +665,10 @@ img.carousel-img {
 
 .card-shows {
   margin-bottom: 34px;
+}
+
+.media-libraries {
+  margin-bottom: 46px;
 }
 
 .card-show-title {
@@ -693,7 +697,7 @@ img.carousel-img {
   position: relative;
   overflow: hidden;
   width: 280px;
-  aspect-ratio: 355 / 200;
+  height: 200px;
   color: var(--fn-text);
   background: #fff;
   border: 1px solid var(--fn-border);
@@ -721,7 +725,7 @@ img.carousel-img {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  height: calc(100% - 42px);
+  height: 158px;
   overflow: hidden;
   background: var(--fn-panel);
 }
@@ -913,6 +917,18 @@ img.carousel-img,
   color: var(--fn-text);
   background: var(--fn-top-control);
   border: 1px solid var(--fn-border);
+}
+
+.custom-arrow,
+.carousel-arrow {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.carousel-container:hover .carousel-arrow,
+.view-card:hover .custom-arrow {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .custom-arrow button:hover,
