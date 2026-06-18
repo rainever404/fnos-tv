@@ -742,36 +742,6 @@ a {
 }
 
 
-.dark .navigation ul li a .title,
-.dark .navigation ul li a .icon {
-  color: hsla(0, 0%, 100%, .7);
-}
-
-.light .navigation ul li a .title,
-.light .navigation ul li a .icon {
-  color: black;
-}
-
-.dark .navigation ul li:hover,
-.light .navigation ul li:hover {
-  background: rgba(0, 0, 0, .1);
-}
-
-.dark .navigation ul li a.is-active {
-  background-color: #2d8cf0 !important;
-}
-
-.light .navigation ul li a.is-active .title,
-.light .navigation ul li a.is-active .icon {
-  color: #2d8cf0 !important;
-}
-
-.light .navigation.more ul li a.is-active .title,
-.light .navigation.more ul li a.is-active .icon {
-  display: block;
-  color: black;
-}
-
 .n-layout-footer {
   text-align: center;
 }
@@ -942,13 +912,13 @@ html[data-theme="light"] {
   --fn-panel-hover: #eef0f4;
   --fn-border: rgba(15, 23, 42, 0.08);
   --fn-text: rgba(15, 23, 42, 0.9);
-  --fn-muted: rgba(15, 23, 42, 0.62);
+  --fn-muted: rgba(0, 0, 0, 0.8);
   --fn-soft: rgba(15, 23, 42, 0.42);
   --fn-top-control: rgba(15, 23, 42, 0.06);
   --fn-top-control-hover: rgba(15, 23, 42, 0.1);
   --fn-nav-hover: rgba(15, 23, 42, 0.06);
   --fn-nav-active: #ffffff;
-  --fn-blue: #0a84ff;
+  --fn-blue: #0066ff;
 }
 
 html[data-theme="dark"] {
@@ -1128,7 +1098,7 @@ body {
   padding: 0 12px;
   color: var(--fn-muted) !important;
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: 400;
   box-sizing: border-box;
 }
 
@@ -1140,6 +1110,7 @@ body {
 .navigation ul li a.is-active {
   color: var(--fn-blue) !important;
   background: var(--fn-nav-active) !important;
+  font-weight: 400;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
@@ -1158,16 +1129,16 @@ body {
   line-height: 1;
   color: inherit !important;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .navigation ul li a .nav-count,
 .navigation ul li .nav-link .nav-count {
   position: absolute;
   right: 12px;
-  color: var(--fn-soft) !important;
+  color: inherit !important;
   font-size: 13px !important;
-  font-weight: 600;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 
