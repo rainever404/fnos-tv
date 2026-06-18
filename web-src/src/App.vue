@@ -1190,6 +1190,25 @@ body {
   color: var(--fn-muted) !important;
 }
 
+.home.light .navigation ul li a.is-active,
+.home.dark .navigation ul li a.is-active {
+  background: var(--fn-nav-active) !important;
+}
+
+.home.light .navigation ul li a.is-active .icon,
+.home.light .navigation ul li a.is-active .icon i,
+.home.light .navigation ul li a.is-active .title:not(.nav-count),
+.home.dark .navigation ul li a.is-active .icon,
+.home.dark .navigation ul li a.is-active .icon i,
+.home.dark .navigation ul li a.is-active .title:not(.nav-count) {
+  color: var(--fn-blue) !important;
+}
+
+.home.light .navigation ul li a.is-active .nav-count,
+.home.dark .navigation ul li a.is-active .nav-count {
+  color: var(--fn-muted) !important;
+}
+
 .content {
   min-height: 100vh;
   padding: 32px 44px 72px;
