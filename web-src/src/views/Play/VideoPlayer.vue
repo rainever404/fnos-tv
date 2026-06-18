@@ -18,6 +18,7 @@ const COMMON = proxy.$COMMON;
 const device = proxy.$device;
 
 const PlayerData = usePlayerData()
+const MOBILE_UA = /Android|webOS|iPhone|iPod|BlackBerry/i.test(navigator.userAgent);
 let art = null;
 let lastDanmuLoadedUntil = 0;
 const guid = ref(null);
@@ -29,6 +30,7 @@ const QualityData = ref(null);
 const playInfo = ref(null);
 const showModal = ref(false);
 const loading = ref(true);
+const playError = ref('');
 const urlBase = ref(null);
 const url = ref(null);
 const playUrl = ref(null);
@@ -65,6 +67,28 @@ const danmuConfig = ref({
   loadedUntil: 0,
   segmentDuration: 10
 })
+const playerFrame = ref(null);
+const brightnessLevel = ref(Number(localStorage.getItem('player_brightness') || 1));
+const brightnessOverlayOpacity = ref(0);
+const gestureFeedback = ref({
+  visible: false,
+  title: '',
+  value: ''
+});
+let gestureFeedbackTimer = null;
+const touchState = {
+  active: false,
+  mode: '',
+  startX: 0,
+  startY: 0,
+  startTime: 0,
+  startVolume: 0.5,
+  startBrightness: 1,
+  previewTime: 0,
+  width: 0,
+  height: 0,
+  moved: false
+};
 
 const qualitySelector = ref([]);
 const currentQuality = ref(null);
@@ -74,7 +98,7 @@ const IsFullscreen = () => {
 }
 
 guid.value = proxy.$route.query.guid
-episode_guid.value = PlayerData.episode_guid
+episode_guid.value = proxy.$route.query.episode_guid || proxy.$route.query.season_id || null
 gallery_type.value = proxy.$route.query.gallery_type
 
 var danmu_setting = window.localStorage.danmu_setting;
@@ -153,8 +177,8 @@ const setting = ref({
   lock: true,
   pip: false,
   autoSize: false,
-  autoMini: true, // 当播放器滚动到浏览器视口以外时，自动进入 迷你播放 模式
-  screenshot: !/Android|webOS|iPhone|iPod|BlackBerry/i.test(navigator.userAgent),
+  autoMini: false,
+  screenshot: !MOBILE_UA,
   setting: true,
   loop: true,
   flip: false,    // 是否显示视频翻转功能，目前只出现在 设置面板 和 右键菜单 里
@@ -162,13 +186,15 @@ const setting = ref({
   aspectRatio: true,
   fastForward: true,
   fullscreen: true,
-  fullscreenWeb: !/Android|webOS|iPhone|iPod|BlackBerry/i.test(navigator.userAgent),
+  fullscreenWeb: !MOBILE_UA,
   subtitleOffset: false,
   miniProgressBar: false,
   mutex: true,
   backdrop: true,
   playsInline: true,
+  gesture: false,
   autoPlayback: true,
+  autoOrientation: true,
   airplay: true,
   theme: '#23ade5',
   lang: navigator.language.toLowerCase(),
@@ -208,9 +234,9 @@ const setting = ref({
   ],
 })
 const ArtplayerStyle = {
-  width: '100vw',
-  height: '100vh',
-  maxHeight: '100vh',
+  width: '100%',
+  height: '100%',
+  maxHeight: '100%',
   margin: '0',
 }
 
@@ -268,6 +294,246 @@ function goBack() {
     return
   }
   proxy.$router.push({path: '/'})
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function formatTime(seconds) {
+  const total = Math.max(0, Math.floor(seconds || 0))
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function hasPlayableDuration() {
+  return !!art && Number.isFinite(art.duration) && art.duration > 0
+}
+
+function isEditableTarget(target) {
+  return !!target?.closest?.('input, textarea, select, [contenteditable="true"], .n-input, .n-input-number')
+}
+
+function isPlayerInteractiveTarget(target) {
+  return !!target?.closest?.(
+      '.art-bottom, .art-setting, .art-contextmenus, .art-volume-panel, .art-control, .player-back-button, button, a, input, textarea, select, [contenteditable="true"]'
+  )
+}
+
+function showGestureFeedback(title, value, autoHide = false) {
+  gestureFeedback.value = {
+    visible: true,
+    title,
+    value
+  }
+  if (gestureFeedbackTimer) {
+    clearTimeout(gestureFeedbackTimer)
+    gestureFeedbackTimer = null
+  }
+  if (autoHide) {
+    gestureFeedbackTimer = setTimeout(() => {
+      gestureFeedback.value = {
+        ...gestureFeedback.value,
+        visible: false
+      }
+    }, 700)
+  }
+}
+
+function hideGestureFeedback(delay = 500) {
+  if (gestureFeedbackTimer) {
+    clearTimeout(gestureFeedbackTimer)
+  }
+  gestureFeedbackTimer = setTimeout(() => {
+    gestureFeedback.value = {
+      ...gestureFeedback.value,
+      visible: false
+    }
+  }, delay)
+}
+
+function applyPlayerBrightness(value = brightnessLevel.value) {
+  const nextValue = clamp(Number(value) || 1, 0.45, 1.6)
+  brightnessLevel.value = nextValue
+  brightnessOverlayOpacity.value = nextValue < 1 ? clamp((1 - nextValue) * 0.6, 0, 0.35) : 0
+  localStorage.setItem('player_brightness', String(nextValue))
+  if (art?.video?.style) {
+    art.video.style.filter = `brightness(${nextValue})`
+  }
+}
+
+function seekPlayerTo(time, notice = true) {
+  if (!hasPlayableDuration()) {
+    return
+  }
+  const nextTime = clamp(time, 0, art.duration)
+  art.seek = nextTime
+  if (notice) {
+    showGestureFeedback('进度', `${formatTime(nextTime)} / ${formatTime(art.duration)}`, true)
+  }
+}
+
+function seekPlayerBy(delta) {
+  if (!hasPlayableDuration()) {
+    return
+  }
+  seekPlayerTo((art.currentTime || 0) + delta)
+}
+
+function setPlayerVolume(value, notice = true) {
+  if (!art) {
+    return
+  }
+  const nextVolume = clamp(value, 0, 1)
+  art.volume = nextVolume
+  if (nextVolume > 0) {
+    art.muted = false
+  }
+  if (notice) {
+    showGestureFeedback('音量', `${Math.round(nextVolume * 100)}%`)
+  }
+}
+
+function setPlayerBrightness(value, notice = true) {
+  const nextValue = clamp(value, 0.45, 1.6)
+  applyPlayerBrightness(nextValue)
+  if (notice) {
+    showGestureFeedback('亮度', `${Math.round(nextValue * 100)}%`)
+  }
+}
+
+function handlePlayerKeydown(event) {
+  if (!art || showModal.value || showSetUp.value || isEditableTarget(event.target)) {
+    return
+  }
+  if (event.altKey || event.ctrlKey || event.metaKey) {
+    return
+  }
+  if (event.key === 'ArrowRight') {
+    event.preventDefault()
+    seekPlayerBy(10)
+  } else if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    seekPlayerBy(-10)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    setPlayerVolume((art.volume || 0) + 0.08, true)
+    hideGestureFeedback()
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    setPlayerVolume((art.volume || 0) - 0.08, true)
+    hideGestureFeedback()
+  } else if (event.key === ' ') {
+    event.preventDefault()
+    art.playing ? art.pause() : art.play()
+  }
+}
+
+function handleTouchStart(event) {
+  if (!art || showModal.value || showSetUp.value || event.touches.length !== 1 || isPlayerInteractiveTarget(event.target)) {
+    touchState.active = false
+    return
+  }
+  const rect = playerFrame.value?.getBoundingClientRect()
+  if (!rect) {
+    return
+  }
+  const touch = event.touches[0]
+  touchState.active = true
+  touchState.mode = ''
+  touchState.startX = touch.clientX
+  touchState.startY = touch.clientY
+  touchState.startTime = art.currentTime || 0
+  touchState.startVolume = art.volume || 0
+  touchState.startBrightness = brightnessLevel.value
+  touchState.previewTime = touchState.startTime
+  touchState.width = rect.width || window.innerWidth
+  touchState.height = rect.height || window.innerHeight
+  touchState.moved = false
+}
+
+function handleTouchMove(event) {
+  if (!touchState.active || event.touches.length !== 1) {
+    return
+  }
+  const touch = event.touches[0]
+  const dx = touch.clientX - touchState.startX
+  const dy = touch.clientY - touchState.startY
+  const absX = Math.abs(dx)
+  const absY = Math.abs(dy)
+  if (!touchState.mode) {
+    if (Math.max(absX, absY) < 14) {
+      return
+    }
+    touchState.mode = absX >= absY ? 'seek' : (touchState.startX < touchState.width / 2 ? 'brightness' : 'volume')
+  }
+
+  event.preventDefault()
+  touchState.moved = true
+
+  if (touchState.mode === 'seek') {
+    if (!hasPlayableDuration()) {
+      return
+    }
+    const seekWindow = Math.min(art.duration, 600)
+    const nextTime = clamp(touchState.startTime + (dx / touchState.width) * seekWindow, 0, art.duration)
+    touchState.previewTime = nextTime
+    showGestureFeedback('进度', `${formatTime(nextTime)} / ${formatTime(art.duration)}`)
+    return
+  }
+
+  if (touchState.mode === 'volume') {
+    const nextVolume = touchState.startVolume + (-dy / touchState.height) * 1.2
+    setPlayerVolume(nextVolume, true)
+    return
+  }
+
+  if (touchState.mode === 'brightness') {
+    const nextBrightness = touchState.startBrightness + (-dy / touchState.height) * 1.4
+    setPlayerBrightness(nextBrightness, true)
+  }
+}
+
+function handleTouchEnd() {
+  if (!touchState.active) {
+    return
+  }
+  if (touchState.moved && touchState.mode === 'seek') {
+    seekPlayerTo(touchState.previewTime, true)
+  } else if (touchState.moved) {
+    hideGestureFeedback()
+  }
+  touchState.active = false
+  touchState.mode = ''
+}
+
+async function lockLandscapeForMobile() {
+  if (!MOBILE_UA || !window.screen?.orientation?.lock) {
+    return
+  }
+  try {
+    await window.screen.orientation.lock('landscape')
+  } catch {
+    try {
+      await window.screen.orientation.lock('landscape-primary')
+    } catch {
+    }
+  }
+}
+
+async function unlockOrientationForMobile() {
+  if (!MOBILE_UA || !window.screen?.orientation?.unlock) {
+    return
+  }
+  try {
+    window.screen.orientation.unlock()
+  } catch {
+  }
 }
 
 function resetDanmuLoadState(currentTime = 0) {
@@ -444,6 +710,15 @@ async function GetPayInfo(_guid) {
   return res;
 }
 
+async function ensureEpisodeGuid() {
+  if (episode_guid.value) {
+    return
+  }
+  let guidPlayInfo = await GetPayInfo(guid.value)
+  episode_guid.value = guidPlayInfo.item.guid
+  PlayerData.episode_guid = episode_guid.value
+}
+
 async function GetStreamList() {
   let api = "/api/v1/stream/list/" + episode_guid.value + '?before_play=1';
   StreamList.value = await COMMON.requests("GET", api, true)
@@ -476,6 +751,7 @@ async function GetPalyUrl() {
   if (art !== null && art !== undefined) {
     art.loading.show = true;
   }
+  playError.value = '';
   let api = "/api/v1/play/play"
   let _channels = (StreamList.value.audio_streams.length !== 1 && StreamList.value.audio_streams.find(o => o.codec_name === "aac") !== undefined ? StreamList.value.audio_streams.find(o => o.codec_name === "aac") : StreamList.value.audio_streams[0]).channels;
   let regex = /\d+-\d+-\S+/;
@@ -495,7 +771,16 @@ async function GetPalyUrl() {
     "subtitle_guid": currentSubtitle.value ? currentSubtitle.value.guid : "",
     "channels": await GetChannels(_channels)
   };
-  let res = await COMMON.requests("POST", api, true, _data)
+  let res = null
+  try {
+    res = await COMMON.requests("POST", api, true, _data)
+  } catch (err) {
+    if (art !== null && art !== undefined) {
+      art.loading.show = false;
+    }
+    COMMON.ShowMsg("播放链接获取失败，请切换清晰度或尝试其他操作")
+    throw err
+  }
   if (res !== null) {
     urlBase.value = res.play_link;
     url.value = COMMON.fnHost + res.play_link;
@@ -505,6 +790,7 @@ async function GetPalyUrl() {
     }
   } else {
     COMMON.ShowMsg("播放链接获取失败，请切换清晰度或尝试其他操作")
+    throw new Error('play link is empty')
   }
 }
 
@@ -862,10 +1148,7 @@ async function play() {
     clearInterval(timerSendPlayRecord.value)
   }
   let playLink = urlBase.value;
-  if (episode_guid.value === null) {
-    let guidPlayInfo = await GetPayInfo(guid.value)
-    episode_guid.value = guidPlayInfo.item.guid
-  }
+  await ensureEpisodeGuid()
   let _PayInfo = await GetPayInfo(episode_guid.value);
   playInfo.value = _PayInfo.item;
   await GetStreamList();
@@ -879,7 +1162,7 @@ async function play() {
   await GetQuality();
   await GetPalyUrl();
   GetEmoji();
-  if (art !== null) {
+  if (art !== null && url.value) {
     await art.switchUrl(url.value);
   }
   if (playLink !== null) {
@@ -1099,6 +1382,11 @@ const artF = async (data) => {
     play_next()
   });
   art.on('fullscreen', async (state) => {
+    if (state) {
+      await lockLandscapeForMobile();
+    } else {
+      await unlockOrientationForMobile();
+    }
     await UpdateControl(art);
   });
 
@@ -1184,22 +1472,33 @@ async function getInstance(_art) {
   art = _art;
   art.id = episode_guid.value
   art.url = url.value
+  applyPlayerBrightness()
 }
 
 const onMountedFun = async () => {
   loading.value = true;
-  await getVideoConfig();
-  if (gallery_type.value !== "Movie") {
-    await GetEpisodeList();
+  playError.value = '';
+  try {
+    await ensureEpisodeGuid();
+    await getVideoConfig();
+    if (gallery_type.value !== "Movie") {
+      await GetEpisodeList();
+    }
+    await play()
+  } catch (err) {
+    playError.value = '播放链接获取失败，请返回后换一集或换一个片源。'
+    if (art !== null && art !== undefined) {
+      art.loading.show = false;
+    }
+  } finally {
+    loading.value = false;
   }
-  await play()
-  loading.value = false;
 };
 
 onBeforeRouteUpdate(async (to, from) => {
-  guid.value = to.query.id;
+  guid.value = to.query.guid || to.query.id;
   gallery_type.value = to.query.gallery_type;
-  episode_guid.value = to.query.season_id;
+  episode_guid.value = to.query.episode_guid || to.query.season_id || null;
   await onMountedFun();
 });
 
@@ -1208,6 +1507,7 @@ onBeforeRouteLeave((to, from) => {
     clearInterval(timerSendPlayRecord.value)
     timerSendPlayRecord.value = null
   }
+  window.removeEventListener('keydown', handlePlayerKeydown)
 });
 
 onBeforeUnmount(async () => {
@@ -1215,8 +1515,14 @@ onBeforeUnmount(async () => {
     clearInterval(timerSendPlayRecord.value)
     timerSendPlayRecord.value = null
   }
+  if (gestureFeedbackTimer) {
+    clearTimeout(gestureFeedbackTimer)
+    gestureFeedbackTimer = null
+  }
+  window.removeEventListener('keydown', handlePlayerKeydown)
 })
 onMounted(async () => {
+  window.addEventListener('keydown', handlePlayerKeydown)
   await onMountedFun();
 })
 
@@ -1224,45 +1530,58 @@ onMounted(async () => {
 
 <template>
   <div v-if="loading" class="load"></div>
-  <div v-else class="content">
+  <div v-else class="content player-page">
     <div class="player-topbar">
       <button class="player-back-button" type="button" @click="goBack">
         <i class='bx bx-left-arrow-alt'></i>
       </button>
       <div class="player-topbar-title">{{ getPlayerTitle() }}</div>
     </div>
-    <n-grid cols="1" item-responsive responsive="screen">
-      <n-grid-item span="12 m:12 l:9 xl:9 2xl:9">
-        <div class="player">
-          <Artplayer class="art-player" @get-instance="getInstance" :option="setting" :style="ArtplayerStyle"/>
-        </div>
+    <div v-if="playError" class="player-error">
+      <div class="player-error-title">无法播放</div>
+      <div class="player-error-text">{{ playError }}</div>
+      <button class="player-error-button" type="button" @click="goBack">返回</button>
+    </div>
+    <div
+        v-else
+        ref="playerFrame"
+        class="player"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd"
+        @touchcancel="handleTouchEnd"
+    >
+      <Artplayer class="art-player" @get-instance="getInstance" :option="setting" :style="ArtplayerStyle"/>
+      <div class="player-brightness-overlay" :style="{ opacity: brightnessOverlayOpacity }"></div>
+      <div class="gesture-feedback" :class="{ 'is-visible': gestureFeedback.visible }">
+        <div class="gesture-feedback-title">{{ gestureFeedback.title }}</div>
+        <div class="gesture-feedback-value">{{ gestureFeedback.value }}</div>
+      </div>
+    </div>
 
-        <div class="showContainer">
-          <div class="data-header">
-            <div class="header-left">
-              <div class="season-title">
-                {{ playInfo.title }}
-              </div>
-            </div>
-            <div class="header-right">
-              <n-button @click="showSetUp = !showSetUp;art.pause()" strong secondary circle>
-                <i class='bx bx-cog'></i>
-              </n-button>
-              <n-button @click="showModal = !showModal;art.pause()" strong secondary circle>
-                <i class='bx bx-dots-vertical-rounded'></i>
-              </n-button>
-            </div>
-          </div>
-          <div class="data-content">
-            <div class="overview-text">
-              简介：
-              <p>{{ playInfo.overview }}</p>
-            </div>
+    <div v-if="!playError" class="showContainer">
+      <div class="data-header">
+        <div class="header-left">
+          <div class="season-title">
+            {{ playInfo.title }}
           </div>
         </div>
-
-      </n-grid-item>
-    </n-grid>
+        <div class="header-right">
+          <n-button @click="showSetUp = !showSetUp;art.pause()" strong secondary circle>
+            <i class='bx bx-cog'></i>
+          </n-button>
+          <n-button @click="showModal = !showModal;art.pause()" strong secondary circle>
+            <i class='bx bx-dots-vertical-rounded'></i>
+          </n-button>
+        </div>
+      </div>
+      <div class="data-content">
+        <div class="overview-text">
+          简介：
+          <p>{{ playInfo.overview }}</p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <n-modal v-model:show="showSetUp" title="跳过时间段整季可用，平台链接当前集可用" preset="dialog" draggable="true"
@@ -1406,37 +1725,96 @@ h1 {
 }
 
 .content {
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100svh;
+  max-height: 100dvh;
   padding: 0 !important;
   overflow: hidden;
   color: #fff;
   background: #000;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 .player .art-player {
   background-color: black;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   aspect-ratio: auto;
 }
 
 .player {
-  width: 100vw;
-  height: 100vh;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   background: #000;
+  touch-action: none;
+}
+
+.player-brightness-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.gesture-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 78;
+  min-width: 124px;
+  padding: 12px 18px;
+  color: #fff;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.96);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.gesture-feedback.is-visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.gesture-feedback-title {
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.gesture-feedback-value {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .player-topbar {
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 80;
+  z-index: 90;
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  height: 58px;
-  padding: 0 18px;
+  height: calc(58px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 18px 0;
   color: #fff;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.64), rgba(0, 0, 0, 0));
   pointer-events: none;
@@ -1474,6 +1852,49 @@ h1 {
   line-height: 1;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
   pointer-events: none;
+}
+
+.player-error {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  color: #fff;
+  text-align: center;
+  background: radial-gradient(circle at center, rgba(24, 24, 24, 0.98), #000 72%);
+}
+
+.player-error-title {
+  font-size: 28px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.player-error-text {
+  max-width: 420px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.player-error-button {
+  min-width: 96px;
+  height: 38px;
+  padding: 0 18px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.player-error-button:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .showContainer {
@@ -1660,6 +2081,24 @@ img.play-icon {
   right: 30px;
 }
 
+:deep(.art-video-player) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+:deep(.art-video-player .art-video) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+:deep(.art-video-player .art-bottom) {
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+}
+
+:deep(.art-video-player .art-notice) {
+  top: calc(54px + env(safe-area-inset-top, 0px));
+}
+
 @media (max-width: 767px) {
   img.play-icon {
     width: 40px;
@@ -1669,11 +2108,6 @@ img.play-icon {
 
 /* 移动端适配样式 */
 @media (max-width: 768px) {
-  .player .art-player {
-    height: 56.25vw;
-    max-height: calc(100vh - 100px);
-  }
-
   .data-header {
     flex-direction: column;
     gap: 8px;

@@ -1,5 +1,5 @@
 <script setup>
-import {getCurrentInstance, onMounted, ref} from "vue";
+import {computed, getCurrentInstance, onMounted, ref} from "vue";
 import {onBeforeRouteUpdate} from "vue-router";
 import {usePlayerData} from "@/store.js";
 
@@ -25,6 +25,58 @@ const play_guid = ref(null)
 
 guid.value = proxy.$route.query.guid
 gallery_type.value = proxy.$route.query.gallery_type
+
+const displayTitle = computed(() => {
+  const info = VideoDataInfo.value || {}
+  if (gallery_type.value === 'TV') {
+    return info.name || info.title || info.tv_title || ''
+  }
+  if (gallery_type.value === 'season') {
+    return info.title || info.name || info.tv_title || ''
+  }
+  return info.title || info.name || [info.tv_title, info.title].filter(Boolean).join(' ') || ''
+})
+
+const galleryTypeLabel = computed(() => {
+  if (gallery_type.value === 'Movie') {
+    return '电影'
+  }
+  if (gallery_type.value === 'TV') {
+    return '电视剧'
+  }
+  if (gallery_type.value === 'season') {
+    return '剧集'
+  }
+  return '视频'
+})
+
+const scoreText = computed(() => {
+  const score = Number(VideoDataInfo.value?.vote_average)
+  if (!Number.isFinite(score) || score <= 0) {
+    return ''
+  }
+  return String(Math.floor(score * 10) / 10)
+})
+
+const primaryPlayLabel = computed(() => {
+  const item = playInfo.value?.item
+  if (item && gallery_type.value !== 'Movie') {
+    return `第 ${item.season_number || 1} 季 第 ${item.episode_number || 1} 集`
+  }
+  return '播放'
+})
+
+const detailMetaItems = computed(() => {
+  const items = []
+  if (scoreText.value) {
+    items.push(`${scoreText.value} 分`)
+  }
+  if (VideoDataInfo.value?.release_date) {
+    items.push(String(VideoDataInfo.value.release_date).slice(0, 4))
+  }
+  items.push(galleryTypeLabel.value)
+  return items
+})
 
 // 获取剧集信息
 async function GetVideoData() {
@@ -70,10 +122,11 @@ async function GetEpisodeList() {
   }, 10)
 }
 
-async function Play(_guid = play_guid.value) {
-  if(_guid !== play_guid.value){
-    PlayerData.episode_guid = _guid
+async function Play(_guid = playInfo.value?.item?.guid || play_guid.value) {
+  if (!_guid) {
+    return
   }
+  PlayerData.episode_guid = _guid
   let _gallery_type = gallery_type.value;
   if(_gallery_type === "season"){
     _gallery_type = "TV"
@@ -82,7 +135,8 @@ async function Play(_guid = play_guid.value) {
     path: "/player",
     query: {
       gallery_type: playInfo.value.type,
-      guid: play_guid.value
+      guid: play_guid.value,
+      episode_guid: _guid
     }
   })
 }
@@ -141,47 +195,33 @@ onMounted(async () => {
     <div class="view-backdrop">
       <div class="mainColumn">
         <div class="view-scroller">
-          <div class="view-card-image">
-            <img v-lazy='COMMON.imgUrl + "/92/17/"+VideoDataInfo.posters + "?w=200"'
-                 alt="">
-          </div>
           <div class="view-card-detail detailTextContainer">
             <div class="lex-direction-column">
+              <div class="detail-kicker">{{ galleryTypeLabel }}</div>
               <div class="itemPrimaryNameContainer">
-                <h1 class="itemName-primary">{{
-                    gallery_type === "tv" ? VideoDataInfo.name : VideoDataInfo.tv_title + " " + VideoDataInfo.title
-                  }}</h1>
-              </div>
-              <div class="mediaInfo">
-                <div class="mediaInfoItem">
-                                    <span class="icon-star">
-                                        <i class='bx bxs-star'></i>
-                                    </span>{{
-                    isNaN(Math.floor(VideoDataInfo.vote_average * 100) / 100) ?
-                        "" :
-                        Math.floor(VideoDataInfo.vote_average * 100) / 100
-                  }}
-                </div>
-                <div class="mediaInfoItem">{{ VideoDataInfo.release_date }}</div>
-              </div>
-              <n-space size="large" class="detailButtons">
-                <button @click="Play()" class="detailButton outlineButton">
-                                    <span class="button-icon">
-                                        <i class='bx bxs-caret-right-circle'></i>
-                                    </span>
-                  <span class="button-text" v-if="playInfo!=null && gallery_type !== 'Movie'">
-                    第 {{ playInfo.item.season_number }} 季 第 {{ playInfo.item.episode_number }} 集
-                                    </span>
-                  <span class="button-text" v-else>
-                    播放
-                                    </span>
-                </button>
-              </n-space>
-              <div class="overview-text">
-                {{ VideoDataInfo.overview }}
+                <h1 class="itemName-primary">{{ displayTitle }}</h1>
               </div>
             </div>
           </div>
+        </div>
+        <div class="detail-action-row">
+          <button @click="Play()" class="detailButton outlineButton">
+            <span class="button-icon">
+              <i class='bx bxs-caret-right-circle'></i>
+            </span>
+            <span class="button-text">{{ primaryPlayLabel }}</span>
+          </button>
+          <div class="detail-meta-list">
+            <div class="mediaInfoItem" v-for="item in detailMetaItems" :key="item">
+              <span v-if="item.includes('分')" class="icon-star">
+                <i class='bx bxs-star'></i>
+              </span>
+              {{ item }}
+            </div>
+          </div>
+        </div>
+        <div v-if="VideoDataInfo.overview" class="overview-text detail-overview">
+          {{ VideoDataInfo.overview }}
         </div>
         <div v-if="gallery_type === 'TV'" class="showContainer">
           <div class="show-header">
@@ -284,38 +324,56 @@ onMounted(async () => {
 
 <style scoped>
 .backdropContainer {
-  contain: style size;
-  position: fixed;
-  top: 60px;
+  position: absolute;
+  top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
+  height: 620px;
   inset-inline-start: 0;
   inset-inline-end: 0;
   touch-action: none;
-  border-bottom: 1px solid #15191b;
   background-size: cover;
+  background-position: center 28%;
   background-repeat: no-repeat;
+  filter: saturate(0.98);
+}
+
+.backdropContainer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0.18) 42%, rgba(0, 0, 0, 0.74) 100%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.42) 0%, rgba(0, 0, 0, 0.1) 46%, rgba(0, 0, 0, 0.34) 100%);
 }
 
 .mainColumn .show-header ion-icon {
   color: white;
 }
 
-.view-backdrop {
-  background-image: linear-gradient(90deg, #a39090 150px, rgb(207 179 179 / 20%));
+.main-content {
   position: relative;
   min-height: 100vh;
+  overflow: hidden;
+  background: var(--fn-bg);
+}
+
+.view-backdrop {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(180deg, transparent 0, transparent 530px, var(--fn-bg) 620px);
 }
 
 .dark .view-backdrop {
-  background-image: linear-gradient(90deg, #200b0b 150px, rgba(32, 11, 11, .84));
+  background: linear-gradient(180deg, transparent 0, transparent 530px, var(--fn-bg) 620px);
 }
 
 .view-scroller {
   display: flex;
-  gap: 20px;
-  padding: 14px;
+  align-items: flex-end;
+  gap: 24px;
+  min-height: 620px;
+  padding: 96px 46px 44px;
   color: white;
 }
 
@@ -328,15 +386,22 @@ onMounted(async () => {
 }
 
 .view-card-image {
-  width: 20%;
-  border-radius: 5px;
+  flex: 0 0 190px;
+  width: 190px;
+  border-radius: 8px;
 }
 
 
 .view-card-image img {
   width: 100%;
-  border-radius: 5px;
+  border-radius: 8px;
   aspect-ratio: 11/16;
+  object-fit: cover;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.35);
+}
+
+.view-card-detail {
+  margin-bottom: 86px;
 }
 
 .season-name {
@@ -345,8 +410,18 @@ onMounted(async () => {
 
 @media (min-width: 1300px) {
   .view-card-image img {
-    min-width: 240px;
+    min-width: 190px;
   }
+}
+
+.itemName-primary {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(30px, 3vw, 48px);
+  font-weight: 750;
+  line-height: 1.12;
+  letter-spacing: 0;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
 }
 
 .mediaInfo .icon-star {
@@ -371,7 +446,7 @@ onMounted(async () => {
 }
 
 .detailButton {
-  background: hsla(285, 4.2%, 40%, .7);
+  background: rgba(255, 255, 255, 0.18);
   color: hsla(0, 0%, 100%, 1);
   border-radius: 12px;
   position: relative;
@@ -387,6 +462,7 @@ onMounted(async () => {
   padding: 0.72em 2ch;
   vertical-align: middle;
   border: 0;
+  backdrop-filter: blur(14px);
   vertical-align: middle;
   border-radius: 0.6em;
   position: relative;
@@ -400,11 +476,11 @@ onMounted(async () => {
 
 .detailButton:hover .button-icon,
 .detailButton:hover .button-text {
-  color: #c33;
+  color: #fff;
 }
 
 .detailButton.active .button-icon {
-  color: #c33;
+  color: #fff;
 }
 
 .detailButton.circleButton {
@@ -427,9 +503,14 @@ span.button-text {
 }
 
 .overview-text {
-  width: 50%;
-  min-width: 600px;
-  margin-top: 20px;
+  color: var(--fn-text);
+  line-height: 1.8;
+}
+
+.detail-overview {
+  max-width: 1680px;
+  padding: 4px 46px 34px;
+  font-size: 15px;
 }
 
 @media (max-width: 750px) {
@@ -440,8 +521,8 @@ span.button-text {
 
 
 .showContainer {
-  padding: 14px;
-  color: white;
+  padding: 24px 46px 8px;
+  color: var(--fn-text);
 }
 
 .show-header {
@@ -457,6 +538,7 @@ span.button-text {
 }
 
 .show-title {
+  color: var(--fn-text);
   font-size: 1.2em;
 }
 
@@ -468,6 +550,7 @@ span.button-text {
 
 .show-name {
   width: 160px;
+  color: var(--fn-text);
   text-overflow: ellipsis;
   overflow: hidden;
 }
@@ -578,6 +661,7 @@ span.button-text {
 .carousel-container {
   position: relative;
   width: 100%;
+  padding: 0 46px 8px;
 }
 
 /* 左右箭头按钮 */
@@ -643,24 +727,32 @@ span.button-text {
 @media (max-width: 768px) {
   .view-scroller {
     flex-direction: column;
-    padding: 10px;
+    align-items: flex-start;
+    min-height: auto;
+    padding: 76px 16px 24px;
     gap: 15px;
   }
 
   .view-card-image {
-    width: 100%;
+    width: 58%;
+    flex-basis: auto;
     max-width: 300px;
     margin: 0 auto;
   }
 
   .view-card-detail {
     width: 100%;
+    margin-bottom: 0;
   }
 
   .overview-text {
     width: 100%;
     min-width: unset;
     font-size: 14px;
+  }
+
+  .detail-overview {
+    padding: 0 16px 24px;
   }
 
   .detailButton {
@@ -678,7 +770,7 @@ span.button-text {
   }
 
   .showContainer {
-    padding: 10px;
+    padding: 18px 16px 8px;
   }
 
   .show-card-list {
@@ -695,7 +787,7 @@ span.button-text {
   }
 
   .carousel-container {
-    padding: 0 10px;
+    padding: 0 16px;
   }
 
   .carousel-arrow {
@@ -767,12 +859,13 @@ span.button-text {
 /* 优化背景图片在移动端的显示 */
 @media (max-width: 768px) {
   .backdropContainer {
+    height: 560px;
     background-position: center;
     background-size: cover;
   }
 
   .view-backdrop {
-    background-image: linear-gradient(180deg, #200b0b 0, rgba(32, 11, 11, .84));
+    background: linear-gradient(180deg, transparent 0, transparent 470px, var(--fn-bg) 560px);
   }
 }
 
@@ -799,6 +892,187 @@ span.button-text {
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+}
+.backdropContainer {
+  height: 576px;
+}
+
+.backdropContainer::after {
+  background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.2) 44%, rgba(0, 0, 0, 0.86) 100%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.48) 0%, rgba(0, 0, 0, 0.12) 46%, rgba(0, 0, 0, 0.18) 100%);
+}
+
+.view-backdrop,
+.dark .view-backdrop {
+  background: linear-gradient(180deg, transparent 0, transparent 520px, var(--fn-bg) 576px);
+}
+
+.view-scroller {
+  align-items: flex-end;
+  min-height: 576px;
+  padding: 0 46px 38px;
+}
+
+.view-card-detail {
+  max-width: min(760px, 74vw);
+  margin-bottom: 0;
+}
+
+.detail-kicker {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  backdrop-filter: blur(12px);
+}
+
+.itemName-primary {
+  max-width: 860px;
+  font-size: clamp(32px, 3.4vw, 54px);
+}
+
+.detail-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  min-height: 86px;
+  padding: 16px 46px 12px;
+  color: var(--fn-text);
+  background: var(--fn-bg);
+}
+
+.detail-meta-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px 18px;
+  min-width: 0;
+  color: var(--fn-muted);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.detail-meta-list .mediaInfoItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.detail-meta-list .icon-star {
+  color: #f5b500;
+}
+
+.detailButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 150px;
+  height: 54px;
+  padding: 0 28px;
+  color: #fff;
+  background: var(--fn-blue);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 8px 22px rgba(10, 132, 255, 0.25);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.detailButton:hover {
+  color: #fff;
+  background: #0066ff;
+  box-shadow: 0 10px 26px rgba(10, 132, 255, 0.32);
+  transform: translateY(-1px);
+}
+
+.detailButton:active {
+  transform: translateY(0);
+}
+
+.detailButton .button-icon,
+.detailButton .button-text {
+  color: inherit;
+}
+
+.detailButton .button-icon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 22px;
+}
+
+span.button-text {
+  margin-left: 7px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.detail-overview {
+  max-width: 1120px;
+  padding: 0 46px 34px;
+  color: var(--fn-muted);
+  font-size: 15px;
+  line-height: 1.65;
+  text-align: justify;
+}
+
+.showContainer {
+  padding-top: 20px;
+}
+
+@media (max-width: 768px) {
+  .backdropContainer {
+    height: 430px;
+  }
+
+  .view-backdrop,
+  .dark .view-backdrop {
+    background: linear-gradient(180deg, transparent 0, transparent 380px, var(--fn-bg) 430px);
+  }
+
+  .view-scroller {
+    min-height: 430px;
+    padding: 84px 16px 28px;
+  }
+
+  .view-card-detail {
+    max-width: 100%;
+  }
+
+  .itemName-primary {
+    font-size: 28px;
+  }
+
+  .detail-action-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+    padding: 14px 16px 10px;
+  }
+
+  .detailButton {
+    width: 100%;
+    height: 48px;
+  }
+
+  .detail-meta-list {
+    justify-content: flex-start;
+    gap: 8px 14px;
+  }
+
+  .detail-overview {
+    padding: 0 16px 24px;
   }
 }
 </style>

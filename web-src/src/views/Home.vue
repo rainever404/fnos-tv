@@ -86,7 +86,8 @@ const handleDropdownSelect = async (key) => {
         path: '/player',
         query: {
           gallery_type: item.type,
-          guid: item.parent_guid ?? item.guid
+          guid: item.parent_guid ?? item.guid,
+          episode_guid: item.guid
         }
       })
       break
@@ -195,7 +196,8 @@ onUnmounted(() => {
                 <router-link :to="{
                     path: '/player', query: {
                         gallery_type: item.type,
-                        guid: item.parent_guid??item.guid
+                        guid: item.parent_guid??item.guid,
+                        episode_guid: item.guid
                     }
                 }">
                   <img v-if="item.poster.length > 0" loading="lazy" class='gallery-img'
@@ -685,45 +687,62 @@ img.carousel-img {
 
 .library-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(252px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, 280px);
+  gap: 24px;
 }
 
 .library-card {
   position: relative;
   overflow: hidden;
-  min-height: 126px;
+  width: 280px;
+  aspect-ratio: 355 / 200;
   color: var(--fn-text);
-  background: var(--fn-panel);
+  background: #fff;
   border: 1px solid var(--fn-border);
   border-radius: 8px;
-  transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .library-card:hover {
   transform: translateY(-2px);
-  background: var(--fn-panel-hover);
   border-color: rgba(10, 132, 255, 0.32);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1);
+}
+
+.dark .library-card {
+  background: var(--fn-panel);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.dark .library-card:hover {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
 }
 
 .library-posters {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  height: 102px;
+  height: calc(100% - 42px);
   overflow: hidden;
+  background: var(--fn-panel);
 }
 
 .library-posters::after {
   content: "";
   position: absolute;
-  inset: 52% 0 0;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.62));
+  inset: 45% 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #fff 96%);
+  pointer-events: none;
+}
+
+.dark .library-posters::after {
+  background: linear-gradient(180deg, rgba(29, 29, 31, 0), var(--fn-panel) 96%);
 }
 
 .library-posters img {
   width: 100%;
-  height: 102px;
+  height: 100%;
   object-fit: cover;
 }
 
@@ -732,9 +751,10 @@ img.carousel-img {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 102px;
+  height: 100%;
   color: var(--fn-soft);
   font-size: 34px;
+  background: linear-gradient(135deg, var(--fn-panel), var(--fn-bg));
 }
 
 .library-label {
@@ -742,14 +762,20 @@ img.carousel-img {
   right: 0;
   bottom: 0;
   left: 0;
-  height: 36px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 12px;
-  color: #fff;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.72));
+  color: var(--fn-text);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), #fff 60%);
+  font-size: 15px;
   font-weight: 700;
+  line-height: 1;
+}
+
+.dark .library-label {
+  background: linear-gradient(180deg, rgba(29, 29, 31, 0.72), var(--fn-panel) 60%);
 }
 
 .carousel-container {
@@ -877,6 +903,10 @@ img.carousel-img,
   .library-grid {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .library-card {
+    width: 100%;
   }
 
   .card-shows {

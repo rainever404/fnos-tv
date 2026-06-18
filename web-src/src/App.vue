@@ -4,7 +4,7 @@ import VueCookies from 'vue-cookies';
 import {darkTheme} from "naive-ui";
 
 import {useMediaDbData} from './store.js'
-import {useRoute} from "vue-router";
+import {useRoute, useRouter} from "vue-router";
 
 const MediaDbData = useMediaDbData()
 
@@ -20,6 +20,7 @@ const MediaDbSum = ref({})
 const MediaDbInfo = ref({})
 const ConfigData = ref({})
 const route = useRoute();
+const router = useRouter();
 const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 const systemDark = ref(systemThemeQuery.matches);
 const legacyDark = VueCookies.get("dark");
@@ -147,9 +148,32 @@ function toggDrawer() {
 }
 
 function Home() {
-  instance.$router.push({
+  router.push({
     path: "/",
   })
+}
+
+function normalizeGalleryType(value) {
+  if (value === 'season' || value === 'Episode' || value === 'TV') {
+    return 'TV'
+  }
+  if (value === 'Movie') {
+    return 'Movie'
+  }
+  return value
+}
+
+function isLibraryActive(item) {
+  if (!item) {
+    return false
+  }
+  if (route.path === '/list') {
+    return route.query.gallery_uid === item.guid
+  }
+  if (route.path === '/video') {
+    return normalizeGalleryType(route.query.gallery_type) === item.category
+  }
+  return false
 }
 
 function setThemeMode(mode) {
@@ -285,11 +309,11 @@ watch(
                   <div class="navigation">
                     <ul class="nav-links">
                       <li>
-                        <router-link to="/">
+                        <router-link to="/" :class="{ 'is-active': route.path === '/' }">
                                                     <span class="icon">
                                                         <i class='bx bx-home'></i>
                                                     </span>
-                          <span class="title">主页</span>
+                          <span class="title">首页</span>
                         </router-link>
                       </li>
                       <!--                      <li>-->
@@ -310,7 +334,7 @@ watch(
                     <ul class="nav-links">
                       <li v-for="(item, index) in data" :key="index">
                         <div v-if="item.category !== 'Others'">
-                          <router-link :to="{
+                          <router-link :class="{ 'is-active': isLibraryActive(item) }" :to="{
                                                     path: '/list', query: {
                                                         gallery_uid: item.guid,
                                                         gallery_type: item.category
@@ -323,8 +347,7 @@ watch(
                                                         <i class='bx bx-desktop'></i>
                                                     </span>
                             <span :data-id="item.gallery_uid" class="title">{{ item.title }}</span>
-                            <span class="title"
-                                  style="position: absolute;right: 1em;font-size: 1em;">{{
+                            <span class="title nav-count">{{
                                 MediaDbSum[item.guid]
                               }}</span>
                           </router-link>
@@ -522,17 +545,17 @@ span.n-avatar {
   background: rgba(0, 0, 0, .1);
 }
 
-.dark .navigation ul li a.active {
+.dark .navigation ul li a.is-active {
   background-color: #2d8cf0 !important;
 }
 
-.light .navigation ul li a.active .title,
-.light .navigation ul li a.active .icon {
+.light .navigation ul li a.is-active .title,
+.light .navigation ul li a.is-active .icon {
   color: #2d8cf0 !important;
 }
 
-.light .navigation.more ul li a.active .title,
-.light .navigation.more ul li a.active .icon {
+.light .navigation.more ul li a.is-active .title,
+.light .navigation.more ul li a.is-active .icon {
   display: block;
   color: black;
 }
@@ -743,7 +766,7 @@ body {
   color: var(--fn-text);
 }
 
-.home > .n-layout-header {
+.home .n-layout-header {
   position: fixed;
   top: 18px;
   right: 24px;
@@ -763,7 +786,7 @@ body {
 }
 
 .header-content > .n-space:first-child {
-  display: none;
+  display: none !important;
 }
 
 .header-right {
@@ -852,9 +875,10 @@ body {
   background: var(--fn-nav-hover);
 }
 
-.navigation ul li a.active {
+.navigation ul li a.is-active {
   color: var(--fn-blue) !important;
   background: var(--fn-nav-active) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .navigation ul li a .icon i {
@@ -873,10 +897,22 @@ body {
   font-weight: 600;
 }
 
-.navigation ul li a .title:last-child {
+.navigation ul li a .nav-count {
+  position: absolute;
+  right: 12px;
   color: var(--fn-soft) !important;
   font-size: 13px !important;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.navigation ul li a.is-active .icon,
+.navigation ul li a.is-active .title:not(.nav-count) {
+  color: var(--fn-blue) !important;
+}
+
+.navigation ul li a.is-active .nav-count {
+  color: var(--fn-muted) !important;
 }
 
 .content {
@@ -889,7 +925,7 @@ body {
 }
 
 @media (max-width: 768px) {
-  .home > .n-layout-header {
+  .home .n-layout-header {
     top: 10px;
     right: 12px;
     left: 12px;
@@ -897,7 +933,7 @@ body {
   }
 
   .header-content > .n-space:first-child {
-    display: flex;
+    display: flex !important;
   }
 
   .header-content > .n-space:first-child .title {
