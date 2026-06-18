@@ -55,16 +55,6 @@ function getLibraryPreview(guid) {
   return source.filter(item => item.poster).slice(0, 3)
 }
 
-function openVideoItem(item) {
-  proxy.$router.push({
-    path: '/video',
-    query: {
-      guid: item.guid,
-      gallery_type: item.type
-    }
-  })
-}
-
 function getPlaybackParentGuid(item) {
   return item?.parent_guid || item?.guid || ''
 }
@@ -76,6 +66,16 @@ function getPlaybackRoute(item) {
       gallery_type: item.type,
       guid: getPlaybackParentGuid(item),
       episode_guid: item.guid
+    }
+  }
+}
+
+function getVideoRoute(item) {
+  return {
+    path: '/video',
+    query: {
+      guid: item.guid,
+      gallery_type: item.type
     }
   }
 }
@@ -201,7 +201,7 @@ onUnmounted(() => {
                  @mouseleave="play_item_guid = null"
                  @contextmenu="handleContextMenu($event, item)">
               <div>
-                <router-link :to="getPlaybackRoute(item)">
+                <router-link class="continue-link" :to="getPlaybackRoute(item)">
                   <img v-if="item.poster.length > 0" loading="lazy" class='gallery-img'
                        v-lazy='COMMON.imgUrl + item.poster' style="border-radius:10px">
                   <img v-else loading="lazy" class='gallery-img' v-lazy="'/images/not_gellery.png'">
@@ -247,8 +247,7 @@ onUnmounted(() => {
           <div class="card-show-content view-card">
             <n-carousel :show-dots="false" show-arrow :slides-per-view="per_card" :space-between="20" :loop="false"
                         draggable>
-              <div class="view-item" v-for="item in MediaDbData.info[key].list" :key="item.id"
-                   @click="openVideoItem(item)">
+              <div class="view-item" v-for="item in MediaDbData.info[key].list" :key="item.id">
                 <div class="view-item-header">
                   <div class="view-item-tag-list">
                     <div class="view-item-tag rating">
@@ -266,22 +265,19 @@ onUnmounted(() => {
                     </div>
                   </div>
                 </div>
-                <router-link :to="{
-                                path: '/video', query: {
-                                    guid: item.guid,
-                                    gallery_type: item.type
-                                }
-                            }">
+                <router-link class="poster-image-link" :to="getVideoRoute(item)">
                   <img v-if="item.poster !== undefined" loading="lazy" class="carousel-img"
                        v-lazy='COMMON.imgUrl +  "/92/17/"+item.poster + "?w=200"'>
                   <img v-else loading="lazy" class='carousel-img' v-lazy="'/images/not_video.jpg'">
                 </router-link>
-                <div v-if="item.title != null" class="view-item-title">
-                  {{ item.title }}
-                </div>
-                <div v-else class="view-item-title">
-                  {{ item.name }}
-                </div>
+                <router-link class="poster-title-link" :to="getVideoRoute(item)">
+                  <div v-if="item.title != null" class="view-item-title">
+                    {{ item.title }}
+                  </div>
+                  <div v-else class="view-item-title">
+                    {{ item.name }}
+                  </div>
+                </router-link>
               </div>
               <template #arrow="{ prev, next }">
                 <div class="custom-arrow">
@@ -792,6 +788,34 @@ img.carousel-img {
 
 .view-item a {
   color: inherit;
+}
+
+.continue-link {
+  position: relative;
+  display: block;
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+.poster-image-link,
+.poster-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.poster-image-link {
+  display: block;
+  width: 100%;
+  line-height: 0;
+}
+
+.poster-image-link img {
+  display: block;
+}
+
+.poster-title-link {
+  display: block;
 }
 
 .gallery-img,
