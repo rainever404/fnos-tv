@@ -132,7 +132,8 @@ async function Play(_guid = playInfo.value?.item?.guid || play_guid.value) {
     query: {
       gallery_type: playInfo.value.type,
       guid: play_guid.value,
-      episode_guid: _guid
+      episode_guid: _guid,
+      media_guid: playInfo.value?.media_guid || undefined
     }
   })
 }

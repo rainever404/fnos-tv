@@ -10,6 +10,7 @@ import {usePlayerData} from "@/store.js";
 import sortedIndexBy from 'lodash-es/sortedIndexBy'
 import artplayerPluginDanmuku from "artplayer-plugin-danmuku";
 import axios from "axios";
+import md5 from 'js-md5';
 import {createBlobVTTUrl, M3U8SubtitlePlugin} from "./subtitle.js"
 
 const instance = getCurrentInstance();
@@ -28,12 +29,14 @@ const EpisodeList = ref(null);
 const StreamList = ref(null);
 const QualityData = ref(null);
 const playInfo = ref(null);
+const playSessionInfo = ref(null);
 const showModal = ref(false);
 const loading = ref(true);
 const playError = ref('');
 const urlBase = ref(null);
 const url = ref(null);
 const playUrl = ref(null);
+const requestedMediaGuid = ref(null);
 const skipList = ref([])
 const seasonConfig = ref({})
 const showSetUp = ref(false)
@@ -100,6 +103,7 @@ const IsFullscreen = () => {
 guid.value = proxy.$route.query.guid
 episode_guid.value = proxy.$route.query.episode_guid || proxy.$route.query.season_id || null
 gallery_type.value = proxy.$route.query.gallery_type
+requestedMediaGuid.value = proxy.$route.query.media_guid || null
 
 var danmu_setting = window.localStorage.danmu_setting;
 if (danmu_setting === undefined) {
@@ -589,16 +593,18 @@ async function loadDanmuku() {
 
 // 获取清晰度
 async function GetQuality() {
-  let api = "/api/v1/play/quality"
-  let regex = /\d+-\d+-\S+/;
-  let local = StreamList.value.files.find(o => !regex.test(o.path))
-  if (local === null || local === undefined) {
-    local = StreamList.value.files[0];
+  let res = StreamList.value?.qualities || []
+  if (res.length === 0) {
+    let api = "/api/v1/play/quality"
+    const local = getSelectedMediaFile()
+    if (!local?.guid) {
+      throw new Error('media file is empty')
+    }
+    let _data = {
+      "media_guid": local.guid
+    }
+    res = await COMMON.requests("POST", api, true, _data);
   }
-  let _data = {
-    "media_guid": local.guid
-  }
-  let res = await COMMON.requests("POST", api, true, _data);
   QualityData.value = res;
 
   // 按分辨率分组，每个分辨率下按码率排序
@@ -720,8 +726,86 @@ async function ensureEpisodeGuid() {
 }
 
 async function GetStreamList() {
+  const mediaGuid = getPreferredMediaGuid()
+  if (mediaGuid) {
+    try {
+      const streamData = await COMMON.requests("POST", "/api/v1/stream", true, {
+        media_guid: mediaGuid,
+        ip: md5(`${navigator.userAgent}|${window.location.host}|${mediaGuid}`),
+        header: {
+          "User-Agent": [navigator.userAgent]
+        },
+        level: 1
+      })
+      StreamList.value = normalizeStreamPlaybackData(streamData)
+      return
+    } catch (err) {
+      console.warn('stream playback api failed, fallback to stream list', err)
+    }
+  }
   let api = "/api/v1/stream/list/" + episode_guid.value + '?before_play=1';
   StreamList.value = await COMMON.requests("GET", api, true)
+}
+
+function normalizeStreamPlaybackData(data) {
+  return {
+    ...data,
+    files: data?.files || (data?.file_stream ? [data.file_stream] : []),
+    video_streams: data?.video_streams || (data?.video_stream ? [data.video_stream] : []),
+    audio_streams: data?.audio_streams || [],
+    subtitle_streams: data?.subtitle_streams || [],
+    qualities: data?.qualities || []
+  }
+}
+
+function getPreferredMediaGuid() {
+  return requestedMediaGuid.value || playSessionInfo.value?.media_guid || playSessionInfo.value?.item?.media_guid || null
+}
+
+function getSelectedMediaFile() {
+  const files = StreamList.value?.files || []
+  const mediaGuid = getPreferredMediaGuid()
+  if (mediaGuid) {
+    const matched = files.find(item => item.guid === mediaGuid || item.media_guid === mediaGuid)
+    if (matched) {
+      return matched
+    }
+  }
+  let regex = /\d+-\d+-\S+/;
+  let local = files.find(o => !regex.test(o.path))
+  return local || files[0] || null
+}
+
+function getSelectedVideoStream() {
+  const videoStreams = StreamList.value?.video_streams || []
+  const mediaGuid = getPreferredMediaGuid()
+  if (mediaGuid) {
+    const matched = videoStreams.find(item => item.media_guid === mediaGuid || item.guid === playSessionInfo.value?.video_guid)
+    if (matched) {
+      return matched
+    }
+  }
+  return videoStreams.find(item => item.guid === playSessionInfo.value?.video_guid) || videoStreams[0] || null
+}
+
+function getSelectedAudioStream() {
+  const audioStreams = StreamList.value?.audio_streams || []
+  return audioStreams.find(item => item.guid === playSessionInfo.value?.audio_guid)
+      || audioStreams.find(item => item.codec_name === 'aac')
+      || audioStreams.find(item => item.is_default === 1)
+      || audioStreams[0]
+      || null
+}
+
+function getPlayVideoEncoder(videoStream) {
+  if (!videoStream?.codec_name) {
+    return 'h264'
+  }
+  const codec = String(videoStream.codec_name).toLowerCase()
+  if (codec === 'h264' || codec === 'avc1') {
+    return 'h264'
+  }
+  return 'h264'
 }
 
 async function GetChannels(s) {
@@ -753,21 +837,23 @@ async function GetPalyUrl() {
   }
   playError.value = '';
   let api = "/api/v1/play/play"
-  let _channels = (StreamList.value.audio_streams.length !== 1 && StreamList.value.audio_streams.find(o => o.codec_name === "aac") !== undefined ? StreamList.value.audio_streams.find(o => o.codec_name === "aac") : StreamList.value.audio_streams[0]).channels;
-  let regex = /\d+-\d+-\S+/;
-  let local = StreamList.value.files.find(o => !regex.test(o.path))
-  if (local === null || local === undefined) {
-    local = StreamList.value.files[0];
+  const local = getSelectedMediaFile()
+  const videoStream = getSelectedVideoStream()
+  const audioStream = getSelectedAudioStream()
+  const quality = QualityData.value?.[0] || {}
+  if (!local?.guid || !videoStream?.guid || !audioStream?.guid) {
+    throw new Error('play stream is incomplete')
   }
+  let _channels = audioStream.channels;
   let _data = {
     "media_guid": local.guid,
-    "video_guid": StreamList.value.video_streams[0].guid,
-    "video_encoder": StreamList.value.video_streams[0].codec_name,
-    "resolution": QualityData.value[0].resolution,
-    "bitrate": StreamList.value.video_streams[0].bps,
+    "video_guid": videoStream.guid,
+    "video_encoder": getPlayVideoEncoder(videoStream),
+    "resolution": quality.resolution || String(videoStream.height || ''),
+    "bitrate": quality.bitrate || videoStream.bps,
     "startTimestamp": playInfo.value.watched_ts,
     "audio_encoder": "aac",
-    "audio_guid": StreamList.value.audio_streams[0].guid,
+    "audio_guid": audioStream.guid,
     "subtitle_guid": currentSubtitle.value ? currentSubtitle.value.guid : "",
     "channels": await GetChannels(_channels)
   };
@@ -799,9 +885,9 @@ async function SendPlayRecord() {
     let api = "/api/v1/play/record"
     let data = {
       "item_guid": episode_guid.value,
-      "media_guid": StreamList.value.video_streams[0].media_guid,
-      "video_guid": StreamList.value.video_streams[0].guid,
-      "audio_guid": StreamList.value.audio_streams[0].guid,
+      "media_guid": getSelectedMediaFile()?.guid,
+      "video_guid": getSelectedVideoStream()?.guid,
+      "audio_guid": getSelectedAudioStream()?.guid,
       "subtitle_guid": "",
       "resolution": QualityData.value[0].resolution,
       "bitrate": QualityData.value[0].bitrate,
@@ -1150,6 +1236,7 @@ async function play() {
   let playLink = urlBase.value;
   await ensureEpisodeGuid()
   let _PayInfo = await GetPayInfo(episode_guid.value);
+  playSessionInfo.value = _PayInfo;
   playInfo.value = _PayInfo.item;
   await GetStreamList();
 
@@ -1499,6 +1586,7 @@ onBeforeRouteUpdate(async (to, from) => {
   guid.value = to.query.guid || to.query.id;
   gallery_type.value = to.query.gallery_type;
   episode_guid.value = to.query.episode_guid || to.query.season_id || null;
+  requestedMediaGuid.value = to.query.media_guid || null;
   await onMountedFun();
 });
 
