@@ -27,6 +27,7 @@ const legacyDark = VueCookies.get("dark");
 const themeMode = ref(VueCookies.get("theme_mode") || (legacyDark === "true" ? "dark" : legacyDark === "false" ? "light" : "system"));
 const dark = computed(() => themeMode.value === "dark" || (themeMode.value === "system" && systemDark.value));
 const theme = computed(() => dark.value ? darkTheme : null);
+const isDetailPage = computed(() => route.path === '/video');
 const searchOpen = ref(false);
 const searchKeyword = ref('');
 const userInitial = computed(() => {
@@ -278,6 +279,10 @@ function Home() {
   })
 }
 
+function goBack() {
+  Home()
+}
+
 function normalizeGalleryType(value) {
   if (value === 'season' || value === 'Episode' || value === 'TV') {
     return 'TV'
@@ -404,7 +409,10 @@ watch(
       <n-notification-provider>
         <n-dialog-provider>
           <router-view v-if="route.path === '/player'"/>
-          <n-layout v-else-if="route.path !== '/login'" :class='[dark ? "dark" : "light", "home"]'>
+          <n-layout
+              v-else-if="route.path !== '/login'"
+              :class='[dark ? "dark" : "light", "home", { "detail-page": isDetailPage, "sidebar-collapsed": collapsed || isMobile }]'
+          >
             <n-layout-header bordered>
               <div class="header-content">
                 <div class="header-left">
@@ -443,6 +451,9 @@ watch(
                 </div>
               </div>
             </n-layout-header>
+            <button v-if="isDetailPage" class="detail-back-button" type="button" aria-label="返回" @click="goBack">
+              <i class='bx bx-chevron-left'></i>
+            </button>
             <n-layout position="absolute" :style="{ top: '0' }" has-sider>
               <n-layout-sider
                 :collapsed="collapsed"
@@ -1034,6 +1045,53 @@ body {
   background: var(--fn-top-control-hover) !important;
 }
 
+.home.detail-page .topbar-control.n-button,
+.home.detail-page .topbar-control.n-avatar {
+  color: rgba(255, 255, 255, 0.86) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.home.detail-page .topbar-control.n-button i,
+.home.detail-page .topbar-control.n-avatar .n-avatar__text {
+  color: rgba(255, 255, 255, 0.86) !important;
+}
+
+.home.detail-page .topbar-control.n-button:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.detail-back-button {
+  position: fixed;
+  top: 23px;
+  left: 304px;
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+
+.detail-back-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.home.detail-page.sidebar-collapsed .detail-back-button {
+  left: 44px;
+}
+
+.detail-back-button i {
+  font-size: 26px;
+  line-height: 1;
+}
+
 .home .n-layout-sider {
   background: var(--fn-sidebar) !important;
   border-right: 1px solid var(--fn-border) !important;
@@ -1233,6 +1291,17 @@ body {
 
   .header-right {
     gap: 10px !important;
+  }
+
+  .home.detail-page .n-layout-header {
+    left: auto;
+    width: auto;
+  }
+
+  .home.detail-page .detail-back-button,
+  .home.detail-page.sidebar-collapsed .detail-back-button {
+    top: 10px;
+    left: 12px;
   }
 
   .mobile-sider {
