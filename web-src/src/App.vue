@@ -458,8 +458,7 @@ watch(
                   <div class="brand-mark"><i class='bx bxs-videos'></i></div>
                   <div class="brand-text">{{ title }}</div>
                 </div>
-                <div class="sider-item">
-                  <div class="sider-item-title">导航</div>
+                <div class="sider-item primary-nav">
                   <div class="navigation">
                     <ul class="nav-links">
                       <li>
@@ -1073,6 +1072,11 @@ body {
   margin-bottom: 18px;
 }
 
+.primary-nav {
+  margin-top: 18px;
+  margin-bottom: 9px;
+}
+
 .sider-item-title {
   padding: 14px 22px 8px;
   color: var(--fn-soft);
@@ -1092,10 +1096,12 @@ body {
 
 .navigation ul li a,
 .navigation ul li .nav-link {
+  position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
   height: 40px;
-  padding: 0 12px;
+  padding: 0 44px 0 12px;
   color: var(--fn-muted) !important;
   border-radius: 8px;
   font-weight: 400;
@@ -1111,7 +1117,7 @@ body {
   color: var(--fn-blue) !important;
   background: var(--fn-nav-active) !important;
   font-weight: 400;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: none;
 }
 
 .navigation ul li a .icon i,
@@ -1124,11 +1130,15 @@ body {
 
 .navigation ul li a .title,
 .navigation ul li .nav-link .title {
+  flex: 1 1 auto;
   height: auto;
   min-width: 0;
-  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 23px;
   color: inherit !important;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
 }
 
@@ -1136,15 +1146,15 @@ body {
 .navigation ul li .nav-link .nav-count {
   position: absolute;
   right: 12px;
+  flex: 0 0 auto;
   color: inherit !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 400;
+  line-height: 20px;
   font-variant-numeric: tabular-nums;
 }
 
 .navigation ul li .nav-link {
-  position: relative;
-  width: 100%;
   color: var(--fn-muted) !important;
 }
 
@@ -1164,6 +1174,22 @@ body {
 .home.light .navigation ul li a.is-active,
 .home.dark .navigation ul li a.is-active {
   background: var(--fn-nav-active) !important;
+}
+
+.home.light .navigation ul li a.router-link-active:not(.is-active),
+.home.dark .navigation ul li a.router-link-active:not(.is-active) {
+  color: var(--fn-muted) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.home.light .navigation ul li a.router-link-active:not(.is-active) .icon,
+.home.light .navigation ul li a.router-link-active:not(.is-active) .icon i,
+.home.light .navigation ul li a.router-link-active:not(.is-active) .title,
+.home.dark .navigation ul li a.router-link-active:not(.is-active) .icon,
+.home.dark .navigation ul li a.router-link-active:not(.is-active) .icon i,
+.home.dark .navigation ul li a.router-link-active:not(.is-active) .title {
+  color: inherit !important;
 }
 
 .home.light .navigation ul li a.is-active .icon,
