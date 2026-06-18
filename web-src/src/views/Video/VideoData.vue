@@ -59,11 +59,7 @@ const scoreText = computed(() => {
 })
 
 const primaryPlayLabel = computed(() => {
-  const item = playInfo.value?.item
-  if (item && gallery_type.value !== 'Movie') {
-    return `第 ${item.season_number || 1} 季 第 ${item.episode_number || 1} 集`
-  }
-  return '播放'
+  return '继续播放'
 })
 
 const detailMetaItems = computed(() => {
@@ -197,7 +193,6 @@ onMounted(async () => {
         <div class="view-scroller">
           <div class="view-card-detail detailTextContainer">
             <div class="lex-direction-column">
-              <div class="detail-kicker">{{ galleryTypeLabel }}</div>
               <div class="itemPrimaryNameContainer">
                 <h1 class="itemName-primary">{{ displayTitle }}</h1>
               </div>
@@ -281,7 +276,7 @@ onMounted(async () => {
           <button class="carousel-arrow right" @click="goNext">›</button>
         </div>
 
-        <div class="showContainer" v-if="gallery_type !== 'TV'">
+        <div class="showContainer people-section" v-if="gallery_type !== 'TV'">
           <div class="show-header">
             <div class="show-title">
               <h3>演职人员</h3>
@@ -300,9 +295,9 @@ onMounted(async () => {
           <n-scrollbar ref="siderRef" x-scrollable>
             <div style="white-space: nowrap;">
               <div class="show-card-list">
-                <div class="show-card-item" v-for="(item, index) in PersonList" :key="index">
+                <div class="show-card-item person-card" v-for="(item, index) in PersonList" :key="index">
                   <router-link :to="{ path: '/person', query: { id: item.id, } }">
-                    <div class="show-img">
+                    <div class="show-img person-avatar">
                       <img v-if="item.profile_path!==''" loading="lazy"
                            v-lazy='COMMON.imgUrl + "/t/p/w220_and_h330_face/" + item.profile_path'
                            alt="">
@@ -311,6 +306,9 @@ onMounted(async () => {
                   </router-link>
                   <div class="show-name">
                     {{ item.name }}
+                  </div>
+                  <div v-if="item.role" class="person-role">
+                    {{ item.role }}
                   </div>
                 </div>
               </div>
@@ -353,6 +351,7 @@ onMounted(async () => {
 
 .main-content {
   position: relative;
+  --detail-hero-height: clamp(430px, 55vh, 700px);
   min-height: 100vh;
   overflow: hidden;
   background: var(--fn-bg);
@@ -895,7 +894,7 @@ span.button-text {
   }
 }
 .backdropContainer {
-  height: 576px;
+  height: var(--detail-hero-height);
 }
 
 .backdropContainer::after {
@@ -906,13 +905,18 @@ span.button-text {
 
 .view-backdrop,
 .dark .view-backdrop {
-  background: linear-gradient(180deg, transparent 0, transparent 520px, var(--fn-bg) 576px);
+  background: linear-gradient(
+      180deg,
+      transparent 0,
+      transparent calc(var(--detail-hero-height) - 70px),
+      var(--fn-bg) var(--detail-hero-height)
+  );
 }
 
 .view-scroller {
   align-items: flex-end;
-  min-height: 576px;
-  padding: 0 46px 38px;
+  min-height: var(--detail-hero-height);
+  padding: 0 46px 30px;
 }
 
 .view-card-detail {
@@ -920,24 +924,10 @@ span.button-text {
   margin-bottom: 0;
 }
 
-.detail-kicker {
-  display: inline-flex;
-  align-items: center;
-  height: 26px;
-  padding: 0 10px;
-  margin-bottom: 12px;
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(0, 0, 0, 0.34);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
-  backdrop-filter: blur(12px);
-}
-
 .itemName-primary {
   max-width: 860px;
-  font-size: clamp(32px, 3.4vw, 54px);
+  font-size: clamp(36px, 3.4vw, 60px);
+  line-height: 1.4;
 }
 
 .detail-action-row {
@@ -946,6 +936,7 @@ span.button-text {
   justify-content: space-between;
   gap: 28px;
   min-height: 86px;
+  margin-top: 16px;
   padding: 16px 46px 12px;
   color: var(--fn-text);
   background: var(--fn-bg);
@@ -986,6 +977,7 @@ span.button-text {
   border-radius: 999px;
   box-shadow: 0 8px 22px rgba(10, 132, 255, 0.25);
   cursor: pointer;
+  margin: 0;
   transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
@@ -1030,6 +1022,68 @@ span.button-text {
   padding-top: 20px;
 }
 
+.people-section {
+  padding-top: 18px;
+}
+
+.people-section .show-header {
+  margin-bottom: 8px;
+}
+
+.people-section .show-title {
+  font-size: 16px;
+}
+
+.people-section .show-title h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.people-section .show-card-list {
+  gap: 34px;
+}
+
+.person-card {
+  width: 106px;
+  white-space: normal;
+}
+
+.person-avatar {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto 10px;
+}
+
+.person-avatar img {
+  width: 90px;
+  height: 90px;
+  aspect-ratio: 1 / 1;
+  border-radius: 6px;
+  object-fit: cover;
+  display: block;
+}
+
+.people-section .show-name,
+.person-role {
+  width: 106px;
+  text-align: center;
+  line-height: 20px;
+  white-space: normal;
+}
+
+.people-section .show-name {
+  color: var(--fn-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.person-role {
+  color: var(--fn-muted);
+  font-size: 13px;
+}
+
 @media (max-width: 768px) {
   .backdropContainer {
     height: 430px;
@@ -1051,6 +1105,7 @@ span.button-text {
 
   .itemName-primary {
     font-size: 28px;
+    line-height: 1.3;
   }
 
   .detail-action-row {
@@ -1058,6 +1113,7 @@ span.button-text {
     flex-direction: column;
     gap: 14px;
     min-height: 0;
+    margin-top: 0;
     padding: 14px 16px 10px;
   }
 
@@ -1073,6 +1129,22 @@ span.button-text {
 
   .detail-overview {
     padding: 0 16px 24px;
+  }
+
+  .people-section .show-card-list {
+    gap: 16px;
+  }
+
+  .person-card,
+  .people-section .show-name,
+  .person-role {
+    width: 92px;
+  }
+
+  .person-avatar,
+  .person-avatar img {
+    width: 76px;
+    height: 76px;
   }
 }
 </style>
