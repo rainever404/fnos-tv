@@ -782,6 +782,7 @@ body {
 
 .header-content {
   align-items: center;
+  height: 36px;
   gap: 12px;
 }
 
@@ -790,7 +791,16 @@ body {
 }
 
 .header-right {
+  align-items: center !important;
+  height: 36px;
+  line-height: 0;
   gap: 8px !important;
+}
+
+.header-right > div {
+  display: flex;
+  align-items: center;
+  height: 36px;
 }
 
 .header-right .n-button,
@@ -800,6 +810,14 @@ body {
   color: var(--fn-text);
   background: var(--fn-top-control) !important;
   border: 0;
+}
+
+.header-right .n-avatar {
+  position: static;
+  top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .header-right .n-button:hover {

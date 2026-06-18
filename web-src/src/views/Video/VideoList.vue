@@ -226,6 +226,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding-right: 116px;
   margin-bottom: 28px;
 }
 
@@ -446,6 +447,10 @@ onMounted(async () => {
   .view-card-list {
     grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
     grid-gap: 18px 12px;
+  }
+
+  .list-toolbar {
+    padding-right: 0;
   }
 
   .view-item-title {
