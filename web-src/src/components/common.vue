@@ -133,6 +133,31 @@ async function requests(method, uri, isLogin = false, data = {}) {
 
 }
 
+async function rawGet(uri, isLogin = false) {
+  let params = {}
+  let path = uri
+  if (uri.indexOf('?') !== -1) {
+    const parts = uri.split('?')
+    path = parts[0]
+    params = Object.fromEntries(new URLSearchParams(parts[1]).entries());
+  }
+  const headers = {
+    authx: generateSignature({
+      method: 'GET',
+      url: "/v" + path,
+      data: {},
+      params
+    }, api_key)
+  }
+  if (isLogin) {
+    headers.Authorization = VueCookies.get("authorization")
+  }
+  return await fetch(apiUrl + uri, {
+    method: 'GET',
+    headers
+  })
+}
+
 
 function ShowMsg(msg) {
   Snackbar.show({pos: 'top-center', text: msg, showAction: false});
@@ -229,6 +254,7 @@ export default {
   imgUrl,
   ShowMsg,
   requests,
+  rawGet,
   fnHost
 }
 </script>

@@ -19,6 +19,7 @@ const data = ref(null)
 const MediaDbSum = ref({})
 const MediaDbInfo = ref({})
 const ConfigData = ref({})
+const HOME_SHELF_PAGE_SIZE = 22
 const route = useRoute();
 const router = useRouter();
 const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -225,10 +226,41 @@ async function GetMediaDbSum() {
   MediaDbSum.value = await COMMON.requests("GET", api, true);
 }
 
+function isCurrentPath(path) {
+  return route.path === path || window.location.pathname === path
+}
+
+async function GetOfficialBootstrapData() {
+  if (isCurrentPath('/login') || VueCookies.get('authorization') === null) {
+    return
+  }
+
+  const includeHomeData = !isCurrentPath('/player')
+  const getApis = [
+    '/api/v1/sys/version',
+    '/api/v1/server/info',
+    '/api/v1/tag/iso6391?lan=zh-CN',
+    '/api/v1/tag/iso6392?lan=zh-CN',
+    '/api/v1/tag/iso3166?lan=zh-CN',
+    '/api/v1/tag/genres?lan=zh-CN',
+    '/api/v1/server/getAppAuthorizedDir'
+  ]
+  if (includeHomeData) {
+    getApis.push('/api/v1/task/running')
+  }
+  const tasks = getApis.map(api => COMMON.requests("GET", api, true))
+  if (includeHomeData) {
+    tasks.push(COMMON.requests("POST", '/api/v1/user/getData', true, {
+      key: 'list:card:setting'
+    }))
+  }
+  await Promise.allSettled(tasks)
+}
+
 async function GetMediaDbInfos() {
   let api = '/api/v1/item/list'
 
-  if (data.value !== undefined) {
+  if (Array.isArray(data.value)) {
     for (let _d of data.value) {
       let guid = _d.guid;
       let _data = {
@@ -244,7 +276,7 @@ async function GetMediaDbInfos() {
         "exclude_grouped_video": 1,
         "sort_type": MediaDbData.sort_type,
         "sort_column": MediaDbData.sort_column,
-        "page_size": MediaDbSum.value[guid]
+        "page_size": HOME_SHELF_PAGE_SIZE
       }
       let res = await COMMON.requests("POST", api, true, _data);
       MediaDbInfo.value[guid] = res
@@ -359,6 +391,12 @@ async function onMountedFun() {
   // 获取用户信息
   // await runFunByPath('/login', GetUserInfo)
   await GetUserInfo();
+  await GetOfficialBootstrapData();
+  if (isCurrentPath('/login')) {
+    document.title = title;
+    load.value = false;
+    return;
+  }
   // if (VueCookies.get("authorization")) {
 
   // 获取每个分类的数量
@@ -368,6 +406,11 @@ async function onMountedFun() {
   // 获取分类列表
   // await runFunByPath('/login', GetMediaDbList)
   await GetMediaDbList();
+  if (isCurrentPath('/player')) {
+    document.title = title;
+    load.value = false;
+    return;
+  }
 
   // 获取每个分类的列表
   // await runFunByPath('/login', GetMediaDbInfos)
@@ -386,7 +429,7 @@ onMounted(async () => {
 watch(
     () => route.fullPath,
     async (newPath, oldPath) => {
-      if (newPath === "/") {
+      if (newPath === "/" || (oldPath?.startsWith('/player') && route.path !== '/player')) {
         await onMountedFun();
       }
     }

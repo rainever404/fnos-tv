@@ -797,6 +797,24 @@ function getSelectedAudioStream() {
       || null
 }
 
+function getCurrentSubtitleGuid() {
+  if (currentSubtitle.value && typeof currentSubtitle.value === 'object') {
+    return currentSubtitle.value.guid || ''
+  }
+  return playSessionInfo.value?.subtitle_guid || ''
+}
+
+async function preloadOfficialSubtitle() {
+  const subtitleGuid = getCurrentSubtitleGuid()
+  if (!subtitleGuid) {
+    return
+  }
+  try {
+    await COMMON.rawGet(`/api/v1/subtitle/dl/${subtitleGuid}`, true)
+  } catch {
+  }
+}
+
 function getPlayVideoEncoder(videoStream) {
   if (!videoStream?.codec_name) {
     return 'h264'
@@ -854,7 +872,7 @@ async function GetPalyUrl() {
     "startTimestamp": playInfo.value.watched_ts,
     "audio_encoder": "aac",
     "audio_guid": audioStream.guid,
-    "subtitle_guid": currentSubtitle.value ? currentSubtitle.value.guid : "",
+    "subtitle_guid": "",
     "channels": await GetChannels(_channels)
   };
   let res = null
@@ -883,20 +901,24 @@ async function GetPalyUrl() {
 async function SendPlayRecord() {
   if (art.currentTime >= 5) {
     let api = "/api/v1/play/record"
+    const local = getSelectedMediaFile()
+    const videoStream = getSelectedVideoStream()
+    const audioStream = getSelectedAudioStream()
+    const quality = currentQuality.value || QualityData.value?.[0] || {}
+    if (!local?.guid || !videoStream?.guid || !audioStream?.guid) {
+      return
+    }
     let data = {
       "item_guid": episode_guid.value,
-      "media_guid": getSelectedMediaFile()?.guid,
-      "video_guid": getSelectedVideoStream()?.guid,
-      "audio_guid": getSelectedAudioStream()?.guid,
-      "subtitle_guid": "",
-      "resolution": QualityData.value[0].resolution,
-      "bitrate": QualityData.value[0].bitrate,
+      "media_guid": local.guid,
+      "video_guid": videoStream.guid,
+      "audio_guid": audioStream.guid,
+      "subtitle_guid": getCurrentSubtitleGuid(),
+      "resolution": quality.resolution,
+      "bitrate": quality.bitrate,
       "ts": Math.floor(art.currentTime),
       "duration": art.duration,
-      "play_link": urlBase.value,
-      "create_time": Math.floor(Date.now() / 1000),
-      "playback_speed": art.playbackRate,
-      "guid": guid.value,
+      "play_link": urlBase.value
     }
     await COMMON.requests("POST", api, true, data)
   }
@@ -1243,7 +1265,7 @@ async function play() {
   // 初始化字幕
   if (StreamList.value && StreamList.value.subtitle_streams && StreamList.value.subtitle_streams.length > 0) {
     const defaultSubtitle = StreamList.value.subtitle_streams.find(sub => sub.is_default === 1);
-    currentSubtitle.value = defaultSubtitle || null;
+    currentSubtitle.value = defaultSubtitle || StreamList.value.subtitle_streams[0] || null;
   }
 
   await GetQuality();
@@ -1283,6 +1305,7 @@ async function ready() {
     const subtitle_url = '/fnos' + urlBase.value.replace("preset", "subtitle");
     switchSubtitleUrl(subtitle_url)
   }
+  await preloadOfficialSubtitle()
 
   danmuConfig.value.loadedUntil = playInfo.value.watched_ts;
   art.layers.update(danmuTitleData.value)

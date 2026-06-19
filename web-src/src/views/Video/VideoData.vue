@@ -19,6 +19,7 @@ const backImg = ref(null)
 const siderRef = ref(null);
 const PersonList = ref(null);
 const EpisodeList = ref(null);
+const StreamList = ref(null);
 const EpisodeCarouselRef = ref(null);
 const play_item_guid = ref(null);
 const play_guid = ref(null)
@@ -105,8 +106,24 @@ async function GetPayInfo() {
 
 async function GetPersonList() {
   let api = "/api/v1/person/list/" + guid.value;
-  let res = await COMMON.requests("POST", api, true)
-  PersonList.value = res.list.filter(o => o.role !== "");
+  let res = await COMMON.requests("POST", api, true, {
+    page: 1,
+    page_size: 200
+  })
+  PersonList.value = (res?.list || []).filter(o => o.role !== "");
+}
+
+async function GetStreamList() {
+  if (gallery_type.value === 'TV') {
+    StreamList.value = null
+    return
+  }
+  try {
+    let api = "/api/v1/stream/list/" + guid.value;
+    StreamList.value = await COMMON.requests("GET", api, true)
+  } catch {
+    StreamList.value = null
+  }
 }
 
 async function GetEpisodeList() {
@@ -141,14 +158,15 @@ async function Play(_guid = playInfo.value?.item?.guid || play_guid.value) {
 const onMountedFun = async () => {
   // 获取剧集详情
   await GetVideoData();
-  await GetPayInfo();
   // 获取剧集
   if (gallery_type.value === "TV") {
     await GetSeasonData();
   }
   if (gallery_type.value !== 'TV') {
     await GetPersonList();
+    await GetStreamList();
   }
+  await GetPayInfo();
   if (gallery_type.value === 'season') {
     await GetEpisodeList()
   }
