@@ -31,10 +31,6 @@ const theme = computed(() => dark.value ? darkTheme : null);
 const isDetailPage = computed(() => route.path === '/video');
 const searchOpen = ref(false);
 const searchKeyword = ref('');
-const userInitial = computed(() => {
-  const username = UserInfo.value?.username || '';
-  return username ? username.slice(0, 1).toUpperCase() : 'U';
-});
 const options = ref([
   {
     label: '注销登录',
@@ -496,9 +492,11 @@ watch(
 
                   <n-dropdown trigger="hover" placement="bottom-start" :options="options"
                               @select="handleSelect">
-                    <n-avatar class="topbar-control user-avatar" circle :title="UserInfo?.username || ''">
-                      {{ userInitial }}
-                    </n-avatar>
+                    <n-button class="topbar-control" quaternary circle aria-label="用户" :title="UserInfo?.username || ''">
+                      <template #icon>
+                        <i class='bx bxs-user'></i>
+                      </template>
+                    </n-button>
                   </n-dropdown>
 
                   <n-dropdown trigger="click" placement="bottom-end" :options="settingsOptions"
