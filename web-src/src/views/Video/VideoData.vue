@@ -138,22 +138,26 @@ const remainingTimeText = computed(() => {
 })
 
 const streamFeatureTags = computed(() => {
-  const tags = []
-  const video = selectedVideoStream.value
+  const streams = Array.isArray(StreamList.value?.video_streams) ? StreamList.value.video_streams : []
+  const source = streams.length ? streams : (selectedVideoStream.value ? [selectedVideoStream.value] : [])
+  return source.map(video => {
+    const resolution = translateStreamLabel(video?.resolution_type)
+    const color = translateStreamLabel(video?.color_range_type)
+    return [resolution, color].filter(Boolean).join(' ')
+  }).filter(Boolean)
+})
+
+const detailTrackLabels = computed(() => {
+  const labels = []
   const subtitle = selectedSubtitleStream.value
   const audio = selectedAudioStream.value
   if (subtitle) {
-    tags.push(languageLabel(subtitle.language, '字幕'))
+    labels.push(`${languageLabel(subtitle.language, '字幕')}字幕`)
   }
   if (audio) {
-    tags.push(`${languageLabel(audio.language, '音频')}音频`)
+    labels.push(`${languageLabel(audio.language, '音频')}音频`)
   }
-  if (video) {
-    const resolution = translateStreamLabel(video.resolution_type)
-    const color = translateStreamLabel(video.color_range_type)
-    tags.push([resolution, color].filter(Boolean).join(' '))
-  }
-  return tags.filter(Boolean)
+  return labels
 })
 
 const fileInfoItems = computed(() => {
@@ -554,9 +558,15 @@ onMounted(async () => {
             </span>
             <span class="button-text">{{ primaryPlayLabel }}</span>
           </button>
-          <div class="detail-meta-list">
-            <div class="mediaInfoItem" v-for="item in detailMetaItems" :key="item">
-              {{ item }}
+          <div class="detail-action-info">
+            <div class="detail-meta-list">
+              <template v-for="(item, index) in detailMetaItems" :key="item">
+                <span v-if="index > 0" class="detail-meta-separator">/</span>
+                <span class="mediaInfoItem">{{ item }}</span>
+              </template>
+            </div>
+            <div v-if="detailTrackLabels.length" class="detail-track-list">
+              <span v-for="item in detailTrackLabels" :key="item">{{ item }}</span>
             </div>
           </div>
         </div>
@@ -1353,13 +1363,22 @@ span.button-text {
   background: var(--fn-bg);
 }
 
-.detail-meta-list {
+.detail-action-info {
   display: flex;
   flex: 1;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 6px 0;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+  min-height: 54px;
   margin-left: clamp(36px, 7.75vw, 198px);
+}
+
+.detail-meta-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 0;
   min-width: 0;
   color: var(--fn-muted);
   font-size: 14px;
@@ -1372,10 +1391,23 @@ span.button-text {
   white-space: nowrap;
 }
 
-.detail-meta-list .mediaInfoItem + .mediaInfoItem::before {
-  content: "/";
-  margin: 0 8px;
+.detail-meta-separator {
+  display: inline-flex;
+  align-items: center;
+  margin: -2px 8px 0;
   color: color-mix(in srgb, var(--fn-muted) 64%, transparent);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.detail-track-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 20px;
+  color: var(--fn-muted);
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .stream-feature-row {
@@ -1679,12 +1711,23 @@ span.button-text {
     height: 48px;
   }
 
+  .detail-action-info {
+    gap: 8px;
+    min-height: 0;
+    margin-left: 0;
+  }
+
   .detail-meta-list {
     justify-content: flex-start;
     gap: 6px 0;
-    margin-left: 0;
     font-size: 13px;
     line-height: 20px;
+  }
+
+  .detail-track-list {
+    justify-content: flex-start;
+    gap: 12px;
+    font-size: 13px;
   }
 
   .stream-feature-row {
