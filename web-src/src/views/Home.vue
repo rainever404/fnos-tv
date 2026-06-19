@@ -40,7 +40,7 @@ const dropdownOptions = [
 function updateCarouselDensity() {
   const width = window.innerWidth;
   const usable = width <= 768 ? Math.max(320, width - 28) : Math.max(720, width - 348);
-  per_view.value = width <= 768 ? 1 : Math.max(2, Math.min(6.6, usable / 349));
+  per_view.value = width <= 768 ? 1 : Math.max(2, Math.min(6.6, usable / 346));
   per_card.value = width <= 768 ? 3 : Math.max(5, Math.min(11.2, usable / 203));
 }
 
@@ -189,12 +189,12 @@ onUnmounted(() => {
           </router-link>
         </div>
       </div>
-      <div class="card-shows" v-if="playList && playList.length > 0">
+      <div class="card-shows continue-section" v-if="playList && playList.length > 0">
         <div class="card-show-title">
           继续观看
         </div>
         <div class="carousel-container">
-          <n-carousel :show-dots="false" :slides-per-view="per_view" :space-between="20" ref="EpisodeCarouselRef"
+          <n-carousel :show-dots="false" :slides-per-view="per_view" :space-between="16" ref="EpisodeCarouselRef"
                       :loop="false" draggable>
             <div class="view-item" v-for="(item, index) in playList" :key="item.guid"
                  @mouseenter="play_item_guid = item.guid"
@@ -202,26 +202,28 @@ onUnmounted(() => {
                  @contextmenu="handleContextMenu($event, item)">
               <div>
                 <router-link class="continue-link" :to="getPlaybackRoute(item)">
-                  <img v-if="item.poster.length > 0" loading="lazy" class='gallery-img'
-                       v-lazy='COMMON.imgUrl + item.poster' style="border-radius:10px">
-                  <img v-else loading="lazy" class='gallery-img' v-lazy="'/images/not_gellery.png'">
-                  <!-- 进度条：仅当duration和ts存在且duration>0时显示 -->
-                  <n-progress
-                    v-if="item.duration && item.ts && item.duration > 0"
-                    type="line"
-                    :percentage="Math.min(100, Math.floor(item.ts / item.duration * 100))"
-                    :height="3"
-                    :show-indicator="false"
-                    style="margin-top: 1px; border-radius: 2px;"
-                  />
-                  <!-- 播放图标 (仅在 hover 时显示) -->
-                  <div v-if="play_item_guid === item.guid" class="play-icon">
-                    <i class="bx bx-play"></i>
+                  <div class="continue-poster-box">
+                    <img v-if="item.poster.length > 0" loading="lazy" class='gallery-img'
+                         v-lazy='COMMON.imgUrl + item.poster'>
+                    <img v-else loading="lazy" class='gallery-img' v-lazy="'/images/not_gellery.png'">
+                    <!-- 进度条：仅当duration和ts存在且duration>0时显示 -->
+                    <n-progress
+                      v-if="item.duration && item.ts && item.duration > 0"
+                      class="continue-progress"
+                      type="line"
+                      :percentage="Math.min(100, Math.floor(item.ts / item.duration * 100))"
+                      :height="5"
+                      :show-indicator="false"
+                    />
+                    <!-- 播放图标 (仅在 hover 时显示) -->
+                    <div v-if="play_item_guid === item.guid" class="play-icon">
+                      <i class="bx bx-play"></i>
+                    </div>
                   </div>
-                <div class="view-item-title landscape-title">
-                  {{ item.type === 'Episode' ? item.tv_title : item.title }}
-                </div>
-                <div v-if="item.type === 'Episode'" class="view-item-title"
+                  <div class="view-item-title landscape-title">
+                    {{ item.type === 'Episode' ? item.tv_title : item.title }}
+                  </div>
+                  <div v-if="item.type === 'Episode'" class="view-item-title"
                        style="font-size: 0.8em;color:rgba(0, 0, 0, 0.4);">
                     第 {{ item.season_number }} 季·第 {{ item.episode_number }} 集
                   </div>
@@ -675,6 +677,10 @@ img.carousel-img {
   margin-bottom: 42px;
 }
 
+.continue-section {
+  margin-bottom: 38px;
+}
+
 .card-show-title {
   display: inline-flex;
   align-items: center;
@@ -805,7 +811,47 @@ img.carousel-img {
   display: block;
   width: 100%;
   color: inherit;
+  line-height: normal;
   text-decoration: none;
+}
+
+.continue-poster-box {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 8px;
+  overflow: hidden;
+  background: var(--fn-panel);
+  border: 1px solid rgba(198, 202, 207, 0.25);
+  border-radius: 10px;
+}
+
+.continue-poster-box::after {
+  content: "";
+  position: absolute;
+  inset: 45% 0 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.28));
+  pointer-events: none;
+}
+
+.continue-poster-box .gallery-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 8px !important;
+}
+
+.continue-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  margin: 0 !important;
+  border-radius: 0;
 }
 
 .poster-image-link,
@@ -859,6 +905,10 @@ img.carousel-img,
 
 .landscape-title {
   margin-top: 9px;
+}
+
+.continue-link .landscape-title {
+  margin-top: 0;
 }
 
 .view-item .view-item-title + .view-item-title {
