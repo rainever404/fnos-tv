@@ -279,8 +279,20 @@ function getPlayerTitle() {
 }
 
 function goBack() {
-  if (window.history.length > 1) {
+  const backPath = window.history.state?.back || ''
+  const currentPath = proxy.$route.fullPath
+  if (backPath && backPath !== currentPath && !backPath.startsWith('/player')) {
     proxy.$router.back()
+    return
+  }
+  if (guid.value) {
+    proxy.$router.push({
+      path: '/video',
+      query: {
+        guid: guid.value,
+        gallery_type: gallery_type.value || playInfo.value?.type || 'Movie'
+      }
+    })
     return
   }
   proxy.$router.push({path: '/'})
@@ -1859,14 +1871,14 @@ h1 {
   left: 0;
   z-index: 90;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   box-sizing: border-box;
   width: 100%;
-  height: calc(58px + env(safe-area-inset-top, 0px));
-  padding: env(safe-area-inset-top, 0px) 18px 0;
+  height: calc(50px + env(safe-area-inset-top, 0px));
+  padding: calc(19px + env(safe-area-inset-top, 0px)) 16px 0;
   color: #fff;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.64), rgba(0, 0, 0, 0));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
   pointer-events: none;
 }
 
@@ -1874,14 +1886,16 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   color: #fff;
   background: transparent;
   border: 0;
   border-radius: 50%;
-  font-size: 28px;
+  font-size: 20px;
+  line-height: 1;
   cursor: pointer;
   pointer-events: auto;
 }
@@ -1892,15 +1906,14 @@ h1 {
 
 .player-topbar-title {
   min-width: 0;
-  max-width: min(720px, calc(100vw - 86px));
+  max-width: min(720px, calc(100vw - 68px));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: rgba(255, 255, 255, 0.94);
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
   pointer-events: none;
 }
 
@@ -2132,6 +2145,20 @@ img.play-icon {
 }
 
 :deep(.art-video-player) {
+  --art-theme: #00aeec;
+  --art-bottom-height: 72px;
+  --art-bottom-offset: 12px;
+  --art-bottom-gap: 7px;
+  --art-progress-color: rgba(255, 255, 255, 0.28);
+  --art-hover-color: rgba(255, 255, 255, 0.42);
+  --art-loaded-color: rgba(255, 255, 255, 0.36);
+  --art-control-icon-size: 32px;
+  --art-control-icon-scale: 1;
+  --art-widget-background: rgba(0, 0, 0, 0.72);
+  --art-tip-background: rgba(0, 0, 0, 0.78);
+  --art-border-radius: 6px;
+  --art-settings-max-height: min(320px, calc(100vh - 120px));
+  --art-selector-max-height: min(320px, calc(100vh - 120px));
   width: 100% !important;
   height: 100% !important;
 }
@@ -2143,10 +2170,61 @@ img.play-icon {
 
 :deep(.art-video-player .art-bottom) {
   padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  background-image: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.37), rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)) !important;
+  background-size: 100% var(--art-bottom-height) !important;
+}
+
+:deep(.art-video-player .art-control-progress-inner),
+:deep(.art-video-player .art-progress-hover),
+:deep(.art-video-player .art-progress-loaded),
+:deep(.art-video-player .art-progress-played) {
+  border-radius: 999px;
+}
+
+:deep(.art-video-player .art-controls .art-control) {
+  font-weight: 400;
+  text-shadow: none;
+}
+
+:deep(.art-video-player .art-selector-list),
+:deep(.art-video-player .art-settings),
+:deep(.art-video-player .apd-config-panel-inner),
+:deep(.art-video-player .apd-style-panel-inner) {
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+  backdrop-filter: saturate(180%) blur(18px);
+}
+
+:deep(.art-video-player .art-selector-item),
+:deep(.art-video-player .art-setting-item) {
+  min-height: 34px;
+  font-size: 14px;
+}
+
+:deep(.art-video-player .art-selector-value) {
+  max-width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:deep(.art-video-player .apd-config-panel) {
+  bottom: 30px;
+}
+
+:deep(.art-video-player .apd-style-panel) {
+  bottom: 30px;
+}
+
+:deep(.art-video-player .apd-config-panel-inner),
+:deep(.art-video-player .apd-style-panel-inner) {
+  padding: 12px;
 }
 
 :deep(.art-video-player .art-notice) {
-  top: calc(54px + env(safe-area-inset-top, 0px));
+  top: calc(50px + env(safe-area-inset-top, 0px));
 }
 
 @media (max-width: 767px) {
@@ -2199,18 +2277,13 @@ img.play-icon {
     max-width: 30em;
   }
 
-  /* 调整控制栏按钮大小 */
-  :deep(.art-control) {
-    height: 40px !important;
-  }
-
-  :deep(.art-control .art-control-item) {
-    width: 32px !important;
-    height: 32px !important;
-  }
-
-  :deep(.art-control .art-control-item i) {
-    font-size: 16px !important;
+  :deep(.art-video-player) {
+    --art-bottom-height: 78px;
+    --art-bottom-offset: 10px;
+    --art-control-height: 44px;
+    --art-control-icon-size: 30px;
+    --art-settings-max-height: min(220px, calc(100svh - 96px));
+    --art-selector-max-height: min(220px, calc(100svh - 96px));
   }
 }
 
@@ -2225,17 +2298,10 @@ img.play-icon {
     height: 40px;
   }
 
-  :deep(.art-control) {
-    height: 36px !important;
-  }
-
-  :deep(.art-control .art-control-item) {
-    width: 28px !important;
-    height: 28px !important;
-  }
-
-  :deep(.art-control .art-control-item i) {
-    font-size: 14px !important;
+  :deep(.art-video-player) {
+    --art-control-height: 40px;
+    --art-control-icon-size: 28px;
+    --art-bottom-height: 72px;
   }
 }
 </style>
