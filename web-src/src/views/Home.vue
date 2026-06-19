@@ -653,7 +653,10 @@ img.carousel-img {
 }
 
 .home-page-title {
-  margin-bottom: 20px;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: -5px;
+  margin-bottom: 25px;
   color: var(--fn-text);
   font-size: 20px;
   font-weight: 500;
@@ -669,7 +672,7 @@ img.carousel-img {
 }
 
 .media-libraries {
-  margin-bottom: 46px;
+  margin-bottom: 42px;
 }
 
 .card-show-title {
@@ -677,7 +680,7 @@ img.carousel-img {
   align-items: center;
   gap: 4px;
   padding: 0;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   color: var(--fn-text);
   font-size: 16px;
   font-weight: 600;
@@ -691,19 +694,20 @@ img.carousel-img {
 
 .library-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 280px);
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, 284px);
+  gap: 20px;
 }
 
 .library-card {
   position: relative;
   overflow: hidden;
-  width: 280px;
-  height: 204px;
+  box-sizing: border-box;
+  width: 284px;
+  height: 205px;
   color: var(--fn-text);
   background: #fff;
-  border: 1px solid var(--fn-border);
-  border-radius: 8px;
+  border: 1px solid rgba(198, 202, 207, 0.25);
+  border-radius: 10px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
@@ -774,8 +778,8 @@ img.carousel-img {
   color: var(--fn-text);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), #fff 60%);
   font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
+  font-weight: 600;
+  line-height: 23px;
 }
 
 .dark .library-label {
