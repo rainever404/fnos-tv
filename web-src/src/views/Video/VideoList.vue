@@ -247,7 +247,7 @@ onMounted(async () => {
         <div class="seriesTab-item">
           <div class="sort-menu">
             <input id="video-list-filter-toggle" class="sort-toggle" type="checkbox">
-            <label class="toolbar-pill" for="video-list-filter-toggle" aria-label="筛选">
+            <label class="toolbar-pill filter-pill" for="video-list-filter-toggle" aria-label="筛选">
               <span>筛选</span>
               <i class='bx bx-chevron-down'></i>
             </label>
@@ -260,7 +260,7 @@ onMounted(async () => {
         <div class="seriesTab-item">
           <div class="sort-menu">
             <input id="video-list-sort-toggle" class="sort-toggle" type="checkbox">
-            <label class="toolbar-pill" for="video-list-sort-toggle" aria-label="排序">
+            <label class="toolbar-pill sort-pill" for="video-list-sort-toggle" aria-label="排序">
               <span>{{ sortModeLabel }}</span>
               <i class='bx bx-chevron-down'></i>
             </label>
@@ -292,7 +292,7 @@ onMounted(async () => {
         <div class="seriesTab-item">
           <div class="sort-menu">
             <input id="video-list-layout-toggle" class="sort-toggle" type="checkbox">
-            <label class="toolbar-pill" for="video-list-layout-toggle" aria-label="布局">
+            <label class="toolbar-pill layout-pill" for="video-list-layout-toggle" aria-label="布局">
               <span>布局</span>
               <i class='bx bx-chevron-down'></i>
             </label>
@@ -345,30 +345,38 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 18px;
+  gap: 16px;
+  min-height: 36px;
   margin-bottom: 24px;
 }
 
 .list-title {
-  margin-bottom: 24px;
+  margin-top: -5px;
+  margin-bottom: 25px;
+  width: fit-content;
+  max-width: 100%;
   color: var(--fn-text);
-  font-size: 18px;
-  font-weight: 650;
-  line-height: 24px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
 }
 
 .list-total {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  min-height: 36px;
   margin-left: auto;
   color: var(--fn-soft);
-  font-size: 13px;
-  line-height: 36px;
+  font-size: 14px;
+  line-height: 20px;
   white-space: nowrap;
 }
 
 .seriesTab-list {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 
 .sort-menu {
@@ -384,24 +392,34 @@ onMounted(async () => {
 }
 
 .toolbar-pill {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   height: 36px;
-  min-width: 84px;
-  padding: 0 18px;
+  padding: 0 14px;
   color: var(--fn-text);
-  background: var(--fn-bg);
+  background: transparent;
   border: 1px solid var(--fn-border);
   border-radius: 999px;
   box-sizing: border-box;
   cursor: pointer;
   font-size: 14px;
-  font-weight: 600;
-  line-height: 1;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  font-weight: 400;
+  line-height: 20px;
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.filter-pill {
+  width: 86px;
+}
+
+.sort-pill {
+  width: 133px;
+}
+
+.layout-pill {
+  width: 77px;
 }
 
 .toolbar-pill i {
@@ -411,7 +429,7 @@ onMounted(async () => {
 
 .toolbar-pill:hover,
 .sort-toggle:checked + .toolbar-pill {
-  background: var(--fn-panel);
+  background: var(--fn-top-control);
   border-color: rgba(10, 132, 255, 0.2);
 }
 
