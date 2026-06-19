@@ -52,20 +52,6 @@ const currentSubtitle = ref(null);
 const use302Play = localStorage.getItem('use_302_play');
 const use_302_play = ref(use302Play === null ? false : use302Play === 'true')
 let vttUrls = ref([])
-const danmuTitleData = ref({
-  name: "danmuTitle",
-  html: "弹幕加载中...",
-  style: {
-    position: 'absolute',
-    top: '10px',
-    right: '10px',
-    color: '#fff',
-    fontSize: '16px',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: '4px 8px',
-    borderRadius: '4px',
-  }
-})
 const danmuConfig = ref({
   loadedUntil: 0,
   segmentDuration: 10
@@ -290,33 +276,6 @@ function getPlayerTitle() {
   const episodeTitle = playInfo.value.title ? ` ${playInfo.value.title}` : ''
   const episodeNumber = playInfo.value.episode_number ? `第${playInfo.value.episode_number}集` : ''
   return `${showTitle} ${episodeNumber}${episodeTitle}`.trim()
-}
-
-function escapeHtml(value) {
-  return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;')
-}
-
-function getPlayerTitleLayer(disable = false) {
-  return {
-    disable,
-    name: "title",
-    html: `<div class="art-title">${escapeHtml(getPlayerTitle())}</div>`,
-    style: {
-      position: 'absolute',
-      top: '10px',
-      left: '10px',
-      color: '#fff',
-      fontSize: '16px',
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      padding: '4px 8px',
-      borderRadius: '4px',
-    }
-  }
 }
 
 function goBack() {
@@ -595,9 +554,6 @@ function resolveDanmuEpisodeKey(data, episodeNumber) {
 }
 
 async function loadDanmuku() {
-  const sourceLabel = getDanmuSourceLabel()
-  danmuTitleData.value.html = `${sourceLabel}加载中...`
-  art.layers.update(danmuTitleData.value)
   let episode_number = playInfo.value.episode_number === undefined ? 1 : playInfo.value.episode_number;
   let danmuku = `/danmu/get?${getDanmuparams()}`;
   fetch(danmuku)
@@ -609,13 +565,8 @@ async function loadDanmuku() {
           ...(json || {}),
           [episode_number]: episodeDanmuku
         };
-        danmuTitleData.value.html = `${sourceLabel}加载完成，${episodeDanmuku.length}条数据`
         // art.plugins.artplayerPluginDanmuku.load(json[episode_number])
-        art.layers.update(danmuTitleData.value)
-      }).catch(err => {
-    danmuTitleData.value.html = `${sourceLabel}加载失败`
-    art.layers.update(danmuTitleData.value)
-  })
+      }).catch(() => {})
 }
 
 // 获取清晰度
@@ -1335,7 +1286,6 @@ async function ready() {
   await preloadOfficialSubtitle()
 
   danmuConfig.value.loadedUntil = playInfo.value.watched_ts;
-  art.layers.update(danmuTitleData.value)
   resetDanmuLoadState(playInfo.value.watched_ts);
   void loadDanmuku()
   await GetSkipList();
@@ -1349,8 +1299,6 @@ async function ready() {
 
   await UpdateControl(art);
   art.plugins.artplayerPluginDanmuku.reset();
-
-  art.layers.update(getPlayerTitleLayer())
 
 }
 
@@ -1510,12 +1458,6 @@ const artF = async (data) => {
       await unlockOrientationForMobile();
     }
     await UpdateControl(art);
-  });
-
-  art.on('control', (state) => {
-    art.layers.update(getPlayerTitleLayer(!state))
-    danmuTitleData.value.disable = !state
-    art.layers.update(danmuTitleData.value)
   });
 
   art.on('artplayerPluginDanmuku:config', (option) => {
@@ -1919,6 +1861,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 8px;
+  box-sizing: border-box;
   width: 100%;
   height: calc(58px + env(safe-area-inset-top, 0px));
   padding: env(safe-area-inset-top, 0px) 18px 0;
@@ -2248,12 +2191,6 @@ img.play-icon {
   img.play-icon {
     width: 48px;
     height: 48px;
-  }
-
-  /* 调整弹幕标题样式 */
-  :deep(.art-title) {
-    font-size: 14px !important;
-    padding: 2px 6px !important;
   }
 
   /* 调整设置弹窗宽度 */
