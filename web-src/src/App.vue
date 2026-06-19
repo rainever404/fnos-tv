@@ -106,60 +106,66 @@ const flattenedMediaItems = computed(() => {
 })
 
 const categoryNavItems = computed(() => {
-  const items = flattenedMediaItems.value
-  const movieCount = items.filter(item => item.type === 'Movie').length
-  const tvCount = items.filter(item => ['TV', 'season', 'Episode'].includes(item.type)).length
-  const otherCount = Math.max(0, mediaTotalCount.value - movieCount - tvCount)
-  const movieLibrary = allLibraryItems.value.find(item => item.category === 'Movie')
-  const tvLibrary = allLibraryItems.value.find(item => item.category === 'TV')
   return [
     {
       label: '全部',
       icon: 'bx bx-grid-alt',
-      count: mediaTotalCount.value,
-      to: '/'
+      count: sumCount('total', mediaTotalCount.value),
+      category: 'all',
+      to: {
+        path: '/list',
+        query: {
+          category: 'all'
+        }
+      }
     },
     {
       label: '电影',
       icon: 'bx bx-film',
-      count: movieCount || 0,
-      to: movieLibrary ? {
+      count: sumCount('movie'),
+      category: 'movie',
+      to: {
         path: '/list',
         query: {
-          gallery_uid: movieLibrary.guid,
-          gallery_type: movieLibrary.category
+          category: 'movie'
         }
-      } : null
+      }
     },
     {
       label: '电视节目',
       icon: 'bx bx-tv',
-      count: tvCount || 0,
-      to: tvLibrary ? {
+      count: sumCount('tv'),
+      category: 'tv',
+      to: {
         path: '/list',
         query: {
-          gallery_uid: tvLibrary.guid,
-          gallery_type: tvLibrary.category
+          category: 'tv'
         }
-      } : null
+      }
     },
     {
       label: '电视直播',
       icon: 'bx bx-desktop',
-      count: 0,
-      to: null
+      count: sumCount('live'),
+      category: 'live',
+      to: {
+        path: '/list',
+        query: {
+          category: 'live'
+        }
+      }
     },
     {
       label: '其他',
       icon: 'bx bx-folder',
-      count: otherCount,
-      to: otherLibrary.value ? {
+      count: sumCount('video'),
+      category: 'other',
+      to: {
         path: '/list',
         query: {
-          gallery_uid: otherLibrary.value.guid,
-          gallery_type: otherLibrary.value.category
+          category: 'other'
         }
-      } : null
+      }
     }
   ]
 })
@@ -336,6 +342,18 @@ function isLibraryActive(item) {
     return normalizeGalleryType(route.query.gallery_type) === item.category
   }
   return false
+}
+
+function isCategoryActive(item) {
+  return route.path === '/list' && route.query.category === item?.category
+}
+
+function sumCount(key, fallback = 0) {
+  const value = Number(MediaDbSum.value?.[key])
+  if (Number.isFinite(value)) {
+    return value
+  }
+  return fallback
 }
 
 function setThemeMode(mode) {
@@ -577,7 +595,7 @@ watch(
                   <div class="navigation more">
                     <ul class="nav-links">
                       <li v-for="item in categoryNavItems" :key="item.label">
-                        <router-link v-if="item.to" :to="item.to">
+                        <router-link v-if="item.to" :to="item.to" :class="{ 'is-active': isCategoryActive(item) }">
                           <span class="icon">
                             <i :class='item.icon'></i>
                           </span>

@@ -23,7 +23,11 @@ const size = ref(240);
 const totalCount = ref(0);
 const MediaDbInfo = ref(null);
 const layoutMode = ref('official');
+const category = ref(null);
 const galleryTitle = computed(() => {
+  if (category.value) {
+    return categoryTitle(category.value)
+  }
   return MediaDbData.list.find(item => item.guid === guid.value)?.title || '媒体库'
 })
 
@@ -46,6 +50,7 @@ const instance = getCurrentInstance();
 const proxy = instance.appContext.config.globalProperties;
 const COMMON = proxy.$COMMON;
 guid.value = proxy.$route.query.gallery_uid
+category.value = proxy.$route.query.category || null
 
 
 const modes = [
@@ -93,6 +98,38 @@ const layoutOptions = [
   }
 ]
 
+const categoryTitleMap = {
+  all: '全部',
+  movie: '电影',
+  tv: '电视节目',
+  live: '电视直播',
+  other: '其他'
+}
+
+function categoryTitle(value) {
+  return categoryTitleMap[value] || '分类'
+}
+
+function categoryTypes(value) {
+  if (value === 'movie') {
+    return ['Movie']
+  }
+  if (value === 'tv') {
+    return ['TV']
+  }
+  if (value === 'live') {
+    return ['LiveChannel']
+  }
+  if (value === 'other') {
+    return ['Directory', 'Video']
+  }
+  return ['Movie', 'TV', 'Directory', 'Video', 'LiveChannel']
+}
+
+function shouldExcludeGroupedVideo(value) {
+  return ['all', 'other'].includes(value)
+}
+
 function formatRating(item) {
   const rating = Number(item?.vote_average)
   if (!Number.isFinite(rating) || rating <= 0) {
@@ -114,30 +151,53 @@ function displayTitle(item) {
 async function GetMediaDbInfos() {
   let api = '/api/v1/item/list'
 
-  let _data = {
-    "ancestor_guid": guid.value,
-    "tags": {
-      "type": [
-        "Movie",
-        "TV",
-        "Directory",
-        "Video"
-      ]
-    },
-    "exclude_grouped_video": 1,
-    "sort_type": MediaDbData.sort_type,
-    "sort_column": MediaDbData.sort_column,
-    "page_size": size.value
+  let _data
+  if (category.value) {
+    _data = {
+      "tags": {
+        "type": categoryTypes(category.value)
+      },
+      "sort_type": MediaDbData.sort_type,
+      "sort_column": MediaDbData.sort_column,
+      "page": 1,
+      "page_size": size.value
+    }
+    if (shouldExcludeGroupedVideo(category.value)) {
+      _data.exclude_grouped_video = 1
+    }
+  } else {
+    _data = {
+      "ancestor_guid": guid.value,
+      "tags": {
+        "type": [
+          "Movie",
+          "TV",
+          "Directory",
+          "Video"
+        ]
+      },
+      "exclude_grouped_video": 1,
+      "sort_type": MediaDbData.sort_type,
+      "sort_column": MediaDbData.sort_column,
+      "page_size": size.value
+    }
   }
   let res = await COMMON.requests("POST", api, true, _data);
   MediaDbInfo.value = res.list || []
+  totalCount.value = Number(res.total || totalCount.value || MediaDbInfo.value.length || 0)
 
 }
 
 async function GetMediaDbCount() {
   let api = '/api/v1/mediadb/sum'
   const res = await COMMON.requests("GET", api, true);
-  const count = Number(res?.[guid.value] || 0)
+  const countKey = category.value === 'all' ? 'total'
+      : category.value === 'movie' ? 'movie'
+          : category.value === 'tv' ? 'tv'
+              : category.value === 'live' ? 'live'
+                  : category.value === 'other' ? 'video'
+                      : guid.value
+  const count = Number(res?.[countKey] || 0)
   totalCount.value = Number.isFinite(count) ? count : 0
   if (totalCount.value > 0) {
     size.value = totalCount.value
@@ -164,6 +224,7 @@ function setLayoutMode(value) {
 
 onBeforeRouteUpdate(async (to, from) => {
   guid.value = to.query.gallery_uid;
+  category.value = to.query.category || null;
   // gallery_type.value = to.query.gallery_type;
   await GetMediaDbCount();
   await GetMediaDbInfos();

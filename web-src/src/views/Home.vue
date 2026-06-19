@@ -159,6 +159,36 @@ onUnmounted(() => {
   <div class="content">
     <div class="home-page-title">首页</div>
     <div class="card-list">
+      <div class="card-shows media-libraries" v-if="visibleLibraries.length > 0">
+        <div class="card-show-title">媒体库</div>
+        <div class="library-grid">
+          <router-link
+              class="library-card"
+              v-for="item in visibleLibraries"
+              :key="item.guid"
+              :to="{
+                path: '/list', query: {
+                  gallery_uid: item.guid,
+                  gallery_type: item.category
+                }
+              }"
+          >
+            <div class="library-posters">
+              <img
+                  v-for="poster in getLibraryPreview(item.guid)"
+                  :key="poster.guid"
+                  loading="lazy"
+                  v-lazy='COMMON.imgUrl +  "/92/17/" + poster.poster + "?w=200"'
+                  alt=""
+              >
+              <div v-if="getLibraryPreview(item.guid).length === 0" class="library-empty">
+                <i class='bx bx-film'></i>
+              </div>
+            </div>
+            <div class="library-label">{{ item.title }}</div>
+          </router-link>
+        </div>
+      </div>
       <div class="card-shows" v-if="playList && playList.length > 0">
         <div class="card-show-title">
           继续观看
@@ -207,36 +237,6 @@ onUnmounted(() => {
 
           <!-- 右箭头 -->
           <button class="carousel-arrow right" @click="goNext">›</button>
-        </div>
-      </div>
-      <div class="card-shows media-libraries" v-if="visibleLibraries.length > 0">
-        <div class="card-show-title">媒体库</div>
-        <div class="library-grid">
-          <router-link
-              class="library-card"
-              v-for="item in visibleLibraries"
-              :key="item.guid"
-              :to="{
-                path: '/list', query: {
-                  gallery_uid: item.guid,
-                  gallery_type: item.category
-                }
-              }"
-          >
-            <div class="library-posters">
-              <img
-                  v-for="poster in getLibraryPreview(item.guid)"
-                  :key="poster.guid"
-                  loading="lazy"
-                  v-lazy='COMMON.imgUrl +  "/92/17/" + poster.poster + "?w=200"'
-                  alt=""
-              >
-              <div v-if="getLibraryPreview(item.guid).length === 0" class="library-empty">
-                <i class='bx bx-film'></i>
-              </div>
-            </div>
-            <div class="library-label">{{ item.title }}</div>
-          </router-link>
         </div>
       </div>
       <div class="card-shows" v-for="(key, index) in Object.keys(MediaDbData.info)" :key="index">
@@ -655,8 +655,9 @@ img.carousel-img {
 .home-page-title {
   margin-bottom: 20px;
   color: var(--fn-text);
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
 }
 
 .card-list {
@@ -678,8 +679,9 @@ img.carousel-img {
   padding: 0;
   margin-bottom: 14px;
   color: var(--fn-text);
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
 }
 
 .card-show-title i {
@@ -697,7 +699,7 @@ img.carousel-img {
   position: relative;
   overflow: hidden;
   width: 280px;
-  height: 200px;
+  height: 204px;
   color: var(--fn-text);
   background: #fff;
   border: 1px solid var(--fn-border);
@@ -725,7 +727,7 @@ img.carousel-img {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  height: 158px;
+  height: 168px;
   overflow: hidden;
   background: var(--fn-panel);
 }
@@ -764,7 +766,7 @@ img.carousel-img {
   right: 0;
   bottom: 0;
   left: 0;
-  height: 46px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
