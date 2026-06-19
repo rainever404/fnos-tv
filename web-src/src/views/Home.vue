@@ -185,6 +185,15 @@ onUnmounted(() => {
                 <i class='bx bx-film'></i>
               </div>
             </div>
+            <div class="library-reflection" v-if="getLibraryPreview(item.guid).length > 0" aria-hidden="true">
+              <img
+                  v-for="poster in getLibraryPreview(item.guid)"
+                  :key="`${poster.guid}-reflection`"
+                  loading="lazy"
+                  v-lazy='COMMON.imgUrl +  "/92/17/" + poster.poster + "?w=200"'
+                  alt=""
+              >
+            </div>
             <div class="library-label">{{ item.title }}</div>
           </router-link>
         </div>
@@ -735,36 +744,53 @@ img.carousel-img {
 
 .library-posters {
   position: relative;
-  display: grid;
+  z-index: 1;
+  display: flex;
+  gap: 1px;
   grid-template-columns: repeat(3, 1fr);
-  height: 168px;
+  width: calc(100% - 9px);
+  aspect-ratio: 16 / 9;
+  margin: 4px 4px 0;
   overflow: hidden;
-  background: var(--fn-panel);
+  background: rgba(198, 202, 207, 0.15);
+  border-radius: 6px 6px 0 0;
 }
 
 .library-posters::after {
   content: "";
   position: absolute;
-  inset: 45% 0 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #fff 96%);
+  inset: 0;
+  background: rgba(41, 45, 53, 0);
   pointer-events: none;
+  transition: background 0.18s ease;
+}
+
+.library-card:hover .library-posters::after {
+  background: rgba(41, 45, 53, 0.34);
 }
 
 .dark .library-posters::after {
-  background: linear-gradient(180deg, rgba(29, 29, 31, 0), var(--fn-panel) 96%);
+  background: rgba(0, 0, 0, 0);
+}
+
+.dark .library-card:hover .library-posters::after {
+  background: rgba(0, 0, 0, 0.28);
 }
 
 .library-posters img {
-  width: 100%;
+  flex: 1 1 0;
+  min-width: 0;
   height: 100%;
   object-fit: cover;
 }
 
 .library-empty {
+  flex: 1 1 100%;
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   height: 100%;
   color: var(--fn-soft);
   font-size: 34px;
@@ -773,23 +799,48 @@ img.carousel-img {
 
 .library-label {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 36px;
+  right: 1px;
+  bottom: 1px;
+  left: 1px;
+  z-index: 3;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 12px;
   color: var(--fn-text);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), #fff 60%);
+  background: linear-gradient(0deg, #fff 0%, rgba(255, 255, 255, 0.96) 58%, rgba(255, 255, 255, 0.64) 100%);
+  border-radius: 0 0 6px 6px;
   font-size: 15px;
   font-weight: 600;
   line-height: 23px;
 }
 
+.library-reflection {
+  position: absolute;
+  right: 5px;
+  bottom: 4px;
+  left: 4px;
+  z-index: 2;
+  display: flex;
+  gap: 1px;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 0 0 12px 12px;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.library-reflection img {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleY(-1);
+}
+
 .dark .library-label {
-  background: linear-gradient(180deg, rgba(29, 29, 31, 0.72), var(--fn-panel) 60%);
+  background: linear-gradient(0deg, var(--fn-panel) 0%, rgba(29, 29, 31, 0.96) 58%, rgba(29, 29, 31, 0.62) 100%);
 }
 
 .carousel-container {
