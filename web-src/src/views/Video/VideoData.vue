@@ -540,10 +540,12 @@ onMounted(async () => {
             <div class="lex-direction-column">
               <div class="itemPrimaryNameContainer">
                 <h1 class="itemName-primary">{{ displayTitle }}</h1>
-                <div v-if="remainingTimeText" class="remaining-time">{{ remainingTimeText }}</div>
               </div>
             </div>
           </div>
+        </div>
+        <div v-if="remainingTimeText" class="detail-remaining-row">
+          {{ remainingTimeText }}
         </div>
         <div class="detail-action-row">
           <button @click="Play()" class="detailButton outlineButton">
@@ -554,9 +556,6 @@ onMounted(async () => {
           </button>
           <div class="detail-meta-list">
             <div class="mediaInfoItem" v-for="item in detailMetaItems" :key="item">
-              <span v-if="item.includes('分')" class="icon-star">
-                <i class='bx bxs-star'></i>
-              </span>
               {{ item }}
             </div>
           </div>
@@ -1149,7 +1148,8 @@ span.button-text {
   }
 
   .detail-overview {
-    padding: 0 16px 24px;
+    margin: 0 16px 24px;
+    padding: 0;
   }
 
   .detailButton {
@@ -1318,33 +1318,48 @@ span.button-text {
 }
 
 .view-card-detail {
-  max-width: min(760px, 74vw);
+  width: 100%;
+  max-width: none;
   margin-bottom: 0;
 }
 
 .itemName-primary {
-  max-width: 860px;
+  width: 100%;
+  max-width: 100%;
   font-size: clamp(36px, 3.4vw, 60px);
   line-height: 1.4;
 }
 
+.detail-remaining-row {
+  box-sizing: border-box;
+  height: 16px;
+  margin-top: 18px;
+  padding: 0 46px;
+  color: var(--fn-muted);
+  background: var(--fn-bg);
+  font-size: 12px;
+  line-height: 16px;
+}
+
 .detail-action-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 28px;
-  min-height: 86px;
-  margin-top: 16px;
-  padding: 16px 46px 12px;
+  min-height: 54px;
+  margin-top: 8px;
+  padding: 0 46px;
   color: var(--fn-text);
   background: var(--fn-bg);
 }
 
 .detail-meta-list {
   display: flex;
+  flex: 1;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px 18px;
+  justify-content: flex-start;
+  gap: 6px 0;
+  margin-left: clamp(36px, 7.75vw, 198px);
   min-width: 0;
   color: var(--fn-muted);
   font-size: 14px;
@@ -1354,19 +1369,20 @@ span.button-text {
 .detail-meta-list .mediaInfoItem {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
   white-space: nowrap;
 }
 
-.detail-meta-list .icon-star {
-  color: #f5b500;
+.detail-meta-list .mediaInfoItem + .mediaInfoItem::before {
+  content: "/";
+  margin: 0 8px;
+  color: color-mix(in srgb, var(--fn-muted) 64%, transparent);
 }
 
 .stream-feature-row {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  padding: 4px 46px 20px;
+  padding: 42px 46px 40px;
   background: var(--fn-bg);
 }
 
@@ -1438,20 +1454,22 @@ span.button-text {
 
 .detail-overview {
   box-sizing: border-box;
-  max-width: 1120px;
-  padding: 0 46px 34px;
+  width: auto;
+  max-width: none;
+  margin: 0 46px 34px;
+  padding: 0;
   color: var(--fn-muted);
   font-size: 15px;
-  line-height: 1.65;
-  text-align: justify;
+  line-height: 23px;
+  text-align: left;
 }
 
 .showContainer {
-  padding-top: 20px;
+  padding-top: 8px;
 }
 
 .people-section {
-  padding-top: 18px;
+  padding-top: 20px;
 }
 
 .people-section .show-header {
@@ -1639,13 +1657,21 @@ span.button-text {
     line-height: 1.3;
   }
 
+  .detail-remaining-row {
+    height: auto;
+    margin-top: 10px;
+    padding: 0 16px;
+    font-size: 12px;
+    line-height: 18px;
+  }
+
   .detail-action-row {
     align-items: stretch;
     flex-direction: column;
     gap: 14px;
     min-height: 0;
-    margin-top: 0;
-    padding: 14px 16px 10px;
+    margin-top: 8px;
+    padding: 0 16px 10px;
   }
 
   .detailButton {
@@ -1655,11 +1681,14 @@ span.button-text {
 
   .detail-meta-list {
     justify-content: flex-start;
-    gap: 8px 14px;
+    gap: 6px 0;
+    margin-left: 0;
+    font-size: 13px;
+    line-height: 20px;
   }
 
   .stream-feature-row {
-    padding: 4px 16px 18px;
+    padding: 20px 16px 22px;
   }
 
   .stream-feature-chip {
@@ -1669,7 +1698,10 @@ span.button-text {
   }
 
   .detail-overview {
-    padding: 0 16px 24px;
+    width: auto;
+    min-width: 0;
+    margin: 0 16px 24px;
+    padding: 0;
   }
 
   .people-section .show-card-list {
