@@ -20,6 +20,9 @@ const siderRef = ref(null);
 const PersonList = ref(null);
 const EpisodeList = ref(null);
 const StreamList = ref(null);
+const GenreMap = ref({})
+const CountryMap = ref({})
+const LanguageMap = ref({})
 const EpisodeCarouselRef = ref(null);
 const play_item_guid = ref(null);
 const play_guid = ref(null)
@@ -56,7 +59,7 @@ const scoreText = computed(() => {
   if (!Number.isFinite(score) || score <= 0) {
     return ''
   }
-  return String(Math.floor(score * 10) / 10)
+  return score.toFixed(1)
 })
 
 const primaryPlayLabel = computed(() => {
@@ -68,12 +71,334 @@ const detailMetaItems = computed(() => {
   if (scoreText.value) {
     items.push(`${scoreText.value} 分`)
   }
-  if (VideoDataInfo.value?.release_date) {
-    items.push(String(VideoDataInfo.value.release_date).slice(0, 4))
+  const year = formatYear(VideoDataInfo.value?.release_date || VideoDataInfo.value?.air_date)
+  if (year) {
+    items.push(year)
+  }
+  const duration = selectedDuration.value || VideoDataInfo.value?.runtime * 60
+  if (duration) {
+    items.push(formatDuration(duration))
+  }
+  const genres = formatGenres(VideoDataInfo.value?.genres)
+  if (genres) {
+    items.push(genres)
+  }
+  const countries = formatCountries(VideoDataInfo.value?.production_countries)
+  if (countries) {
+    items.push(countries)
   }
   items.push(galleryTypeLabel.value)
   return items
 })
+
+const selectedMediaFile = computed(() => {
+  const files = StreamList.value?.files || []
+  const mediaGuid = playInfo.value?.media_guid
+  return files.find(item => item.guid === mediaGuid || item.media_guid === mediaGuid) || files[0] || null
+})
+
+const selectedVideoStream = computed(() => {
+  const streams = StreamList.value?.video_streams || []
+  const mediaGuid = selectedMediaFile.value?.guid || playInfo.value?.media_guid
+  return streams.find(item => item.guid === playInfo.value?.video_guid)
+      || streams.find(item => item.media_guid === mediaGuid)
+      || streams[0]
+      || null
+})
+
+const selectedAudioStream = computed(() => {
+  const streams = StreamList.value?.audio_streams || []
+  const mediaGuid = selectedMediaFile.value?.guid || playInfo.value?.media_guid
+  return streams.find(item => item.guid === playInfo.value?.audio_guid)
+      || streams.find(item => item.media_guid === mediaGuid)
+      || streams[0]
+      || null
+})
+
+const selectedSubtitleStream = computed(() => {
+  const streams = StreamList.value?.subtitle_streams || []
+  const mediaGuid = selectedMediaFile.value?.guid || playInfo.value?.media_guid
+  return streams.find(item => item.guid === playInfo.value?.subtitle_guid)
+      || streams.find(item => item.media_guid === mediaGuid)
+      || streams[0]
+      || null
+})
+
+const selectedDuration = computed(() => {
+  return Number(selectedVideoStream.value?.duration || playInfo.value?.item?.duration || VideoDataInfo.value?.duration || 0)
+})
+
+const remainingTimeText = computed(() => {
+  const duration = selectedDuration.value
+  const watched = Number(playInfo.value?.ts ?? playInfo.value?.item?.watched_ts ?? VideoDataInfo.value?.watched_ts ?? 0)
+  if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(watched) || watched <= 0 || watched >= duration) {
+    return ''
+  }
+  return `剩余 ${formatDuration(duration - watched, true)}`
+})
+
+const streamFeatureTags = computed(() => {
+  const tags = []
+  const video = selectedVideoStream.value
+  const subtitle = selectedSubtitleStream.value
+  const audio = selectedAudioStream.value
+  if (subtitle) {
+    tags.push(languageLabel(subtitle.language, '字幕'))
+  }
+  if (audio) {
+    tags.push(`${languageLabel(audio.language, '音频')}音频`)
+  }
+  if (video) {
+    const resolution = translateStreamLabel(video.resolution_type)
+    const color = translateStreamLabel(video.color_range_type)
+    tags.push([resolution, color].filter(Boolean).join(' '))
+  }
+  return tags.filter(Boolean)
+})
+
+const fileInfoItems = computed(() => {
+  const file = selectedMediaFile.value
+  if (!file) {
+    return []
+  }
+  return [
+    {label: '文件位置', value: maskFilePath(file.path || file.file_name || '')},
+    {label: '文件大小', value: formatBytes(file.size)},
+    {label: '文件创建日期', value: formatDate(file.file_birth_time || file.timestamp)},
+    {label: '添加日期', value: formatDate(file.create_time)}
+  ].filter(item => item.value)
+})
+
+const videoInfoCards = computed(() => {
+  const cards = []
+  const video = selectedVideoStream.value
+  const audio = selectedAudioStream.value
+  const subtitle = selectedSubtitleStream.value
+  if (video) {
+    cards.push({
+      label: '视频',
+      title: [upperLabel(video.resolution_type), upperLabel(video.codec_name)].filter(Boolean).join(' '),
+      desc: [formatBitrate(video.bps), video.bit_depth ? `${video.bit_depth} bit` : ''].filter(Boolean).join(' · ')
+    })
+  }
+  if (audio) {
+    cards.push({
+      label: '音频',
+      title: [languageLabel(audio.language, '音频'), upperLabel(audio.codec_name)].filter(Boolean).join(' '),
+      desc: [audio.channel_layout, audio.sample_rate ? `${audio.sample_rate} Hz` : ''].filter(Boolean).join(' · ')
+    })
+  }
+  if (subtitle) {
+    cards.push({
+      label: '字幕',
+      title: [languageLabel(subtitle.language, '字幕'), upperLabel(subtitle.codec_name)].filter(Boolean).join(' '),
+      desc: subtitle.is_external ? '外部字幕' : '内嵌字幕'
+    })
+  }
+  return cards
+})
+
+const externalLinks = computed(() => {
+  const links = []
+  if (VideoDataInfo.value?.imdb_id) {
+    links.push({
+      label: 'IMDB链接',
+      href: `https://www.imdb.com/title/${VideoDataInfo.value.imdb_id}/`
+    })
+  }
+  return links
+})
+
+function formatYear(value) {
+  const match = String(value || '').match(/\d{4}/)
+  return match ? match[0] : ''
+}
+
+function normalizeDict(list, keyName = 'id') {
+  const dict = {}
+  if (!Array.isArray(list)) {
+    return dict
+  }
+  for (const item of list) {
+    const key = item?.[keyName] ?? item?.id ?? item?.code
+    const value = item?.value || item?.name || item?.title || item?.cn || item?.zh
+    if (key !== undefined && value) {
+      dict[String(key)] = value
+    }
+  }
+  return dict
+}
+
+function dictValue(dict, key) {
+  if (key === undefined || key === null || key === '') {
+    return ''
+  }
+  return dict?.[String(key)] || ''
+}
+
+function formatGenres(values) {
+  if (!Array.isArray(values)) {
+    return ''
+  }
+  return values.map(item => dictValue(GenreMap.value, item) || item).filter(Boolean).join(' · ')
+}
+
+function formatCountries(values) {
+  if (!Array.isArray(values)) {
+    return ''
+  }
+  const fallback = {
+    CN: '中国大陆',
+    HK: '中国香港',
+    TW: '中国台湾',
+    US: '美国',
+    JP: '日本',
+    KR: '韩国',
+    GB: '英国',
+    FR: '法国',
+    DE: '德国',
+    RU: '俄罗斯'
+  }
+  return values.map(item => dictValue(CountryMap.value, item) || fallback[item] || item).filter(Boolean).join(' · ')
+}
+
+function languageLabel(value, fallbackType = '') {
+  const fallback = {
+    chi: '中文',
+    zho: '中文',
+    'zh-CN': '中文',
+    cmn: '中文',
+    eng: '英语',
+    jpn: '日语',
+    kor: '韩语',
+    fre: '法语',
+    fra: '法语',
+    ger: '德语',
+    deu: '德语',
+    rus: '俄语',
+    'zz-unknow': '未知',
+    und: '未知',
+    unknown: '未知'
+  }
+  return dictValue(LanguageMap.value, value) || fallback[value] || (value ? String(value).toUpperCase() : (fallbackType === '字幕' ? '未知' : '未知'))
+}
+
+function translateStreamLabel(value) {
+  if (!value) {
+    return ''
+  }
+  const map = {
+    Others: '其他',
+    others: '其他',
+    SDR: 'SDR',
+    HDR: 'HDR'
+  }
+  return map[value] || value
+}
+
+function upperLabel(value) {
+  return value ? String(value).toUpperCase() : ''
+}
+
+function formatDuration(seconds, withSeconds = false) {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const secs = total % 60
+  const parts = []
+  if (hours) {
+    parts.push(`${hours} 小时`)
+  }
+  if (minutes || hours) {
+    parts.push(`${minutes} 分钟`)
+  }
+  if (withSeconds || parts.length === 0) {
+    parts.push(`${secs} 秒`)
+  }
+  return parts.join(' ')
+}
+
+function formatBytes(value) {
+  const bytes = Number(value)
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return ''
+  }
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let size = bytes
+  let index = 0
+  while (size >= 1024 && index < units.length - 1) {
+    size = size / 1024
+    index += 1
+  }
+  return `${size.toFixed(index === 0 ? 0 : 2)} ${units[index]}`
+}
+
+function formatBitrate(value) {
+  const bps = Number(value)
+  if (!Number.isFinite(bps) || bps <= 0) {
+    return ''
+  }
+  if (bps >= 1000000) {
+    return `${(bps / 1000000).toFixed(2)} Mbps`
+  }
+  return `${(bps / 1000).toFixed(2)} Kbps`
+}
+
+function formatDate(value) {
+  const timestamp = Number(value)
+  if (!Number.isFinite(timestamp) || timestamp <= 0) {
+    return ''
+  }
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function maskFilePath(value) {
+  return String(value || '')
+      .replace(/\b(\d{3})\d{4}(\d{4})\b/g, '$1XXXX$2')
+      .replace(/\/vol\d+\/[^/]+/g, '远程挂载')
+}
+
+function formatPersonRole(item) {
+  if (item?.role) {
+    return item.job === 'Actor' ? `饰 ${item.role}` : item.role
+  }
+  const map = {
+    Director: '导演',
+    Writer: '编剧',
+    Actor: '演员',
+    Screenplay: '编剧',
+    Producer: '制片',
+    Editing: '剪辑',
+    Camera: '摄影',
+    Sound: '声音',
+    Art: '美术'
+  }
+  return map[item?.job] || map[item?.known_for_department] || item?.job || ''
+}
+
+async function GetTagDictionaries() {
+  const [genres, countries, languages] = await Promise.allSettled([
+    COMMON.requests("GET", "/api/v1/tag/genres?lan=zh-CN", true),
+    COMMON.requests("GET", "/api/v1/tag/iso3166?lan=zh-CN", true),
+    COMMON.requests("GET", "/api/v1/tag/iso6392?lan=zh-CN", true)
+  ])
+  if (genres.status === 'fulfilled') {
+    GenreMap.value = normalizeDict(genres.value)
+  }
+  if (countries.status === 'fulfilled') {
+    CountryMap.value = normalizeDict(countries.value)
+  }
+  if (languages.status === 'fulfilled') {
+    LanguageMap.value = normalizeDict(languages.value)
+  }
+}
 
 // 获取剧集信息
 async function GetVideoData() {
@@ -110,7 +435,7 @@ async function GetPersonList() {
     page: 1,
     page_size: 200
   })
-  PersonList.value = (res?.list || []).filter(o => o.role !== "");
+  PersonList.value = (res?.list || []).filter(o => o?.name);
 }
 
 async function GetStreamList() {
@@ -158,6 +483,7 @@ async function Play(_guid = playInfo.value?.item?.guid || play_guid.value) {
 const onMountedFun = async () => {
   // 获取剧集详情
   await GetVideoData();
+  await GetTagDictionaries();
   // 获取剧集
   if (gallery_type.value === "TV") {
     await GetSeasonData();
@@ -214,6 +540,7 @@ onMounted(async () => {
             <div class="lex-direction-column">
               <div class="itemPrimaryNameContainer">
                 <h1 class="itemName-primary">{{ displayTitle }}</h1>
+                <div v-if="remainingTimeText" class="remaining-time">{{ remainingTimeText }}</div>
               </div>
             </div>
           </div>
@@ -233,6 +560,17 @@ onMounted(async () => {
               {{ item }}
             </div>
           </div>
+        </div>
+        <div v-if="streamFeatureTags.length" class="stream-feature-row">
+          <button
+              v-for="(tag, index) in streamFeatureTags"
+              :key="tag + index"
+              class="stream-feature-chip"
+              :class="{ active: index === 0 }"
+              type="button"
+          >
+            {{ tag }}
+          </button>
         </div>
         <div v-if="VideoDataInfo.overview" class="overview-text detail-overview">
           {{ VideoDataInfo.overview }}
@@ -327,12 +665,45 @@ onMounted(async () => {
                     {{ item.name }}
                   </div>
                   <div v-if="item.role" class="person-role">
-                    {{ item.role }}
+                    {{ formatPersonRole(item) }}
+                  </div>
+                  <div v-else-if="formatPersonRole(item)" class="person-role">
+                    {{ formatPersonRole(item) }}
                   </div>
                 </div>
               </div>
             </div>
           </n-scrollbar>
+        </div>
+
+        <div class="detail-info-section" v-if="fileInfoItems.length">
+          <h3>文件信息</h3>
+          <div class="file-info-grid">
+            <div class="file-info-row" v-for="item in fileInfoItems" :key="item.label">
+              <span class="file-info-label">{{ item.label }}：</span>
+              <span class="file-info-value">{{ item.value }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-info-section" v-if="videoInfoCards.length">
+          <div class="detail-info-heading">
+            <h3>视频信息</h3>
+          </div>
+          <div class="tech-info-grid">
+            <div class="tech-info-card" v-for="item in videoInfoCards" :key="item.label">
+              <h4>{{ item.label }}</h4>
+              <div class="tech-info-title">{{ item.title }}</div>
+              <div v-if="item.desc" class="tech-info-desc">{{ item.desc }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="external-link-row" v-if="externalLinks.length">
+          <span>链接：</span>
+          <a v-for="item in externalLinks" :key="item.label" :href="item.href" target="_blank" rel="noopener">
+            {{ item.label }}
+          </a>
         </div>
       </div>
     </div>
@@ -440,6 +811,14 @@ onMounted(async () => {
   line-height: 1.12;
   letter-spacing: 0;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+
+.remaining-time {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  line-height: 22px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.36);
 }
 
 .mediaInfo .icon-star {
@@ -983,6 +1362,35 @@ span.button-text {
   color: #f5b500;
 }
 
+.stream-feature-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 46px 20px;
+  background: var(--fn-bg);
+}
+
+.stream-feature-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  min-width: 88px;
+  padding: 0 24px;
+  color: var(--fn-text);
+  background: transparent;
+  border: 1px solid var(--fn-border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: default;
+}
+
+.stream-feature-chip.active {
+  color: var(--fn-blue);
+  border: 2px solid var(--fn-blue);
+}
+
 .detailButton {
   display: inline-flex;
   align-items: center;
@@ -1029,6 +1437,7 @@ span.button-text {
 }
 
 .detail-overview {
+  box-sizing: border-box;
   max-width: 1120px;
   padding: 0 46px 34px;
   color: var(--fn-muted);
@@ -1103,6 +1512,109 @@ span.button-text {
   font-size: 13px;
 }
 
+.detail-info-section {
+  padding: 18px 46px 0;
+  color: var(--fn-text);
+}
+
+.detail-info-section h3,
+.detail-info-heading h3 {
+  margin: 0 0 10px;
+  color: var(--fn-text);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.file-info-grid {
+  display: grid;
+  gap: 7px;
+  max-width: 1120px;
+  color: var(--fn-muted);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.file-info-row {
+  display: flex;
+  min-width: 0;
+}
+
+.file-info-label {
+  flex: 0 0 auto;
+  color: var(--fn-soft);
+}
+
+.file-info-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-info-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tech-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 1120px;
+}
+
+.tech-info-card {
+  min-height: 86px;
+  padding: 14px 18px;
+  background: var(--fn-panel);
+  border: 1px solid var(--fn-border);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.tech-info-card h4 {
+  margin: 0 0 8px;
+  color: var(--fn-soft);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.tech-info-title {
+  color: var(--fn-text);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 20px;
+}
+
+.tech-info-desc {
+  margin-top: 4px;
+  color: var(--fn-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.external-link-row {
+  display: flex;
+  gap: 8px;
+  padding: 20px 46px 42px;
+  color: var(--fn-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.external-link-row a {
+  color: var(--fn-muted);
+  text-decoration: none;
+}
+
+.external-link-row a:hover {
+  color: var(--fn-blue);
+  text-decoration: underline;
+}
+
 @media (max-width: 768px) {
   .backdropContainer {
     height: 430px;
@@ -1146,6 +1658,16 @@ span.button-text {
     gap: 8px 14px;
   }
 
+  .stream-feature-row {
+    padding: 4px 16px 18px;
+  }
+
+  .stream-feature-chip {
+    min-width: 0;
+    height: 34px;
+    padding: 0 16px;
+  }
+
   .detail-overview {
     padding: 0 16px 24px;
   }
@@ -1164,6 +1686,29 @@ span.button-text {
   .person-avatar img {
     width: 76px;
     height: 76px;
+  }
+
+  .detail-info-section {
+    padding: 16px 16px 0;
+  }
+
+  .file-info-row {
+    display: block;
+  }
+
+  .file-info-value {
+    display: block;
+    white-space: normal;
+    word-break: break-all;
+  }
+
+  .tech-info-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .external-link-row {
+    padding: 18px 16px 34px;
   }
 }
 </style>
