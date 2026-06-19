@@ -750,7 +750,7 @@ onMounted(async () => {
 
 .main-content {
   position: relative;
-  --detail-hero-height: clamp(430px, 55vh, 700px);
+  --detail-hero-height: 700px;
   min-height: 100vh;
   overflow: hidden;
   background: var(--fn-bg);
@@ -1323,7 +1323,7 @@ span.button-text {
 
 .view-scroller {
   align-items: flex-end;
-  min-height: var(--detail-hero-height);
+  min-height: calc(var(--detail-hero-height) - 30px);
   padding: 0 46px 30px;
 }
 
@@ -1337,13 +1337,14 @@ span.button-text {
   width: 100%;
   max-width: 100%;
   font-size: clamp(36px, 3.4vw, 60px);
+  font-weight: 400;
   line-height: 1.4;
 }
 
 .detail-remaining-row {
   box-sizing: border-box;
   height: 16px;
-  margin-top: 18px;
+  margin-top: 16px;
   padding: 0 46px;
   color: var(--fn-muted);
   background: var(--fn-bg);
@@ -1443,9 +1444,10 @@ span.button-text {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-width: 150px;
   height: 54px;
-  padding: 0 28px;
+  padding: 0 16px;
   color: #fff;
   background: var(--fn-blue);
   border: 0;
@@ -1453,6 +1455,9 @@ span.button-text {
   box-shadow: 0 8px 22px rgba(10, 132, 255, 0.25);
   cursor: pointer;
   margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
   transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
@@ -1475,13 +1480,14 @@ span.button-text {
 .detailButton .button-icon {
   display: inline-flex;
   align-items: center;
-  font-size: 22px;
+  font-size: 18px;
 }
 
 span.button-text {
-  margin-left: 7px;
-  font-size: 15px;
-  font-weight: 700;
+  margin-left: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
 }
 
 .detail-overview {
@@ -1501,7 +1507,7 @@ span.button-text {
 }
 
 .people-section {
-  padding-top: 20px;
+  padding: 20px 44px 39px;
 }
 
 .people-section .show-header {
@@ -1515,17 +1521,17 @@ span.button-text {
 .people-section .show-title h3 {
   margin: 0;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 22px;
 }
 
 .people-section .show-card-list {
-  gap: 34px;
+  gap: 20px;
 }
 
 .person-card {
-  width: 106px;
-  white-space: normal;
+  width: 120px;
+  white-space: nowrap;
 }
 
 .person-avatar {
@@ -1545,21 +1551,24 @@ span.button-text {
 
 .people-section .show-name,
 .person-role {
-  width: 106px;
+  width: 120px;
   text-align: center;
-  line-height: 20px;
-  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .people-section .show-name {
   color: var(--fn-text);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 20px;
 }
 
 .person-role {
-  color: var(--fn-muted);
-  font-size: 13px;
+  color: var(--fn-soft);
+  font-size: 12px;
+  line-height: 16px;
 }
 
 .detail-info-section {
@@ -1571,9 +1580,9 @@ span.button-text {
 .detail-info-heading h3 {
   margin: 0 0 10px;
   color: var(--fn-text);
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 22px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
 }
 
 .file-info-grid {
