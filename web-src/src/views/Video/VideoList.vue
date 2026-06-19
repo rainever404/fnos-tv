@@ -319,17 +319,21 @@ onMounted(async () => {
                         gallery_type: item.type
                     }
                 }">
-          <div class="view-item-header">
-            <div class="view-item-tag-list">
-              <div v-if="formatRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
-              <div v-if="item.played" class="view-item-tag count">
-                <i class='bx bx-check'></i>
+          <div class="poster-frame">
+            <div class="poster-inner">
+              <img v-if="item.poster !== undefined" loading="lazy" class="carousel-img"
+                   v-lazy=' COMMON.imgUrl + "/92/17/" + item.poster + "?w=200"'>
+              <img v-else loading="lazy" class='carousel-img' v-lazy="'/images/not_video.jpg'">
+            </div>
+            <div class="view-item-header">
+              <div class="view-item-tag-list">
+                <div v-if="formatRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
+                <div v-if="item.played" class="view-item-tag count">
+                  <i class='bx bx-check'></i>
+                </div>
               </div>
             </div>
           </div>
-          <img v-if="item.poster !== undefined" loading="lazy" class="carousel-img"
-               v-lazy=' COMMON.imgUrl + "/92/17/" + item.poster + "?w=200"'>
-          <img v-else loading="lazy" class='carousel-img' v-lazy="'/images/not_video.jpg'">
           <div class="view-item-title">
             {{ displayTitle(item) }}
           </div>
@@ -547,27 +551,47 @@ onMounted(async () => {
   text-decoration: none;
 }
 
-.view-card-list img.carousel-img {
+.poster-frame {
+  position: relative;
   width: 100%;
   aspect-ratio: 2/3;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--fn-panel);
+}
+
+.poster-inner {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  bottom: 0;
+  left: 1px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.view-card-list img.carousel-img {
+  width: 100%;
+  height: 100%;
   border-radius: 8px;
   object-fit: cover;
   background: var(--fn-panel);
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  transition: filter 0.18s ease;
 }
 
 .view-item-title {
   color: var(--fn-text);
-  font-size: 14px;
-  font-weight: 650;
-  margin-top: 10px;
-  line-height: 1.35;
+  font-size: 15px;
+  font-weight: 400;
+  margin-top: 0;
+  line-height: 23px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   width: 100%;
-  padding: 0 4px;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .view-item-year {
@@ -579,24 +603,20 @@ onMounted(async () => {
 }
 
 .view-card-list .view-item {
-  transition: transform 0.18s ease;
-}
-
-.view-card-list .view-item:hover {
-  transform: translateY(-2px);
+  transition: none;
 }
 
 .view-card-list .view-item:hover img.carousel-img {
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
   filter: brightness(1.02);
 }
 
 .view-item-header {
   position: absolute;
-  inset: 0 0 auto;
-  padding: 7px;
+  inset: 0;
+  padding: 10px;
   z-index: 2;
   pointer-events: none;
+  box-sizing: border-box;
 }
 
 .view-item-tag-list {
@@ -604,22 +624,23 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 4px;
-  min-height: 22px;
+  min-height: 24px;
 }
 
 .view-item-tag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 34px;
-  height: 22px;
-  padding: 0 7px;
-  color: #f8c52c;
-  background: rgba(0, 0, 0, 0.72);
+  min-width: 40px;
+  height: 24px;
+  padding: 0;
+  color: rgb(255, 150, 0);
+  background: rgba(0, 0, 0, 0.6);
   border-radius: 6px;
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1;
+  font-family: "DIN Alternate", "Arial Narrow", Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
 }
 
 .view-item-tag-list .count {
@@ -635,7 +656,7 @@ onMounted(async () => {
 }
 
 .rating {
-  color: #f8c52c;
+  color: rgb(255, 150, 0);
 }
 
 /* 移动端适配 */
@@ -676,11 +697,18 @@ onMounted(async () => {
 
   .view-item-title {
     font-size: 13px;
-    margin-top: 6px;
+    line-height: 20px;
   }
 
   .view-item-header {
-    padding: 4px;
+    padding: 6px;
+  }
+
+  .view-item-tag {
+    min-width: 34px;
+    height: 20px;
+    font-size: 13px;
+    line-height: 20px;
   }
 
   .view-item-tag-list .count {
