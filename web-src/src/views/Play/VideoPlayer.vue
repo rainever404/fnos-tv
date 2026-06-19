@@ -292,6 +292,33 @@ function getPlayerTitle() {
   return `${showTitle} ${episodeNumber}${episodeTitle}`.trim()
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+}
+
+function getPlayerTitleLayer(disable = false) {
+  return {
+    disable,
+    name: "title",
+    html: `<div class="art-title">${escapeHtml(getPlayerTitle())}</div>`,
+    style: {
+      position: 'absolute',
+      top: '10px',
+      left: '10px',
+      color: '#fff',
+      fontSize: '16px',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      padding: '4px 8px',
+      borderRadius: '4px',
+    }
+  }
+}
+
 function goBack() {
   if (window.history.length > 1) {
     proxy.$router.back()
@@ -1323,22 +1350,7 @@ async function ready() {
   await UpdateControl(art);
   art.plugins.artplayerPluginDanmuku.reset();
 
-  art.layers.update(
-      {
-        name: "title",
-        html: `<div class="art-title">第${playInfo.value.episode_number}集${playInfo.value.title === undefined ? "" : ":" + playInfo.value.title}</div>`,
-        style: {
-          position: 'absolute',
-          top: '10px',
-          left: '10px',
-          color: '#fff',
-          fontSize: '16px',
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          padding: '4px 8px',
-          borderRadius: '4px',
-        }
-      }
-  )
+  art.layers.update(getPlayerTitleLayer())
 
 }
 
@@ -1501,23 +1513,7 @@ const artF = async (data) => {
   });
 
   art.on('control', (state) => {
-    art.layers.update(
-        {
-          disable: !state,
-          name: "title",
-          html: `<div class="art-title">第${playInfo.value.episode_number}集${playInfo.value.title === undefined ? "" : ":" + playInfo.value.title}</div>`,
-          style: {
-            position: 'absolute',
-            top: '10px',
-            left: '10px',
-            color: '#fff',
-            fontSize: '16px',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            padding: '4px 8px',
-            borderRadius: '4px',
-          }
-        }
-    )
+    art.layers.update(getPlayerTitleLayer(!state))
     danmuTitleData.value.disable = !state
     art.layers.update(danmuTitleData.value)
   });
