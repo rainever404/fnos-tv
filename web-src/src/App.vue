@@ -527,8 +527,7 @@ watch(
                 :class="{ 'mobile-sider': isMobile }"
               >
                 <div class="sidebar-brand" @click="Home">
-                  <div class="brand-mark"><i class='bx bxs-videos'></i></div>
-                  <div class="brand-text">{{ title }}</div>
+                  <img class="brand-logo" src="/images/fnos-logo.png" :alt="title"/>
                 </div>
                 <div class="sider-item primary-nav">
                   <div class="navigation">
@@ -1160,31 +1159,19 @@ body {
 
 .sidebar-brand {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  box-sizing: border-box;
   height: 76px;
-  padding: 0 22px;
+  padding: 36px 28px 0;
   color: var(--fn-text);
   cursor: pointer;
 }
 
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  color: var(--fn-blue);
-  font-size: 24px;
-}
-
-.brand-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 15px;
-  font-weight: 650;
+.brand-logo {
+  display: block;
+  width: auto;
+  height: 26px;
+  user-select: none;
 }
 
 .sider-item {
