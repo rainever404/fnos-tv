@@ -252,13 +252,9 @@ const shouldShowMobileDanmuControls = computed(() => {
       shouldShowPortraitFloatingDanmuControls() ||
       isForcedLandscapeActive()
 })
-const shouldShowMobilePortraitDockControls = computed(() => isMobileUiActive() && isPortraitMobilePlayer())
+const shouldShowMobilePortraitDockControls = computed(() => false)
 const shouldUsePortraitDanmuPortalControls = computed(() => {
-  return !shouldShowMobilePortraitDockControls.value &&
-      isMobileUiActive() &&
-      isPortraitMobilePlayer() &&
-      showMobileDanmuFallbackControls.value &&
-      !mobileArtDanmuControlsVisible.value
+  return isMobileUiActive() && isPortraitMobilePlayer()
 })
 const shouldShowMobileDanmuInlineControls = computed(() => {
   return isMobileUiActive() &&
@@ -631,7 +627,7 @@ function syncMobileDanmuFallbackControls() {
     const shouldForcePortraitControls = isPortraitMobilePlayer()
     const shouldForceLandscapeControls = isForcedLandscapeActive()
     mobilePortraitDanmuControlsActive.value = shouldForcePortraitControls || shouldForceLandscapeControls
-    showMobileDanmuFallbackControls.value = shouldForceLandscapeControls || !hasArtControls
+    showMobileDanmuFallbackControls.value = shouldForcePortraitControls || shouldForceLandscapeControls || !hasArtControls
   })
 }
 
