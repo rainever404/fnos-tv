@@ -165,6 +165,62 @@ function ShowMsg(msg) {
   Snackbar.show({pos: 'top-center', text: msg, showAction: false});
 }
 
+function firstImagePath(value) {
+  if (Array.isArray(value)) {
+    return firstImagePath(value[0])
+  }
+  if (value === undefined || value === null) {
+    return ''
+  }
+  return String(value).trim()
+}
+
+function normalizedImageBase() {
+  return String(imgUrl || '').replace(/\/+$/, '').replace(/\/92\/17$/, '')
+}
+
+function appendImageWidth(url, width) {
+  if (!width || /[?&]w=/.test(url)) {
+    return url
+  }
+  return `${url}${url.includes('?') ? '&' : '?'}w=${width}`
+}
+
+function mediaImageUrl(value, width = 200, fallback = '/images/not_video.jpg') {
+  const raw = firstImagePath(value)
+  if (!raw) {
+    return fallback
+  }
+  if (/^(https?:)?\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('/images/')) {
+    return raw
+  }
+  if (raw.startsWith('/fnos/') || raw.startsWith('/api/')) {
+    return appendImageWidth(raw, width)
+  }
+
+  const clean = raw.replace(/^\/+/, '')
+  const hasOfficialBucket = /^(t\/p\/|[0-9a-f]{2}\/[0-9a-f]{2}\/)/i.test(clean)
+  const path = hasOfficialBucket ? clean : `92/17/${clean}`
+  return appendImageWidth(`${normalizedImageBase()}/${path}`, width)
+}
+
+function profileImageUrl(value, width = 120, fallback = '/images/not_person.jpg') {
+  const raw = firstImagePath(value)
+  if (!raw) {
+    return fallback
+  }
+  if (/^(https?:)?\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('/images/')) {
+    return raw
+  }
+  if (raw.startsWith('/fnos/') || raw.startsWith('/api/')) {
+    return appendImageWidth(raw, width)
+  }
+
+  const clean = raw.replace(/^\/+/, '')
+  const path = clean.startsWith('t/p/') ? clean : `t/p/w220_and_h330_face/${clean}`
+  return appendImageWidth(`${normalizedImageBase()}/${path}`, width)
+}
+
 function initConfig() {
   if (localStorage.getItem("title") != null) {
     title = localStorage.getItem("title")
@@ -254,6 +310,8 @@ export default {
   title,
   isMo,
   imgUrl,
+  mediaImageUrl,
+  profileImageUrl,
   ShowMsg,
   requests,
   rawGet,

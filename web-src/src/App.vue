@@ -523,14 +523,10 @@ function localSearch(keyword) {
 function searchPosterUrl(item, width = 120) {
   if (searchCategory(item) === 'person') {
     const profile = item?.profile_path || item?.avatar || item?.poster || ''
-    return profile ? `${COMMON.imgUrl}/t/p/w220_and_h330_face/${String(profile).replace(/^\/+/, '')}?w=${width}` : '/images/not_person.jpg'
+    return COMMON.profileImageUrl(profile, width)
   }
   const poster = item?.poster || item?.posters || ''
-  if (!poster) {
-    return '/images/not_video.jpg'
-  }
-  const prefix = poster.startsWith('/') ? '' : '/92/17/'
-  return `${COMMON.imgUrl}${prefix}${poster}?w=${width}`
+  return COMMON.mediaImageUrl(poster, width)
 }
 
 function searchTitle(item) {

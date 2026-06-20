@@ -56,16 +56,12 @@ function responseList(res) {
 
 function profileUrl(width = 360) {
   const profile = person.value?.profile_path || person.value?.poster || '';
-  return profile ? `${COMMON.imgUrl}/t/p/w220_and_h330_face/${String(profile).replace(/^\/+/, '')}?w=${width}` : '/images/not_person.jpg';
+  return COMMON.profileImageUrl(profile, width);
 }
 
 function posterUrl(item, width = 240) {
   const poster = item?.poster || item?.posters || '';
-  if (!poster) {
-    return '/images/not_video.jpg';
-  }
-  const prefix = poster.startsWith('/') ? '' : '/92/17/';
-  return `${COMMON.imgUrl}${prefix}${poster}?w=${width}`;
+  return COMMON.mediaImageUrl(poster, width);
 }
 
 function displayTitle(item) {

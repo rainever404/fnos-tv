@@ -456,12 +456,9 @@ async function GetVideoData() {
   let api = "/api/v1/item/" + guid.value;
   let res = await COMMON.requests("GET", api, true)
   VideoDataInfo.value = res;
-  if (res.backdrops !== undefined) {
-    backImg.value = COMMON.imgUrl + "/92/17/" + res.backdrops + "?w=200"
-  } else {
-    backImg.value = COMMON.imgUrl + "/92/17/" + VideoDataInfo.value.posters + "?w=200"
-    // play_guid.value = VideoDataInfo.value.type === "Movie"?VideoDataInfo.value.guid:  VideoDataInfo.value.play_item_guid
-  }
+  const backdrop = res.backdrops || res.backdrop || res.posters || res.poster
+  backImg.value = COMMON.mediaImageUrl(backdrop, 400, '')
+  // play_guid.value = VideoDataInfo.value.type === "Movie"?VideoDataInfo.value.guid:  VideoDataInfo.value.play_item_guid
 }
 
 // 获取季信息
@@ -723,7 +720,7 @@ onMounted(async () => {
                                         }
                                     }">
                     <div class="show-img">
-                      <img v-lazy='COMMON.imgUrl + item.poster + "?w=200"'
+                      <img v-lazy='COMMON.mediaImageUrl(item.poster, 200)'
                            alt="">
                     </div>
                   </router-link>
@@ -745,7 +742,7 @@ onMounted(async () => {
                  @mouseleave="play_item_guid = null" @click="Play(item.guid)">
               <div>
                 <img v-if="item.poster!== undefined && item.poster.length > 0" loading="lazy" class='gallery-img'
-                     v-lazy='COMMON.imgUrl + item.poster' style="border-radius:10px">
+                     v-lazy='COMMON.mediaImageUrl(item.poster, 400, "/images/not_gellery.png")' style="border-radius:10px">
                 <img v-else loading="lazy" class='gallery-img' v-lazy="'/images/not_gellery.png'">
                 <!-- 播放图标 (仅在 hover 时显示) -->
                 <div v-if="play_item_guid === item.guid" class="play-icon">
@@ -787,7 +784,7 @@ onMounted(async () => {
                   <router-link :to="personRoute(item)">
                     <div class="show-img person-avatar">
                       <img v-if="item.profile_path" loading="lazy"
-                           v-lazy='COMMON.imgUrl + "/t/p/w220_and_h330_face/" + item.profile_path'
+                           v-lazy='COMMON.profileImageUrl(item.profile_path, 200)'
                            alt="">
                       <img v-else loading="lazy" v-lazy="'/images/not_person.jpg'" alt="">
                     </div>

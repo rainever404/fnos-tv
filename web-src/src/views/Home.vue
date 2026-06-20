@@ -55,6 +55,14 @@ function getLibraryPreview(guid) {
   return source.filter(item => item.poster).slice(0, 3)
 }
 
+function posterImageUrl(item, width = 200, fallback = '/images/not_video.jpg') {
+  return COMMON.mediaImageUrl(item?.poster || item?.posters || '', width, fallback)
+}
+
+function galleryImageUrl(item, width = 400) {
+  return COMMON.mediaImageUrl(item?.poster || item?.posters || '', width, '/images/not_gellery.png')
+}
+
 function getPlaybackParentGuid(item) {
   return item?.parent_guid || item?.guid || ''
 }
@@ -270,7 +278,7 @@ onUnmounted(() => {
                   v-for="poster in getLibraryPreview(item.guid)"
                   :key="poster.guid"
                   loading="lazy"
-                  v-lazy='COMMON.imgUrl +  "/92/17/" + poster.poster + "?w=200"'
+                  v-lazy='posterImageUrl(poster)'
                   alt=""
               >
               <div v-if="getLibraryPreview(item.guid).length === 0" class="library-empty">
@@ -282,7 +290,7 @@ onUnmounted(() => {
                   v-for="poster in getLibraryPreview(item.guid)"
                   :key="`${poster.guid}-reflection`"
                   loading="lazy"
-                  v-lazy='COMMON.imgUrl +  "/92/17/" + poster.poster + "?w=200"'
+                  v-lazy='posterImageUrl(poster)'
                   alt=""
               >
             </div>
@@ -304,8 +312,8 @@ onUnmounted(() => {
               <div>
                 <router-link class="continue-link" :to="getPlaybackRoute(item)">
                   <div class="continue-poster-box">
-                    <img v-if="item.poster.length > 0" loading="lazy" class='gallery-img'
-                         v-lazy='COMMON.imgUrl + item.poster'>
+                    <img v-if="item.poster && item.poster.length > 0" loading="lazy" class='gallery-img'
+                         v-lazy='galleryImageUrl(item)'>
                     <img v-else loading="lazy" class='gallery-img' v-lazy="'/images/not_gellery.png'">
                     <!-- 进度条：仅当duration和ts存在且duration>0时显示 -->
                     <n-progress
@@ -388,7 +396,7 @@ onUnmounted(() => {
                   </div>
                   <router-link class="poster-image-link" :to="getVideoRoute(item)">
                     <img v-if="item.poster !== undefined" loading="lazy" class="carousel-img"
-                         v-lazy='COMMON.imgUrl +  "/92/17/"+item.poster + "?w=200"'>
+                         v-lazy='posterImageUrl(item)'>
                     <img v-else loading="lazy" class='carousel-img' v-lazy="'/images/not_video.jpg'">
                   </router-link>
                   <div class="card-action-row">
