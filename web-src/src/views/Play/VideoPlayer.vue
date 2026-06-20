@@ -257,7 +257,7 @@ const shouldShowMobileDanmuPortalControls = computed(() => {
     return false
   }
   if (isPortraitMobilePlayer()) {
-    return showMobileDanmuFallbackControls.value || !mobileArtDanmuControlsVisible.value
+    return true
   }
   return shouldShowMobileDanmuControls.value
 })
@@ -610,11 +610,11 @@ function syncMobileDanmuFallbackControls() {
     const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
         isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
     mobileArtDanmuControlsVisible.value = hasArtControls
-    // 竖屏优先用底部控制条；如果 Artplayer 因空间不足吞掉按钮，再显示固定浮层兜底。
+    // 手机竖屏时 Artplayer 可能误判按钮可见但实际被控制条挤出，固定保留浮层入口。
     const shouldForcePortraitControls = isPortraitMobilePlayer()
     const shouldForceLandscapeControls = isForcedLandscapeActive()
     mobilePortraitDanmuControlsActive.value = shouldForcePortraitControls || shouldForceLandscapeControls
-    showMobileDanmuFallbackControls.value = shouldForceLandscapeControls || !hasArtControls
+    showMobileDanmuFallbackControls.value = shouldForcePortraitControls || shouldForceLandscapeControls || !hasArtControls
   })
 }
 
