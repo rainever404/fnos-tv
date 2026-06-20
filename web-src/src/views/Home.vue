@@ -63,6 +63,37 @@ function galleryImageUrl(item, width = 400) {
   return COMMON.mediaImageUrl(item?.poster || item?.posters || '', width, '/images/not_gellery.png')
 }
 
+function libraryTypeLabel(item) {
+  switch (item?.category) {
+    case 'Movie':
+      return '电影'
+    case 'TV':
+      return '电视节目'
+    case 'LiveChannel':
+      return '电视直播'
+    case 'Music':
+      return '音乐'
+    case 'Directory':
+      return '文件夹'
+    case 'Video':
+      return '视频'
+    default:
+      return '媒体库'
+  }
+}
+
+function libraryItemCount(item) {
+  const info = MediaDbData.info?.[item?.guid] || {}
+  const count = Number(info.total ?? info.total_count ?? info.count ?? info.list?.length ?? 0)
+  return Number.isFinite(count) ? count : 0
+}
+
+function libraryMetaText(item) {
+  const count = libraryItemCount(item)
+  const type = libraryTypeLabel(item)
+  return count > 0 ? `${type} · ${count} 部` : type
+}
+
 function getPlaybackParentGuid(item) {
   return item?.parent_guid || item?.guid || ''
 }
@@ -322,16 +353,10 @@ onUnmounted(() => {
                 <i class='bx bx-film'></i>
               </div>
             </div>
-            <div class="library-reflection" v-if="getLibraryPreview(item.guid).length > 0" aria-hidden="true">
-              <img
-                  v-for="poster in getLibraryPreview(item.guid)"
-                  :key="`${poster.guid}-reflection`"
-                  loading="lazy"
-                  v-lazy='posterImageUrl(poster)'
-                  alt=""
-              >
+            <div class="library-meta">
+              <div class="library-label">{{ item.title }}</div>
+              <div class="library-subtitle">{{ libraryMetaText(item) }}</div>
             </div>
-            <div class="library-label">{{ item.title }}</div>
           </router-link>
         </div>
       </div>
@@ -905,28 +930,28 @@ img.carousel-img {
   overflow: hidden;
   box-sizing: border-box;
   width: 284px;
-  height: 205px;
+  min-height: 198px;
+  padding: 4px 4px 10px;
   color: var(--fn-text);
-  background: #fff;
-  border: 1px solid rgba(198, 202, 207, 0.25);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--fn-border);
+  border-radius: 8px;
+  box-shadow: none;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .library-card:hover {
   transform: translateY(-2px);
   border-color: rgba(10, 132, 255, 0.32);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1);
+  background: var(--fn-panel);
 }
 
 .dark .library-card {
-  background: var(--fn-panel);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .dark .library-card:hover {
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .library-posters {
@@ -935,12 +960,12 @@ img.carousel-img {
   display: flex;
   gap: 1px;
   grid-template-columns: repeat(3, 1fr);
-  width: calc(100% - 9px);
+  width: 100%;
   aspect-ratio: 16 / 9;
-  margin: 4px 4px 0;
+  margin: 0;
   overflow: hidden;
   background: rgba(198, 202, 207, 0.15);
-  border-radius: 6px 6px 0 0;
+  border-radius: 6px;
 }
 
 .library-posters::after {
@@ -984,50 +1009,31 @@ img.carousel-img {
   background: linear-gradient(135deg, var(--fn-panel), var(--fn-bg));
 }
 
-.library-label {
-  position: absolute;
-  right: 1px;
-  bottom: 1px;
-  left: 1px;
-  z-index: 3;
-  height: 34px;
+.library-meta {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 12px;
-  color: var(--fn-text);
-  background: linear-gradient(0deg, #fff 0%, rgba(255, 255, 255, 0.96) 58%, rgba(255, 255, 255, 0.64) 100%);
-  border-radius: 0 0 6px 6px;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 23px;
-}
-
-.library-reflection {
-  position: absolute;
-  right: 5px;
-  bottom: 4px;
-  left: 4px;
-  z-index: 2;
-  display: flex;
-  gap: 1px;
-  height: 32px;
-  overflow: hidden;
-  border-radius: 0 0 12px 12px;
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-.library-reflection img {
-  flex: 1 1 0;
+  flex-direction: column;
+  gap: 3px;
   min-width: 0;
-  height: 100%;
-  object-fit: cover;
-  transform: scaleY(-1);
+  padding: 10px 6px 0;
 }
 
-.dark .library-label {
-  background: linear-gradient(0deg, var(--fn-panel) 0%, rgba(29, 29, 31, 0.96) 58%, rgba(29, 29, 31, 0.62) 100%);
+.library-label {
+  overflow: hidden;
+  color: var(--fn-text);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 21px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-subtitle {
+  overflow: hidden;
+  color: var(--fn-muted);
+  font-size: 13px;
+  line-height: 19px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .carousel-container {

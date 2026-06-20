@@ -22,6 +22,8 @@ const PlayerData = usePlayerData()
 const MOBILE_UA = /Android|webOS|iPhone|iPod|BlackBerry/i.test(navigator.userAgent);
 let art = null;
 let lastDanmuLoadedUntil = 0;
+let mobileLandscapeActive = false;
+const fullscreenChangeEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
 const guid = ref(null);
 const episode_guid = ref(null);
 const gallery_type = ref(null);
@@ -91,28 +93,64 @@ episode_guid.value = proxy.$route.query.episode_guid || proxy.$route.query.seaso
 gallery_type.value = proxy.$route.query.gallery_type
 requestedMediaGuid.value = proxy.$route.query.media_guid || null
 
-var danmu_setting = window.localStorage.danmu_setting;
-if (danmu_setting === undefined) {
-  danmu_setting = JSON.stringify({
-    value: {
-      speed: 8.5,
-      opacity: 0.5,
-      fontSize: window.innerWidth <= 768 ? '2.5%' : '3%',
-      color: '#FFFFFF',
-      mode: 0,
-      margin: window.innerWidth <= 768 ? [5, '85%'] : [10, '75%'],
-      antiOverlap: true,
-      useWorker: true,
-      synchronousPlayback: true,
-      theme: 'light',
-      heatmap: false,
-      beforeEmit: (danmu) => !!danmu.text.trim(),
-      emitter: false,
-      mount: undefined
+function defaultDanmuSetting() {
+  return {
+    speed: 8.5,
+    opacity: 0.58,
+    fontSize: window.innerWidth <= 768 ? '2.5%' : '3%',
+    color: '#FFFFFF',
+    mode: 0,
+    modes: [0, 1, 2],
+    margin: window.innerWidth <= 768 ? [5, '85%'] : [10, '75%'],
+    antiOverlap: true,
+    useWorker: true,
+    synchronousPlayback: true,
+    theme: 'dark',
+    heatmap: false,
+    emitter: false,
+    OPACITY: {min: 20, max: 100},
+    FONT_SIZE: {min: 16, max: 42},
+    SPEED: {
+      steps: [
+        {name: '极慢', value: 10},
+        {name: '较慢', value: 7.5, hide: true},
+        {name: '适中', value: 5},
+        {name: '较快', value: 2.5, hide: true},
+        {name: '极快', value: 1}
+      ]
     }
-  })
+  }
 }
-danmu_setting = JSON.parse(danmu_setting).value
+
+function normalizeDanmuSetting(value = {}) {
+  const base = defaultDanmuSetting()
+  return {
+    ...base,
+    ...value,
+    color: value.color || base.color,
+    modes: Array.isArray(value.modes) ? value.modes : base.modes,
+    theme: 'dark',
+    emitter: false,
+    OPACITY: {...base.OPACITY, ...(value.OPACITY || {})},
+    FONT_SIZE: {...base.FONT_SIZE, ...(value.FONT_SIZE || {})},
+    SPEED: {...base.SPEED, ...(value.SPEED || {})}
+  }
+}
+
+function getStoredDanmuSetting() {
+  try {
+    const stored = window.localStorage.danmu_setting
+    if (!stored) {
+      return defaultDanmuSetting()
+    }
+    return normalizeDanmuSetting(JSON.parse(stored)?.value || {})
+  } catch {
+    return defaultDanmuSetting()
+  }
+}
+
+const danmu_setting = getStoredDanmuSetting()
+window.localStorage.danmu_setting = JSON.stringify({value: danmu_setting})
 
 const setting = ref({
   url: "",
@@ -175,7 +213,7 @@ const setting = ref({
   playbackRate: false,
   aspectRatio: true,
   fastForward: true,
-  fullscreen: true,
+  fullscreen: !MOBILE_UA,
   fullscreenWeb: !MOBILE_UA,
   subtitleOffset: false,
   miniProgressBar: false,
@@ -194,6 +232,16 @@ const setting = ref({
   },
   settings: [],
   controls: [
+    ...(MOBILE_UA ? [{
+      name: 'mobile-landscape-fullscreen',
+      index: 99,
+      position: 'right',
+      html: '<i class="bx bx-fullscreen"></i>',
+      tooltip: '横屏全屏',
+      click: async function () {
+        await toggleMobileLandscapeFullscreen()
+      }
+    }] : []),
     // {
     //     position: 'right',
     //     index: 15,
@@ -323,8 +371,61 @@ function isEditableTarget(target) {
 
 function isPlayerInteractiveTarget(target) {
   return !!target?.closest?.(
-      '.art-bottom, .art-setting, .art-contextmenus, .art-volume-panel, .art-control, .player-back-button, button, a, input, textarea, select, [contenteditable="true"]'
+      '.art-bottom, .art-setting, .art-contextmenus, .art-volume-panel, .art-control, .artplayer-plugin-danmuku, .apd-config-panel, .apd-style-panel, .player-back-button, button, a, input, textarea, select, [contenteditable="true"]'
   )
+}
+
+function isForcedLandscapeActive() {
+  return MOBILE_UA && playerFrame.value?.classList.contains('is-forced-landscape')
+}
+
+function touchPointForPlayer(touch) {
+  if (isForcedLandscapeActive()) {
+    return {
+      x: touch.clientY,
+      y: -touch.clientX
+    }
+  }
+  return {
+    x: touch.clientX,
+    y: touch.clientY
+  }
+}
+
+function closeMobileDanmuPanels() {
+  if (!MOBILE_UA) {
+    return
+  }
+  playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open').forEach(panel => {
+    panel.classList.remove('is-panel-open')
+  })
+}
+
+function handleMobileDanmuPanelClick(event) {
+  if (!MOBILE_UA) {
+    return
+  }
+  const root = playerFrame.value
+  const target = event.target
+  if (!root || !target || !root.contains(target)) {
+    closeMobileDanmuPanels()
+    return
+  }
+  if (target.closest('.apd-config-panel, .apd-style-panel')) {
+    return
+  }
+  const panelTrigger = target.closest('.apd-config, .apd-style')
+  if (!panelTrigger || !root.contains(panelTrigger)) {
+    closeMobileDanmuPanels()
+    return
+  }
+  const shouldOpen = !panelTrigger.classList.contains('is-panel-open')
+  closeMobileDanmuPanels()
+  if (shouldOpen) {
+    panelTrigger.classList.add('is-panel-open')
+  }
+  event.preventDefault()
+  event.stopPropagation()
 }
 
 function showGestureFeedback(title, value, autoHide = false) {
@@ -446,17 +547,20 @@ function handleTouchStart(event) {
     return
   }
   const touch = event.touches[0]
+  const point = touchPointForPlayer(touch)
+  const forcedLandscape = isForcedLandscapeActive()
   touchState.active = true
   touchState.mode = ''
-  touchState.startX = touch.clientX
-  touchState.startY = touch.clientY
+  touchState.startX = point.x
+  touchState.startY = point.y
   touchState.startTime = art.currentTime || 0
   touchState.startVolume = art.volume || 0
   touchState.startBrightness = brightnessLevel.value
   touchState.previewTime = touchState.startTime
-  touchState.width = rect.width || window.innerWidth
-  touchState.height = rect.height || window.innerHeight
+  touchState.width = (forcedLandscape ? rect.height : rect.width) || window.innerWidth
+  touchState.height = (forcedLandscape ? rect.width : rect.height) || window.innerHeight
   touchState.moved = false
+  closeMobileDanmuPanels()
 }
 
 function handleTouchMove(event) {
@@ -464,8 +568,9 @@ function handleTouchMove(event) {
     return
   }
   const touch = event.touches[0]
-  const dx = touch.clientX - touchState.startX
-  const dy = touch.clientY - touchState.startY
+  const point = touchPointForPlayer(touch)
+  const dx = point.x - touchState.startX
+  const dy = point.y - touchState.startY
   const absX = Math.abs(dx)
   const absY = Math.abs(dy)
   if (!touchState.mode) {
@@ -536,6 +641,127 @@ async function unlockOrientationForMobile() {
     window.screen.orientation.unlock()
   } catch {
   }
+}
+
+function fullscreenElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || null
+}
+
+function playerFullscreenTarget() {
+  return playerFrame.value || art?.template?.$player || document.documentElement
+}
+
+async function requestBrowserFullscreen(target) {
+  const element = target || playerFullscreenTarget()
+  const request = element.requestFullscreen || element.webkitRequestFullscreen || element.mozRequestFullScreen || element.msRequestFullscreen
+  if (!request) {
+    return false
+  }
+  try {
+    await request.call(element)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function exitBrowserFullscreen() {
+  const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen
+  if (!exit || !fullscreenElement()) {
+    return
+  }
+  try {
+    await exit.call(document)
+  } catch {
+  }
+}
+
+function isPortraitViewport() {
+  return window.innerHeight >= window.innerWidth
+}
+
+function setForcedLandscape(active) {
+  const frame = playerFrame.value
+  document.body.classList.toggle('player-forced-landscape-active', active)
+  if (frame) {
+    frame.classList.toggle('is-forced-landscape', active)
+  }
+  art?.resize?.()
+}
+
+function syncMobileLandscapeFallback() {
+  if (!MOBILE_UA || !mobileLandscapeActive) {
+    setForcedLandscape(false)
+    return
+  }
+  setForcedLandscape(isPortraitViewport())
+}
+
+async function enterMobileLandscapeFullscreen() {
+  if (!MOBILE_UA) {
+    return
+  }
+  mobileLandscapeActive = true
+  await requestBrowserFullscreen(playerFullscreenTarget())
+  await lockLandscapeForMobile()
+  syncMobileLandscapeFallback()
+  window.setTimeout(syncMobileLandscapeFallback, 320)
+}
+
+async function exitMobileLandscapeFullscreen() {
+  mobileLandscapeActive = false
+  setForcedLandscape(false)
+  await unlockOrientationForMobile()
+  await exitBrowserFullscreen()
+}
+
+async function toggleMobileLandscapeFullscreen() {
+  if (mobileLandscapeActive || fullscreenElement() || playerFrame.value?.classList.contains('is-forced-landscape')) {
+    await exitMobileLandscapeFullscreen()
+  } else {
+    await enterMobileLandscapeFullscreen()
+  }
+}
+
+function handleDocumentFullscreenChange() {
+  if (!MOBILE_UA) {
+    return
+  }
+  if (fullscreenElement()) {
+    mobileLandscapeActive = true
+    lockLandscapeForMobile()
+    syncMobileLandscapeFallback()
+  } else if (mobileLandscapeActive) {
+    exitMobileLandscapeFullscreen()
+  }
+}
+
+function addMobileLandscapeListeners() {
+  if (!MOBILE_UA) {
+    return
+  }
+  fullscreenChangeEvents.forEach(eventName => {
+    document.addEventListener(eventName, handleDocumentFullscreenChange)
+  })
+  window.addEventListener('orientationchange', syncMobileLandscapeFallback)
+  window.addEventListener('resize', syncMobileLandscapeFallback)
+}
+
+function removeMobileLandscapeListeners() {
+  if (!MOBILE_UA) {
+    return
+  }
+  fullscreenChangeEvents.forEach(eventName => {
+    document.removeEventListener(eventName, handleDocumentFullscreenChange)
+  })
+  window.removeEventListener('orientationchange', syncMobileLandscapeFallback)
+  window.removeEventListener('resize', syncMobileLandscapeFallback)
+}
+
+function cleanupMobileLandscape() {
+  removeMobileLandscapeListeners()
+  void exitMobileLandscapeFullscreen()
+  closeMobileDanmuPanels()
 }
 
 function resetDanmuLoadState(currentTime = 0) {
@@ -1569,6 +1795,8 @@ onBeforeRouteLeave((to, from) => {
     timerSendPlayRecord.value = null
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
+  document.removeEventListener('click', handleMobileDanmuPanelClick, true)
+  cleanupMobileLandscape()
 });
 
 onBeforeUnmount(async () => {
@@ -1581,9 +1809,13 @@ onBeforeUnmount(async () => {
     gestureFeedbackTimer = null
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
+  document.removeEventListener('click', handleMobileDanmuPanelClick, true)
+  cleanupMobileLandscape()
 })
 onMounted(async () => {
   window.addEventListener('keydown', handlePlayerKeydown)
+  document.addEventListener('click', handleMobileDanmuPanelClick, true)
+  addMobileLandscapeListeners()
   await onMountedFun();
 })
 
@@ -1818,6 +2050,11 @@ h1 {
   touch-action: none;
 }
 
+:global(body.player-forced-landscape-active) {
+  overflow: hidden !important;
+  background: #000;
+}
+
 .player-brightness-overlay {
   position: absolute;
   inset: 0;
@@ -1832,7 +2069,7 @@ h1 {
   position: absolute;
   top: 50%;
   left: 50%;
-  z-index: 78;
+  z-index: 120;
   min-width: 124px;
   padding: 12px 18px;
   color: #fff;
@@ -2186,16 +2423,56 @@ img.play-icon {
   text-shadow: none;
 }
 
+:deep(.art-video-player .art-control-mobile-landscape-fullscreen i) {
+  font-size: 24px;
+  line-height: 1;
+}
+
+:deep(.art-video-player .artplayer-plugin-danmuku) {
+  gap: 12px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+:deep(.art-video-player .artplayer-plugin-danmuku .apd-icon) {
+  fill: rgba(255, 255, 255, 0.88);
+  opacity: 0.9;
+}
+
+:deep(.art-video-player .artplayer-plugin-danmuku .apd-icon:hover) {
+  fill: #00aeec;
+  opacity: 1;
+}
+
 :deep(.art-video-player .art-selector-list),
 :deep(.art-video-player .art-settings),
 :deep(.art-video-player .apd-config-panel-inner),
 :deep(.art-video-player .apd-style-panel-inner) {
   color: #fff;
-  background-color: rgba(0, 0, 0, 0.72) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+  background-color: rgba(21, 24, 31, 0.88) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.42);
   backdrop-filter: saturate(180%) blur(18px);
+}
+
+:deep(.art-video-player .apd-config-panel-inner) {
+  padding: 14px 16px 16px;
+}
+
+:deep(.art-video-player .apd-style-panel-inner) {
+  padding: 12px;
+}
+
+:deep(.art-video-player .apd-config-panel-inner::before) {
+  display: block;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.92);
+  content: "弹幕设置";
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
 }
 
 :deep(.art-video-player .art-selector-item),
@@ -2218,9 +2495,68 @@ img.play-icon {
   bottom: 30px;
 }
 
-:deep(.art-video-player .apd-config-panel-inner),
-:deep(.art-video-player .apd-style-panel-inner) {
-  padding: 12px;
+:deep(.art-video-player .apd-config.is-panel-open .apd-config-panel),
+:deep(.art-video-player .apd-style.is-panel-open .apd-style-panel) {
+  opacity: 1;
+  pointer-events: all;
+}
+
+:deep(.art-video-player .apd-config-mode),
+:deep(.art-video-player .apd-config-slider),
+:deep(.art-video-player .apd-config-other),
+:deep(.art-video-player .apd-style-mode) {
+  margin-bottom: 14px;
+}
+
+:deep(.art-video-player .apd-config-slider) {
+  display: grid;
+  grid-template-columns: 62px minmax(128px, 1fr) 44px;
+  gap: 12px;
+  align-items: center;
+}
+
+:deep(.art-video-player .apd-config-slider .apd-value) {
+  width: auto;
+  color: #00aeec;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+:deep(.art-video-player .apd-slider-line) {
+  height: 3px;
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+:deep(.art-video-player .apd-slider-progress),
+:deep(.art-video-player .apd-slider-dot) {
+  background-color: #00aeec;
+}
+
+:deep(.art-video-player .apd-slider-dot) {
+  width: 13px;
+  height: 13px;
+  box-shadow: 0 0 0 4px rgba(0, 174, 236, 0.16);
+}
+
+:deep(.art-video-player .apd-modes) {
+  gap: 18px;
+}
+
+:deep(.art-video-player .apd-mode:hover),
+:deep(.art-video-player .apd-other:hover) {
+  color: #00aeec;
+}
+
+:deep(.art-video-player .apd-emitter) {
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+:deep(.art-video-player .apd-send) {
+  background-color: #00aeec;
+  border-radius: 0 999px 999px 0;
 }
 
 :deep(.art-video-player .art-notice) {
@@ -2284,6 +2620,49 @@ img.play-icon {
     --art-control-icon-size: 30px;
     --art-settings-max-height: min(220px, calc(100svh - 96px));
     --art-selector-max-height: min(220px, calc(100svh - 96px));
+  }
+
+  .player.is-forced-landscape {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    z-index: 99999;
+    width: 100vh !important;
+    width: 100dvh !important;
+    height: 100vw !important;
+    height: 100dvw !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    background: #000;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center center;
+  }
+
+  .player.is-forced-landscape .art-player,
+  .player.is-forced-landscape :deep(.art-video-player) {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .player.is-forced-landscape .gesture-feedback {
+    z-index: 100020;
+    min-width: 180px;
+    padding: 14px 22px;
+  }
+
+  .player.is-forced-landscape .gesture-feedback-value {
+    font-size: 22px;
+  }
+
+  :global(body.player-forced-landscape-active) .player-topbar {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .player.is-forced-landscape :deep(.art-video-player .apd-config-panel),
+  .player.is-forced-landscape :deep(.art-video-player .apd-style-panel) {
+    bottom: 38px;
   }
 }
 

@@ -349,10 +349,17 @@ function toggDrawer() {
   }
 }
 
+function closeMobileSider() {
+  if (isMobile.value) {
+    collapsed.value = true;
+  }
+}
+
 function Home() {
   router.push({
     path: "/",
   })
+  closeMobileSider()
 }
 
 function goBack() {
@@ -877,6 +884,12 @@ watch(
               <i class='bx bx-chevron-left'></i>
             </button>
             <n-layout position="absolute" :style="{ top: '0' }" has-sider>
+              <div
+                  v-if="isMobile && !collapsed"
+                  class="mobile-sider-mask"
+                  aria-hidden="true"
+                  @click="closeMobileSider"
+              ></div>
               <n-layout-sider
                 :collapsed="collapsed"
                 collapse-mode="width"
@@ -889,12 +902,21 @@ watch(
               >
                 <div class="sidebar-brand" @click="Home">
                   <img class="brand-logo" src="/images/fnos-logo.png" :alt="title"/>
+                  <button
+                      v-if="isMobile"
+                      class="mobile-sider-close"
+                      type="button"
+                      aria-label="收起菜单"
+                      @click.stop="closeMobileSider"
+                  >
+                    <i class='bx bx-x'></i>
+                  </button>
                 </div>
                 <div class="sider-item primary-nav">
                   <div class="navigation">
                     <ul class="nav-links">
                       <li>
-                        <router-link to="/" :class="{ 'is-active': isHomeActive() }">
+                        <router-link to="/" :class="{ 'is-active': isHomeActive() }" @click="closeMobileSider">
                                                     <span class="icon">
                                                         <i class='bx bx-home'></i>
                                                     </span>
@@ -911,7 +933,7 @@ watch(
                       <!--                        </router-link>-->
                       <!--                      </li>-->
                       <li>
-                        <router-link to="/favorite" :class="{ 'is-active': isFavoriteActive() }">
+                        <router-link to="/favorite" :class="{ 'is-active': isFavoriteActive() }" @click="closeMobileSider">
                           <span class="icon">
                             <i class='bx bx-heart'></i>
                           </span>
@@ -933,7 +955,7 @@ watch(
                                                         gallery_uid: item.guid,
                                                         gallery_type: item.category
                                                     }
-                                                }">
+                                                }" @click="closeMobileSider">
                                                     <span v-if="item.category === 'Movie'" class="icon">
                                                         <i class='bx bxs-movie'></i>
                                                     </span>
@@ -955,7 +977,7 @@ watch(
                   <div class="navigation more">
                     <ul class="nav-links">
                       <li v-for="item in categoryNavItems" :key="item.label">
-                        <router-link v-if="item.to" :to="item.to" :class="{ 'is-active': isCategoryActive(item) }">
+                        <router-link v-if="item.to" :to="item.to" :class="{ 'is-active': isCategoryActive(item) }" @click="closeMobileSider">
                           <span class="icon">
                             <i :class='item.icon'></i>
                           </span>
@@ -1622,6 +1644,7 @@ body {
   display: flex;
   align-items: flex-start;
   box-sizing: border-box;
+  position: relative;
   height: 76px;
   padding: 36px 28px 0;
   color: var(--fn-text);
@@ -1633,6 +1656,32 @@ body {
   width: auto;
   height: 26px;
   user-select: none;
+}
+
+.mobile-sider-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 38;
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(1px);
+}
+
+.mobile-sider-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin: -4px 0 0 auto;
+  color: var(--fn-text);
+  background: var(--fn-top-control);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.mobile-sider-close i {
+  font-size: 22px;
 }
 
 .sider-item {
@@ -1826,8 +1875,15 @@ body {
   }
 
   .mobile-sider {
+    position: fixed !important;
     top: 0;
     height: 100vh;
+    z-index: 39 !important;
+    box-shadow: 12px 0 32px rgba(15, 23, 42, 0.18);
+  }
+
+  .mobile-sider-close {
+    display: inline-flex;
   }
 
   .content {
