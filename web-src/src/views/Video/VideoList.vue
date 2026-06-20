@@ -1,6 +1,6 @@
 <script setup>
 // 获取 Vue 实例
-import {getCurrentInstance, onMounted, ref, computed, watch} from "vue";
+import {getCurrentInstance, onMounted, onUnmounted, ref, computed, watch} from "vue";
 import {useMediaDbData} from '@/store.js'
 import {useRoute} from "vue-router";
 
@@ -362,6 +362,24 @@ async function loadOfficialFilterOptions() {
 
 function hasActiveFilters() {
   return activeFilterCount.value > 0
+}
+
+function closeToolbarMenus() {
+  document.querySelectorAll('.video-list-toolbar-toggle').forEach(input => {
+    input.checked = false
+  })
+}
+
+function handleToolbarOutsideClick(event) {
+  if (!event.target?.closest?.('.sort-menu')) {
+    closeToolbarMenus()
+  }
+}
+
+function handleToolbarKeydown(event) {
+  if (event.key === 'Escape') {
+    closeToolbarMenus()
+  }
 }
 
 function applyActiveFilters(tags) {
@@ -753,22 +771,32 @@ async function handleChange() {
 
 async function setSortMode(value) {
   MediaDbData.sort_column = value
+  closeToolbarMenus()
   await reloadMediaList()
 }
 
 async function setSortOrder(value) {
   MediaDbData.sort_type = value
+  closeToolbarMenus()
   await reloadMediaList()
 }
 
 function setLayoutMode(value) {
   layoutMode.value = value
+  closeToolbarMenus()
 }
 
 onMounted(async () => {
+  document.addEventListener('click', handleToolbarOutsideClick)
+  document.addEventListener('keydown', handleToolbarKeydown)
   // 获取每个分类的列表
   await reloadMediaList();
 
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleToolbarOutsideClick)
+  document.removeEventListener('keydown', handleToolbarKeydown)
 })
 
 watch(
@@ -798,7 +826,7 @@ watch(
       <div class="seriesTab-list">
         <div class="seriesTab-item">
           <div class="sort-menu">
-            <input id="video-list-filter-toggle" class="sort-toggle" type="checkbox">
+            <input id="video-list-filter-toggle" class="sort-toggle video-list-toolbar-toggle" type="checkbox">
             <label class="toolbar-pill filter-pill" for="video-list-filter-toggle" aria-label="筛选">
               <span>{{ filterLabel }}</span>
               <i class='bx bx-chevron-down'></i>
@@ -835,7 +863,7 @@ watch(
         </div>
         <div class="seriesTab-item">
           <div class="sort-menu">
-            <input id="video-list-sort-toggle" class="sort-toggle" type="checkbox">
+            <input id="video-list-sort-toggle" class="sort-toggle video-list-toolbar-toggle" type="checkbox">
             <label class="toolbar-pill sort-pill" for="video-list-sort-toggle" aria-label="排序">
               <span>{{ sortModeLabel }}</span>
               <i class='bx bx-chevron-down'></i>
@@ -867,7 +895,7 @@ watch(
         </div>
         <div v-if="!isFavoritePage" class="seriesTab-item">
           <div class="sort-menu">
-            <input id="video-list-layout-toggle" class="sort-toggle" type="checkbox">
+            <input id="video-list-layout-toggle" class="sort-toggle video-list-toolbar-toggle" type="checkbox">
             <label class="toolbar-pill layout-pill" for="video-list-layout-toggle" aria-label="布局">
               <span>布局</span>
               <i class='bx bx-chevron-down'></i>
@@ -1260,7 +1288,7 @@ watch(
 }
 
 .view-card-list {
-  --poster-card-width: 164px;
+  --poster-card-width: 183px;
   display: grid;
   grid-template-columns: repeat(auto-fill, var(--poster-card-width));
   justify-content: start;
@@ -1269,19 +1297,19 @@ watch(
 }
 
 .favorite-content .view-card-list {
-  --poster-card-width: 164px;
+  --poster-card-width: 183px;
   grid-template-columns: repeat(auto-fill, var(--poster-card-width));
   justify-content: start;
   padding-top: 10px;
 }
 
 .view-card-list.layout-compact {
-  --poster-card-width: 143px;
+  --poster-card-width: 160px;
   grid-gap: 22px 18px;
 }
 
 .view-card-list.layout-large {
-  --poster-card-width: 190px;
+  --poster-card-width: 214px;
   grid-gap: 30px 22px;
 }
 

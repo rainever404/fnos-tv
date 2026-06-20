@@ -1,7 +1,7 @@
 <script setup>
 import flvjs from 'flv.js';
 import Hls from 'hls.js';
-import {getCurrentInstance, onBeforeUnmount, onMounted, ref} from "vue";
+import {computed, getCurrentInstance, onBeforeUnmount, onMounted, ref} from "vue";
 
 import Artplayer from "./ArtPlayer.vue";
 import {onBeforeRouteLeave, onBeforeRouteUpdate} from "vue-router";
@@ -219,6 +219,16 @@ const mobileDanmuSetting = ref({
   antiOverlap: danmu_setting.antiOverlap !== false,
   synchronousPlayback: danmu_setting.synchronousPlayback !== false
 });
+const shouldShowMobileDanmuControls = computed(() => {
+  if (!isMobileUiActive()) {
+    return false
+  }
+  return showMobileDanmuFallbackControls.value ||
+      mobilePortraitDanmuControlsActive.value ||
+      shouldShowPortraitFloatingDanmuControls() ||
+      isForcedLandscapeActive()
+})
+const mobileDanmuPortalLandscapeActive = computed(() => isForcedLandscapeActive())
 
 const setting = ref({
   url: "",
@@ -479,7 +489,11 @@ function isPlayerInteractiveTarget(target) {
 function refreshMobileUiState() {
   const active = isMobileRuntime() || isCompactPlayerViewport()
   mobileUiActive.value = active
-  mobilePortraitDanmuControlsActive.value = active && (isForcedLandscapeActive() || shouldShowPortraitFloatingDanmuControls())
+  const shouldShowPortraitControls = active && shouldShowPortraitFloatingDanmuControls()
+  mobilePortraitDanmuControlsActive.value = active && (isForcedLandscapeActive() || shouldShowPortraitControls)
+  if (shouldShowPortraitControls) {
+    showMobileDanmuFallbackControls.value = true
+  }
   if (!active) {
     showMobileDanmuSettings.value = false
     showMobileDanmuFallbackControls.value = false
@@ -577,11 +591,11 @@ function handleMobileDanmuPanelClick(event) {
   }
   const root = playerFrame.value
   const target = event.target
-  if (!root || !target || !root.contains(target)) {
-    closeMobileDanmuPanels()
+  if (target?.closest?.('.mobile-danmu-controls, .mobile-danmu-settings')) {
     return
   }
-  if (target.closest('.mobile-danmu-controls, .mobile-danmu-settings')) {
+  if (!root || !target || !root.contains(target)) {
+    closeMobileDanmuPanels()
     return
   }
   if (target.closest('.apd-config-panel, .apd-style-panel')) {
@@ -2202,106 +2216,108 @@ onMounted(async () => {
           <span :style="{ width: `${gestureFeedback.progress}%` }"></span>
         </div>
       </div>
-      <div
-          class="mobile-danmu-controls"
-          :class="{ 'is-visible': showMobileDanmuFallbackControls || mobilePortraitDanmuControlsActive }"
-          aria-label="弹幕控制"
-      >
-        <button
-            type="button"
-            class="mobile-danmu-button mobile-danmu-toggle"
-            :class="{ 'is-muted': !mobileDanmuVisible }"
-            :aria-pressed="mobileDanmuVisible"
-            aria-label="弹幕开关"
-            @click.stop.prevent="toggleMobileDanmuVisible"
+      <Teleport to="body">
+        <div
+            class="mobile-danmu-controls is-mobile-portal"
+            :class="{ 'is-visible': shouldShowMobileDanmuControls, 'is-forced-landscape-portal': mobileDanmuPortalLandscapeActive }"
+            aria-label="弹幕控制"
         >
-          弹
-        </button>
-        <button
-            type="button"
-            class="mobile-danmu-button"
-            :class="{ 'is-active': showMobileDanmuSettings }"
-            aria-label="弹幕设置"
-            @click.stop.prevent="toggleMobileDanmuSettings"
+          <button
+              type="button"
+              class="mobile-danmu-button mobile-danmu-toggle"
+              :class="{ 'is-muted': !mobileDanmuVisible }"
+              :aria-pressed="mobileDanmuVisible"
+              aria-label="弹幕开关"
+              @click.stop.prevent="toggleMobileDanmuVisible"
+          >
+            弹
+          </button>
+          <button
+              type="button"
+              class="mobile-danmu-button"
+              :class="{ 'is-active': showMobileDanmuSettings }"
+              aria-label="弹幕设置"
+              @click.stop.prevent="toggleMobileDanmuSettings"
+          >
+            <span>弹</span>
+            <i class='bx bx-slider-alt'></i>
+          </button>
+        </div>
+        <div
+            class="mobile-danmu-settings is-mobile-portal"
+            :class="{ 'is-visible': showMobileDanmuSettings, 'is-forced-landscape-portal': mobileDanmuPortalLandscapeActive }"
+            @click.stop
+            @touchstart.stop
+            @touchmove.stop
+            @touchend.stop
         >
-          <span>弹</span>
-          <i class='bx bx-slider-alt'></i>
-        </button>
-      </div>
-      <div
-          class="mobile-danmu-settings"
-          :class="{ 'is-visible': showMobileDanmuSettings }"
-          @click.stop
-          @touchstart.stop
-          @touchmove.stop
-          @touchend.stop
-      >
-        <div class="mobile-danmu-settings-header">
-          <span>弹幕设置</span>
-          <button type="button" aria-label="关闭弹幕设置" @click.stop.prevent="showMobileDanmuSettings = false">
-            <i class='bx bx-x'></i>
-          </button>
+          <div class="mobile-danmu-settings-header">
+            <span>弹幕设置</span>
+            <button type="button" aria-label="关闭弹幕设置" @click.stop.prevent="showMobileDanmuSettings = false">
+              <i class='bx bx-x'></i>
+            </button>
+          </div>
+          <div class="mobile-danmu-mode-row">
+            <button
+                type="button"
+                :class="{ 'is-active': mobileDanmuSetting.modes.includes(0) }"
+                @click.stop.prevent="toggleMobileDanmuMode(0)"
+            >
+              滚动
+            </button>
+            <button
+                type="button"
+                :class="{ 'is-active': mobileDanmuSetting.modes.includes(1) }"
+                @click.stop.prevent="toggleMobileDanmuMode(1)"
+            >
+              顶部
+            </button>
+            <button
+                type="button"
+                :class="{ 'is-active': mobileDanmuSetting.modes.includes(2) }"
+                @click.stop.prevent="toggleMobileDanmuMode(2)"
+            >
+              底部
+            </button>
+          </div>
+          <label class="mobile-danmu-slider">
+            <span>不透明度</span>
+            <input v-model.number="mobileDanmuSetting.opacity" type="range" min="20" max="100" step="1" @input="applyMobileDanmuSetting()">
+            <em>{{ mobileDanmuSetting.opacity }}%</em>
+          </label>
+          <label class="mobile-danmu-slider">
+            <span>字号</span>
+            <input v-model.number="mobileDanmuSetting.fontSize" type="range" min="16" max="42" step="1" @input="applyMobileDanmuSetting()">
+            <em>{{ mobileDanmuSetting.fontSize }}px</em>
+          </label>
+          <label class="mobile-danmu-slider">
+            <span>速度</span>
+            <input v-model.number="mobileDanmuSetting.speed" type="range" min="1" max="10" step="0.5" @input="applyMobileDanmuSetting()">
+            <em>{{ mobileDanmuSetting.speed }}</em>
+          </label>
+          <label class="mobile-danmu-slider">
+            <span>显示区域</span>
+            <input v-model.number="mobileDanmuSetting.area" type="range" min="25" max="100" step="5" @input="applyMobileDanmuSetting()">
+            <em>{{ mobileDanmuSetting.area }}%</em>
+          </label>
+          <div class="mobile-danmu-switches">
+            <button
+                type="button"
+                :class="{ 'is-active': mobileDanmuSetting.antiOverlap }"
+                @click.stop.prevent="mobileDanmuSetting.antiOverlap = !mobileDanmuSetting.antiOverlap; applyMobileDanmuSetting()"
+            >
+              防重叠
+            </button>
+            <button
+                type="button"
+                :class="{ 'is-active': mobileDanmuSetting.synchronousPlayback }"
+                @click.stop.prevent="mobileDanmuSetting.synchronousPlayback = !mobileDanmuSetting.synchronousPlayback; applyMobileDanmuSetting()"
+            >
+              同步倍速
+            </button>
+          </div>
         </div>
-        <div class="mobile-danmu-mode-row">
-          <button
-              type="button"
-              :class="{ 'is-active': mobileDanmuSetting.modes.includes(0) }"
-              @click.stop.prevent="toggleMobileDanmuMode(0)"
-          >
-            滚动
-          </button>
-          <button
-              type="button"
-              :class="{ 'is-active': mobileDanmuSetting.modes.includes(1) }"
-              @click.stop.prevent="toggleMobileDanmuMode(1)"
-          >
-            顶部
-          </button>
-          <button
-              type="button"
-              :class="{ 'is-active': mobileDanmuSetting.modes.includes(2) }"
-              @click.stop.prevent="toggleMobileDanmuMode(2)"
-          >
-            底部
-          </button>
-        </div>
-        <label class="mobile-danmu-slider">
-          <span>不透明度</span>
-          <input v-model.number="mobileDanmuSetting.opacity" type="range" min="20" max="100" step="1" @input="applyMobileDanmuSetting()">
-          <em>{{ mobileDanmuSetting.opacity }}%</em>
-        </label>
-        <label class="mobile-danmu-slider">
-          <span>字号</span>
-          <input v-model.number="mobileDanmuSetting.fontSize" type="range" min="16" max="42" step="1" @input="applyMobileDanmuSetting()">
-          <em>{{ mobileDanmuSetting.fontSize }}px</em>
-        </label>
-        <label class="mobile-danmu-slider">
-          <span>速度</span>
-          <input v-model.number="mobileDanmuSetting.speed" type="range" min="1" max="10" step="0.5" @input="applyMobileDanmuSetting()">
-          <em>{{ mobileDanmuSetting.speed }}</em>
-        </label>
-        <label class="mobile-danmu-slider">
-          <span>显示区域</span>
-          <input v-model.number="mobileDanmuSetting.area" type="range" min="25" max="100" step="5" @input="applyMobileDanmuSetting()">
-          <em>{{ mobileDanmuSetting.area }}%</em>
-        </label>
-        <div class="mobile-danmu-switches">
-          <button
-              type="button"
-              :class="{ 'is-active': mobileDanmuSetting.antiOverlap }"
-              @click.stop.prevent="mobileDanmuSetting.antiOverlap = !mobileDanmuSetting.antiOverlap; applyMobileDanmuSetting()"
-          >
-            防重叠
-          </button>
-          <button
-              type="button"
-              :class="{ 'is-active': mobileDanmuSetting.synchronousPlayback }"
-              @click.stop.prevent="mobileDanmuSetting.synchronousPlayback = !mobileDanmuSetting.synchronousPlayback; applyMobileDanmuSetting()"
-          >
-            同步倍速
-          </button>
-        </div>
-      </div>
+      </Teleport>
     </div>
 
     <div v-if="!playError" class="showContainer">
@@ -2592,6 +2608,14 @@ h1 {
   display: flex;
 }
 
+.mobile-danmu-controls.is-visible {
+  display: flex;
+}
+
+.mobile-danmu-settings.is-visible {
+  display: block;
+}
+
 .mobile-danmu-controls {
   position: absolute;
   right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
@@ -2602,12 +2626,27 @@ h1 {
   pointer-events: auto;
 }
 
-.player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
+.mobile-danmu-controls.is-mobile-portal.is-visible {
   position: fixed;
-  right: max(92px, calc(env(safe-area-inset-right, 0px) + 92px));
+  right: max(112px, calc(env(safe-area-inset-right, 0px) + 112px));
   bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
   z-index: 2147483000;
   display: flex !important;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
+  position: fixed;
+  right: max(112px, calc(env(safe-area-inset-right, 0px) + 112px));
+  bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
+  z-index: 2147483000;
+  display: flex !important;
+}
+
+.mobile-danmu-settings.is-mobile-portal {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: max(66px, calc(env(safe-area-inset-bottom, 0px) + 66px));
+  z-index: 2147482999;
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
@@ -2617,14 +2656,16 @@ h1 {
 }
 
 @media (max-width: 768px) and (orientation: portrait) {
+  .mobile-danmu-controls.is-mobile-portal.is-visible,
   .player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
     position: fixed;
     display: flex !important;
-    right: max(92px, calc(env(safe-area-inset-right, 0px) + 92px));
+    right: max(112px, calc(env(safe-area-inset-right, 0px) + 112px));
     bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
     z-index: 2147483000;
   }
 
+  .mobile-danmu-settings.is-mobile-portal,
   .player:not(.is-forced-landscape) .mobile-danmu-settings {
     position: fixed;
     display: block;
@@ -3407,7 +3448,21 @@ img.play-icon {
     display: flex !important;
   }
 
+  .mobile-danmu-controls.is-mobile-portal.is-forced-landscape-portal.is-visible {
+    right: max(178px, calc(env(safe-area-inset-right, 0px) + 178px));
+    bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+    display: flex !important;
+  }
+
   .player.is-forced-landscape .mobile-danmu-settings {
+    display: block;
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: max(70px, calc(env(safe-area-inset-bottom, 0px) + 70px));
+    width: min(342px, calc(100% - 24px));
+    max-height: calc(100% - 96px);
+  }
+
+  .mobile-danmu-settings.is-mobile-portal.is-forced-landscape-portal {
     display: block;
     right: max(12px, env(safe-area-inset-right, 0px));
     bottom: max(70px, calc(env(safe-area-inset-bottom, 0px) + 70px));
@@ -3426,7 +3481,7 @@ img.play-icon {
   }
 
   @media (orientation: landscape) {
-    .mobile-danmu-controls {
+    .mobile-danmu-controls:not(.is-mobile-portal) {
       display: none;
     }
   }
