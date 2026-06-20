@@ -731,17 +731,20 @@ onMounted(async () => {
                 <span class="mediaInfoItem">{{ item }}</span>
               </template>
             </div>
-            <div v-if="detailTrackLabels.length || streamFeatureTags.length" class="detail-track-list">
-              <span
-                  v-for="(tag, index) in streamFeatureTags"
-                  :key="tag + index"
-                  class="detail-inline-tag"
-              >
-                {{ tag }}
-              </span>
+            <div v-if="detailTrackLabels.length" class="detail-track-list">
               <span v-for="item in detailTrackLabels" :key="item">{{ item }}</span>
             </div>
           </div>
+        </div>
+        <div v-if="streamFeatureTags.length" class="stream-feature-row">
+          <span
+              v-for="(tag, index) in streamFeatureTags"
+              :key="tag + index"
+              class="stream-feature-chip"
+              :class="{ active: index === 0 }"
+          >
+            {{ tag }}
+          </span>
         </div>
         <div v-if="overviewText" class="overview-text detail-overview">
           <span class="detail-overview-text">{{ overviewText }}</span>
@@ -976,7 +979,7 @@ onMounted(async () => {
 
 .main-content {
   position: relative;
-  --detail-hero-height: 480px;
+  --detail-hero-height: 346px;
   min-height: 100vh;
   overflow: hidden;
   background: var(--fn-bg);
@@ -1562,9 +1565,9 @@ span.button-text {
 .itemName-primary {
   width: 100%;
   max-width: 100%;
-  font-size: clamp(30px, 3vw, 48px);
+  font-size: clamp(42px, 4.7vw, 60px);
   font-weight: 400;
-  line-height: 1.18;
+  line-height: 1.4;
 }
 
 .detail-logo-title {
@@ -1690,7 +1693,7 @@ span.button-text {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  padding: 30px 46px 18px;
+  padding: 46px 46px 40px;
   background: var(--fn-bg);
 }
 

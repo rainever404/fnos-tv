@@ -44,7 +44,23 @@ function isMobileRuntime() {
   return isMobileUserAgent || hasCoarsePointer || (hasTouch && isSmallTouchScreen)
 }
 
-const MOBILE_UA = isMobileRuntime();
+function isCompactPlayerViewport() {
+  const viewport = window.visualViewport
+  const widthCandidates = [
+    window.innerWidth,
+    document.documentElement?.clientWidth,
+    viewport?.width
+  ].map(value => Number(value || 0)).filter(value => value > 0)
+  const heightCandidates = [
+    window.innerHeight,
+    document.documentElement?.clientHeight,
+    viewport?.height
+  ].map(value => Number(value || 0)).filter(value => value > 0)
+  const shortSide = Math.min(...widthCandidates, ...heightCandidates)
+  return Number.isFinite(shortSide) && shortSide > 0 && shortSide <= 820
+}
+
+const MOBILE_UA = isMobileRuntime() || isCompactPlayerViewport();
 const mobileUiActive = ref(MOBILE_UA);
 const mobilePortraitDanmuControlsActive = ref(MOBILE_UA);
 let art = null;
@@ -462,7 +478,7 @@ function isPlayerInteractiveTarget(target) {
 }
 
 function refreshMobileUiState() {
-  const active = isMobileRuntime()
+  const active = isMobileRuntime() || isCompactPlayerViewport()
   mobileUiActive.value = active
   mobilePortraitDanmuControlsActive.value = shouldForceMobileDanmuFallbackControls()
   if (!active) {
@@ -473,7 +489,7 @@ function refreshMobileUiState() {
 }
 
 function isMobileUiActive() {
-  return mobileUiActive.value || MOBILE_UA
+  return mobileUiActive.value || MOBILE_UA || isCompactPlayerViewport()
 }
 
 function isForcedLandscapeActive() {
@@ -481,7 +497,7 @@ function isForcedLandscapeActive() {
 }
 
 function shouldForceMobileDanmuFallbackControls() {
-  return mobileUiActive.value && !isForcedLandscapeActive() && (isPortraitViewport() || !fullscreenElement())
+  return isMobileUiActive() && !isForcedLandscapeActive() && (isPortraitViewport() || !fullscreenElement())
 }
 
 function touchPointForPlayer(touch) {
@@ -2527,8 +2543,8 @@ h1 {
 
 .mobile-danmu-controls {
   position: absolute;
-  right: max(92px, calc(env(safe-area-inset-right, 0px) + 92px));
-  bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+  bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
   z-index: 100080;
   align-items: center;
   gap: 8px;
@@ -2536,23 +2552,23 @@ h1 {
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
-  right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
-  bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+  bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
-  bottom: max(78px, calc(env(safe-area-inset-bottom, 0px) + 78px));
+  bottom: max(136px, calc(env(safe-area-inset-bottom, 0px) + 136px));
 }
 
 @media (max-width: 768px) and (orientation: portrait) {
   .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls {
     display: flex;
-    right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
-    bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+    bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
-    bottom: max(78px, calc(env(safe-area-inset-bottom, 0px) + 78px));
+    bottom: max(136px, calc(env(safe-area-inset-bottom, 0px) + 136px));
   }
 }
 
