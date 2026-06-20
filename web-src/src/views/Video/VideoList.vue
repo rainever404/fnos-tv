@@ -772,10 +772,14 @@ async function GetMediaDbInfos(requestId = listRequestId, {page = currentPage.va
   if (requestId !== listRequestId) {
     return
   }
-  const nextList = Array.isArray(res?.list) ? res.list : []
-  MediaDbInfo.value = append ? [...(MediaDbInfo.value || []), ...nextList] : nextList
+  const nextList = responseList(res)
+  const combinedList = append ? [...(MediaDbInfo.value || []), ...nextList] : nextList
+  MediaDbInfo.value = combinedList
   currentPage.value = page
-  totalCount.value = Number(res.total || totalCount.value || MediaDbInfo.value.length || 0)
+  const nextTotal = Number(res?.total ?? res?.total_count ?? res?.count)
+  totalCount.value = Number.isFinite(nextTotal) && nextTotal > 0
+      ? nextTotal
+      : Math.max(totalCount.value || 0, combinedList.length)
 
 }
 

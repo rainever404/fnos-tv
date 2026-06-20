@@ -252,13 +252,16 @@ const shouldShowMobileDanmuControls = computed(() => {
       shouldShowPortraitFloatingDanmuControls() ||
       isForcedLandscapeActive()
 })
-const shouldShowMobileDanmuInlineControls = computed(() => isMobileUiActive() && isPortraitMobilePlayer())
+const shouldUsePortraitDanmuPortalControls = computed(() => isMobileUiActive() && isPortraitMobilePlayer())
+const shouldShowMobileDanmuInlineControls = computed(() => {
+  return isMobileUiActive() && isPortraitMobilePlayer() && !shouldUsePortraitDanmuPortalControls.value
+})
 const shouldShowMobileDanmuPortalControls = computed(() => {
   if (!isMobileUiActive()) {
     return false
   }
-  if (shouldShowMobileDanmuInlineControls.value) {
-    return false
+  if (shouldUsePortraitDanmuPortalControls.value) {
+    return true
   }
   return shouldShowMobileDanmuControls.value
 })
@@ -2803,8 +2806,8 @@ h1 {
 }
 
 .mobile-danmu-controls.is-mobile-portal.is-portrait-portal.is-visible {
-  right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
-  bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+  bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
   gap: 10px;
   padding: 5px;
   background: rgba(0, 0, 0, 0.42);
@@ -2815,8 +2818,8 @@ h1 {
 }
 
 .mobile-danmu-controls.is-mobile-portal.is-portrait-portal .mobile-danmu-button {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   background: rgba(18, 21, 28, 0.82);
 }
 
@@ -2837,9 +2840,9 @@ h1 {
 
 .mobile-danmu-settings.is-mobile-portal.is-portrait-portal {
   right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
-  bottom: max(74px, calc(env(safe-area-inset-bottom, 0px) + 74px));
+  bottom: max(142px, calc(env(safe-area-inset-bottom, 0px) + 142px));
   width: min(342px, calc(100vw - 20px));
-  max-height: min(430px, calc(100svh - 114px));
+  max-height: min(430px, calc(100svh - 174px));
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
@@ -2853,8 +2856,8 @@ h1 {
   .player:not(.is-forced-landscape) .mobile-danmu-controls:not(.is-player-inline).is-visible {
     position: fixed;
     display: flex !important;
-    right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
-    bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+    bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
     z-index: 2147483000;
   }
 
@@ -2862,7 +2865,9 @@ h1 {
   .player:not(.is-forced-landscape) .mobile-danmu-settings {
     position: fixed;
     display: block;
-    bottom: max(74px, calc(env(safe-area-inset-bottom, 0px) + 74px));
+    right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
+    bottom: max(142px, calc(env(safe-area-inset-bottom, 0px) + 142px));
+    max-height: min(430px, calc(100svh - 174px));
     z-index: 2147482999;
   }
 }
