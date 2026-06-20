@@ -2266,7 +2266,7 @@ onMounted(async () => {
         v-else
         ref="playerFrame"
         class="player"
-        :class="{ 'is-mobile-player': mobileUiActive }"
+        :class="{ 'is-mobile-player': isMobileUiActive() }"
     >
       <Artplayer class="art-player" @get-instance="getInstance" :option="setting" :style="ArtplayerStyle"/>
       <div class="player-brightness-overlay" :style="{ opacity: brightnessOverlayOpacity }"></div>
@@ -2638,6 +2638,14 @@ h1 {
   z-index: 2147483001;
 }
 
+.player.is-mobile-player,
+.player.is-mobile-player .art-player,
+.player.is-mobile-player :deep(.art-video-player),
+.player.is-mobile-player :deep(.art-video) {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
 .gesture-feedback-title {
   margin-bottom: 4px;
   color: rgba(255, 255, 255, 0.76);
@@ -2697,6 +2705,7 @@ h1 {
   align-items: center;
   gap: 8px;
   pointer-events: auto;
+  touch-action: manipulation;
 }
 
 .mobile-danmu-controls.is-mobile-portal.is-visible {
@@ -2837,6 +2846,7 @@ h1 {
   pointer-events: none;
   transform: translateY(8px);
   transition: opacity 0.15s ease, transform 0.15s ease;
+  touch-action: pan-y;
   backdrop-filter: saturate(180%) blur(18px);
 }
 
