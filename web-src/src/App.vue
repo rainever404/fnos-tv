@@ -1,5 +1,5 @@
 <script setup>
-import {computed, getCurrentInstance, onMounted, onUnmounted, ref, watch} from 'vue'
+import {computed, getCurrentInstance, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
 import VueCookies from 'vue-cookies';
 import {darkTheme} from "naive-ui";
 
@@ -33,6 +33,7 @@ const searchOpen = ref(false);
 const searchKeyword = ref('');
 const searchResults = ref([]);
 const searchLoading = ref(false);
+const searchInputRef = ref(null);
 const favoriteCount = ref(0);
 let searchTimer = null;
 let searchRequestId = 0;
@@ -539,6 +540,35 @@ function queueSearch(value, delay = 280) {
   }, delay)
 }
 
+function openSearch() {
+  searchOpen.value = true
+  nextTick(() => {
+    searchInputRef.value?.focus()
+  })
+}
+
+function closeSearch({clear = false} = {}) {
+  searchOpen.value = false
+  if (clear) {
+    searchKeyword.value = ''
+    searchResults.value = []
+    searchLoading.value = false
+  }
+}
+
+function clearSearch() {
+  searchKeyword.value = ''
+  searchResults.value = []
+  searchLoading.value = false
+  nextTick(() => {
+    searchInputRef.value?.focus()
+  })
+}
+
+function selectSearchResult() {
+  closeSearch({clear: true})
+}
+
 async function runFunByPath(path, fun) {
   if (route.path !== path) {
     await fun()
@@ -656,12 +686,70 @@ watch(
                   </div>
                 </div>
                 <div class="header-right">
-                  <n-button class="topbar-control" quaternary circle aria-label="搜索"
-                            @click="searchOpen = true">
-                    <template #icon>
-                      <i class='bx bx-search'></i>
-                    </template>
-                  </n-button>
+                  <div class="top-search" :class="{ open: searchOpen || searchKeyword.trim() }">
+                    <n-button
+                        v-if="!searchOpen && !searchKeyword.trim()"
+                        class="topbar-control"
+                        quaternary
+                        circle
+                        aria-label="搜索"
+                        @click="openSearch"
+                    >
+                      <template #icon>
+                        <i class='bx bx-search'></i>
+                      </template>
+                    </n-button>
+                    <div v-else class="top-search-box">
+                      <i class='bx bx-search top-search-icon'></i>
+                      <input
+                          ref="searchInputRef"
+                          v-model="searchKeyword"
+                          class="top-search-input"
+                          type="text"
+                          placeholder="搜索片名、演员"
+                          autocomplete="off"
+                          @focus="searchOpen = true"
+                          @keydown.esc="closeSearch({ clear: true })"
+                      >
+                      <button
+                          v-if="searchKeyword.trim()"
+                          class="top-search-clear"
+                          type="button"
+                          aria-label="清空搜索"
+                          @click="clearSearch"
+                      >
+                        <i class='bx bx-x'></i>
+                      </button>
+                      <div
+                          v-if="searchOpen && (searchKeyword.trim() || searchLoading)"
+                          class="search-popover"
+                          role="dialog"
+                          aria-label="搜索结果"
+                      >
+                        <div v-if="searchLoading" class="search-empty">
+                          搜索中...
+                        </div>
+                        <div class="search-result-list" v-else-if="searchResults.length > 0">
+                          <router-link
+                              class="search-result-item"
+                              v-for="(item, index) in searchResults"
+                              :key="searchItemKey(item, index)"
+                              :to="getSearchRoute(item)"
+                              @click="selectSearchResult"
+                          >
+                            <img loading="lazy" v-lazy='searchPosterUrl(item)' alt="">
+                            <div class="search-result-meta">
+                              <div class="search-result-title">{{ searchTitle(item) }}</div>
+                              <div class="search-result-subtitle">{{ searchYear(item) }} · {{ item.library_title }}</div>
+                            </div>
+                          </router-link>
+                        </div>
+                        <div v-else class="search-empty">
+                          没有匹配的内容
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   <n-dropdown trigger="hover" placement="bottom-start" :options="options"
                               @select="handleSelect">
@@ -788,37 +876,6 @@ watch(
                 <router-view/>
               </n-layout>
             </n-layout>
-            <n-modal v-model:show="searchOpen" preset="card" class="search-modal" :bordered="false"
-                     :segmented="false" title="搜索">
-              <div class="search-panel">
-                <n-input v-model:value="searchKeyword" clearable placeholder="搜索片名、剧名或媒体库">
-                  <template #prefix>
-                    <i class='bx bx-search'></i>
-                  </template>
-                </n-input>
-                <div v-if="searchLoading" class="search-empty">
-                  搜索中...
-                </div>
-                <div class="search-result-list" v-else-if="searchResults.length > 0">
-                  <router-link
-                      class="search-result-item"
-                      v-for="(item, index) in searchResults"
-                      :key="searchItemKey(item, index)"
-                      :to="getSearchRoute(item)"
-                      @click="searchOpen = false"
-                  >
-                    <img loading="lazy" v-lazy='searchPosterUrl(item)' alt="">
-                    <div class="search-result-meta">
-                      <div class="search-result-title">{{ searchTitle(item) }}</div>
-                      <div class="search-result-subtitle">{{ searchYear(item) }} · {{ item.library_title }}</div>
-                    </div>
-                  </router-link>
-                </div>
-                <div v-else class="search-empty">
-                  {{ searchKeyword.trim() ? '没有匹配的内容' : '输入关键词后搜索媒体库内容' }}
-                </div>
-              </div>
-            </n-modal>
           </n-layout>
           <router-view v-else/>
         </n-dialog-provider>
@@ -1230,7 +1287,7 @@ body {
   white-space: nowrap;
 }
 
-.header-right > div {
+.header-right > div:not(.top-search) {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1277,6 +1334,112 @@ body {
   background: var(--fn-top-control-hover) !important;
 }
 
+.top-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  line-height: normal;
+}
+
+.top-search.open {
+  flex: 0 0 200px;
+  width: 200px;
+  height: 40px;
+}
+
+.top-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 200px;
+  height: 40px;
+  color: var(--fn-text);
+  background: var(--fn-panel);
+  border: 2px solid rgba(255, 255, 255, 0.86);
+  border-radius: 999px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.dark .top-search-box {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+
+.top-search-icon {
+  flex: 0 0 auto;
+  margin-left: 14px;
+  color: var(--fn-soft);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.top-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  color: var(--fn-text);
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 14px;
+  line-height: 34px;
+}
+
+.top-search-input::placeholder {
+  color: var(--fn-soft);
+}
+
+.top-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  margin-right: 5px;
+  padding: 0;
+  color: var(--fn-soft);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.top-search-clear:hover {
+  color: var(--fn-text);
+  background: var(--fn-top-control);
+}
+
+.top-search-clear i {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.search-popover {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  z-index: 40;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  padding: 8px;
+  color: var(--fn-text);
+  background: var(--fn-panel);
+  border: 1px solid var(--fn-border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+}
+
+.dark .search-popover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+}
+
 .home.detail-page .topbar-control.n-button,
 .home.detail-page .topbar-control.n-avatar {
   color: rgba(255, 255, 255, 0.86) !important;
@@ -1290,6 +1453,22 @@ body {
 
 .home.detail-page .topbar-control.n-button:hover {
   background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.home.detail-page .top-search-box {
+  color: #fff;
+  background: rgba(24, 25, 28, 0.48);
+  border-color: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.home.detail-page .top-search-input {
+  color: #fff;
+}
+
+.home.detail-page .top-search-clear:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .detail-back-button {
@@ -1513,6 +1692,18 @@ body {
     gap: 10px !important;
   }
 
+  .top-search.open,
+  .top-search-box {
+    width: min(200px, calc(100vw - 166px));
+    min-width: 150px;
+    flex-basis: min(200px, calc(100vw - 166px));
+  }
+
+  .search-popover {
+    right: -92px;
+    width: min(340px, calc(100vw - 24px));
+  }
+
   .home.detail-page .n-layout-header {
     left: auto;
     width: auto;
@@ -1534,21 +1725,10 @@ body {
   }
 }
 
-.search-modal {
-  width: min(680px, calc(100vw - 32px));
-  border-radius: 10px;
-}
-
-.search-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .search-result-list {
   display: grid;
   gap: 8px;
-  max-height: min(62vh, 620px);
+  max-height: min(62vh, 520px);
   overflow: auto;
   padding-right: 2px;
 }
@@ -1593,7 +1773,7 @@ body {
 }
 
 .search-empty {
-  padding: 28px 8px 18px;
+  padding: 24px 8px 18px;
   text-align: center;
 }
 </style>
