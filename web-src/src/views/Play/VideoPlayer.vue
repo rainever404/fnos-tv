@@ -107,7 +107,8 @@ const brightnessOverlayOpacity = ref(0);
 const gestureFeedback = ref({
   visible: false,
   title: '',
-  value: ''
+  value: '',
+  progress: null
 });
 let gestureFeedbackTimer = null;
 const touchState = {
@@ -299,38 +300,36 @@ const setting = ref({
   },
   settings: [],
   controls: [
-    ...(MOBILE_UA ? [
-      {
-        name: 'mobile-danmu-toggle',
-        index: 96,
-        position: 'right',
-        html: '<span class="mobile-art-danmu-label">弹</span>',
-        tooltip: '弹幕开关',
-        click: function () {
-          toggleMobileDanmuVisible()
-        }
-      },
-      {
-        name: 'mobile-danmu-settings-trigger',
-        index: 97,
-        position: 'right',
-        html: '<span class="mobile-art-danmu-label">弹</span><i class="bx bx-slider-alt"></i>',
-        tooltip: '弹幕设置',
-        click: function () {
-          toggleMobileDanmuSettings()
-        }
-      },
-      {
-        name: 'mobile-landscape-fullscreen',
-        index: 99,
-        position: 'right',
-        html: '<i class="bx bx-fullscreen"></i>',
-        tooltip: '横屏全屏',
-        click: async function () {
-          await toggleMobileLandscapeFullscreen()
-        }
+    {
+      name: 'mobile-danmu-toggle',
+      index: 96,
+      position: 'right',
+      html: '<span class="mobile-art-danmu-label">弹</span>',
+      tooltip: '弹幕开关',
+      click: function () {
+        toggleMobileDanmuVisible()
       }
-    ] : []),
+    },
+    {
+      name: 'mobile-danmu-settings-trigger',
+      index: 97,
+      position: 'right',
+      html: '<span class="mobile-art-danmu-label">弹</span><i class="bx bx-slider-alt"></i>',
+      tooltip: '弹幕设置',
+      click: function () {
+        toggleMobileDanmuSettings()
+      }
+    },
+    {
+      name: 'mobile-landscape-fullscreen',
+      index: 99,
+      position: 'right',
+      html: '<i class="bx bx-fullscreen"></i>',
+      tooltip: '横屏全屏',
+      click: async function () {
+        await toggleMobileLandscapeFullscreen()
+      }
+    },
     // {
     //     position: 'right',
     //     index: 15,
@@ -552,8 +551,9 @@ function syncMobileDanmuFallbackControls() {
         isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
     // 竖屏控制条空间不足时 Artplayer 会挤掉自定义弹幕按钮，固定显示浮动兜底入口。
     const shouldForcePortraitControls = shouldForceMobileDanmuFallbackControls()
-    mobilePortraitDanmuControlsActive.value = shouldForcePortraitControls
-    showMobileDanmuFallbackControls.value = shouldForcePortraitControls || !hasArtControls
+    const shouldForceLandscapeControls = isForcedLandscapeActive()
+    mobilePortraitDanmuControlsActive.value = shouldForcePortraitControls || shouldForceLandscapeControls
+    showMobileDanmuFallbackControls.value = shouldForcePortraitControls || shouldForceLandscapeControls || !hasArtControls
   })
 }
 
@@ -677,11 +677,12 @@ function toggleMobileDanmuMode(mode) {
   applyMobileDanmuSetting()
 }
 
-function showGestureFeedback(title, value, autoHide = false) {
+function showGestureFeedback(title, value, autoHide = false, progress = null) {
   gestureFeedback.value = {
     visible: true,
     title,
-    value
+    value,
+    progress: progress === null ? null : clamp(progress, 0, 100)
   }
   if (gestureFeedbackTimer) {
     clearTimeout(gestureFeedbackTimer)
@@ -691,7 +692,8 @@ function showGestureFeedback(title, value, autoHide = false) {
     gestureFeedbackTimer = setTimeout(() => {
       gestureFeedback.value = {
         ...gestureFeedback.value,
-        visible: false
+        visible: false,
+        progress: null
       }
     }, 700)
   }
@@ -704,7 +706,8 @@ function hideGestureFeedback(delay = 500) {
   gestureFeedbackTimer = setTimeout(() => {
     gestureFeedback.value = {
       ...gestureFeedback.value,
-      visible: false
+      visible: false,
+      progress: null
     }
   }, delay)
 }
@@ -726,7 +729,7 @@ function seekPlayerTo(time, notice = true) {
   const nextTime = clamp(time, 0, art.duration)
   art.seek = nextTime
   if (notice) {
-    showGestureFeedback('进度', `${formatTime(nextTime)} / ${formatTime(art.duration)}`, true)
+    showGestureFeedback('进度', `${formatTime(nextTime)} / ${formatTime(art.duration)}`, true, (nextTime / art.duration) * 100)
   }
 }
 
@@ -843,7 +846,7 @@ function handleTouchMove(event) {
     const nextTime = clamp(touchState.startTime + (dx / touchState.width) * seekWindow, 0, art.duration)
     const delta = nextTime - touchState.startTime
     touchState.previewTime = nextTime
-    showGestureFeedback(delta >= 0 ? `快进 ${formatTimeDelta(delta)}` : `快退 ${formatTimeDelta(delta)}`, `${formatTime(nextTime)} / ${formatTime(art.duration)}`)
+    showGestureFeedback(delta >= 0 ? `快进 ${formatTimeDelta(delta)}` : `快退 ${formatTimeDelta(delta)}`, `${formatTime(nextTime)} / ${formatTime(art.duration)}`, false, (nextTime / art.duration) * 100)
     return
   }
 
@@ -994,11 +997,13 @@ function shouldUseLandscapeFallback() {
 
 function setForcedLandscape(active) {
   const frame = playerFrame.value
+  document.documentElement.classList.toggle('player-forced-landscape-active', active)
   document.body.classList.toggle('player-forced-landscape-active', active)
   if (frame) {
     frame.classList.toggle('is-forced-landscape', active)
   }
   art?.resize?.()
+  scheduleMobileDanmuFallbackSync()
 }
 
 function syncMobileLandscapeFallback() {
@@ -1018,7 +1023,9 @@ async function enterMobileLandscapeFullscreen() {
   await requestBrowserFullscreen(playerFullscreenTarget())
   await lockLandscapeForMobile()
   syncMobileLandscapeFallback()
+  scheduleMobileDanmuFallbackSync()
   window.setTimeout(syncMobileLandscapeFallback, 320)
+  window.setTimeout(scheduleMobileDanmuFallbackSync, 360)
 }
 
 async function exitMobileLandscapeFullscreen() {
@@ -1026,6 +1033,7 @@ async function exitMobileLandscapeFullscreen() {
   setForcedLandscape(false)
   await unlockOrientationForMobile()
   await exitBrowserFullscreen()
+  scheduleMobileDanmuFallbackSync()
 }
 
 async function toggleMobileLandscapeFullscreen() {
@@ -2008,8 +2016,20 @@ const artF = async (data) => {
     play_next()
   });
   art.on('fullscreen', async (state) => {
-    if (state) {
+    if (state && isMobileUiActive()) {
+      mobileLandscapeActive = true
+      setForcedLandscape(shouldUseLandscapeFallback())
       await lockLandscapeForMobile();
+      syncMobileLandscapeFallback()
+      window.setTimeout(syncMobileLandscapeFallback, 320)
+      scheduleMobileDanmuFallbackSync()
+    } else if (state) {
+      await lockLandscapeForMobile();
+    } else if (isMobileUiActive()) {
+      mobileLandscapeActive = false
+      setForcedLandscape(false)
+      await unlockOrientationForMobile();
+      scheduleMobileDanmuFallbackSync()
     } else {
       await unlockOrientationForMobile();
     }
@@ -2173,9 +2193,11 @@ onMounted(async () => {
       <div class="gesture-feedback" :class="{ 'is-visible': gestureFeedback.visible }">
         <div class="gesture-feedback-title">{{ gestureFeedback.title }}</div>
         <div class="gesture-feedback-value">{{ gestureFeedback.value }}</div>
+        <div v-if="gestureFeedback.progress !== null" class="gesture-feedback-progress" aria-hidden="true">
+          <span :style="{ width: `${gestureFeedback.progress}%` }"></span>
+        </div>
       </div>
       <div
-          v-if="mobileUiActive"
           class="mobile-danmu-controls"
           :class="{ 'is-visible': showMobileDanmuFallbackControls || mobilePortraitDanmuControlsActive }"
           aria-label="弹幕控制"
@@ -2202,7 +2224,6 @@ onMounted(async () => {
         </button>
       </div>
       <div
-          v-if="mobileUiActive"
           class="mobile-danmu-settings"
           :class="{ 'is-visible': showMobileDanmuSettings }"
           @click.stop
@@ -2476,9 +2497,18 @@ h1 {
   touch-action: none;
 }
 
+:global(html.player-forced-landscape-active),
 :global(body.player-forced-landscape-active) {
   overflow: hidden !important;
   background: #000;
+  overscroll-behavior: none;
+}
+
+:global(body.player-forced-landscape-active) {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .player-brightness-overlay {
@@ -2528,6 +2558,22 @@ h1 {
   line-height: 1.2;
 }
 
+.gesture-feedback-progress {
+  width: min(220px, 56vw);
+  height: 4px;
+  margin: 10px auto 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+}
+
+.gesture-feedback-progress span {
+  display: block;
+  height: 100%;
+  background: #00aeec;
+  border-radius: inherit;
+}
+
 .mobile-danmu-controls,
 .mobile-danmu-settings {
   display: none;
@@ -2543,8 +2589,8 @@ h1 {
 
 .mobile-danmu-controls {
   position: absolute;
-  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-  bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
+  right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+  bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
   z-index: 100080;
   align-items: center;
   gap: 8px;
@@ -2552,23 +2598,24 @@ h1 {
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
-  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-  bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
+  right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+  bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
-  bottom: max(136px, calc(env(safe-area-inset-bottom, 0px) + 136px));
+  bottom: max(66px, calc(env(safe-area-inset-bottom, 0px) + 66px));
 }
 
 @media (max-width: 768px) and (orientation: portrait) {
-  .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls {
+  .player:not(.is-forced-landscape) .mobile-danmu-controls {
     display: flex;
-    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-    bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
+    right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+    bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
   }
 
-  .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
-    bottom: max(136px, calc(env(safe-area-inset-bottom, 0px) + 136px));
+  .player:not(.is-forced-landscape) .mobile-danmu-settings {
+    display: block;
+    bottom: max(66px, calc(env(safe-area-inset-bottom, 0px) + 66px));
   }
 }
 
@@ -3051,9 +3098,10 @@ img.play-icon {
   line-height: 1;
 }
 
+:deep(.art-video-player .art-control-mobile-landscape-fullscreen),
 :deep(.art-video-player .art-control-mobile-danmu-toggle),
 :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-  display: flex !important;
+  display: none !important;
   align-items: center;
   justify-content: center;
   width: 38px;
@@ -3062,6 +3110,12 @@ img.play-icon {
   font-size: 17px;
   font-weight: 700;
   line-height: 1;
+}
+
+.player.is-mobile-player :deep(.art-video-player .art-control-mobile-landscape-fullscreen),
+.player.is-mobile-player :deep(.art-video-player .art-control-mobile-danmu-toggle),
+.player.is-mobile-player :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  display: flex !important;
 }
 
 :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
@@ -3267,6 +3321,12 @@ img.play-icon {
     --art-selector-max-height: min(220px, calc(100svh - 96px));
   }
 
+  .player :deep(.art-video-player .art-control-mobile-landscape-fullscreen),
+  .player :deep(.art-video-player .art-control-mobile-danmu-toggle),
+  .player :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+    display: flex !important;
+  }
+
   :deep(.art-video-player .art-controls-center) {
     display: none !important;
     flex: 0 0 0;
@@ -3284,8 +3344,8 @@ img.play-icon {
     width: min(324px, calc(100vw - 24px));
   }
 
-  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
-  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
     display: none !important;
   }
 
@@ -3322,16 +3382,16 @@ img.play-icon {
     font-size: 22px;
   }
 
-  .player.is-forced-landscape .mobile-danmu-controls {
-    display: none !important;
-  }
-
   .player.is-forced-landscape .mobile-danmu-controls.is-visible {
-    display: none !important;
+    right: max(178px, calc(env(safe-area-inset-right, 0px) + 178px));
+    bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+    display: flex !important;
   }
 
   .player.is-forced-landscape .mobile-danmu-settings {
     display: block;
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: max(70px, calc(env(safe-area-inset-bottom, 0px) + 70px));
     width: min(342px, calc(100% - 24px));
     max-height: calc(100% - 96px);
   }
