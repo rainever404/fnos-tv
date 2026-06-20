@@ -479,7 +479,7 @@ function isPlayerInteractiveTarget(target) {
 function refreshMobileUiState() {
   const active = isMobileRuntime() || isCompactPlayerViewport()
   mobileUiActive.value = active
-  mobilePortraitDanmuControlsActive.value = shouldForceMobileDanmuFallbackControls()
+  mobilePortraitDanmuControlsActive.value = active && isForcedLandscapeActive()
   if (!active) {
     showMobileDanmuSettings.value = false
     showMobileDanmuFallbackControls.value = false
@@ -549,8 +549,8 @@ function syncMobileDanmuFallbackControls() {
     refreshMobileUiState()
     const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
         isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
-    // 竖屏控制条空间不足时 Artplayer 会挤掉自定义弹幕按钮，固定显示浮动兜底入口。
-    const shouldForcePortraitControls = shouldForceMobileDanmuFallbackControls()
+    // 竖屏优先使用 Artplayer 右侧控制条，只有检测不到弹幕按钮时才显示浮动兜底入口。
+    const shouldForcePortraitControls = shouldForceMobileDanmuFallbackControls() && !hasArtControls
     const shouldForceLandscapeControls = isForcedLandscapeActive()
     mobilePortraitDanmuControlsActive.value = shouldForcePortraitControls || shouldForceLandscapeControls
     showMobileDanmuFallbackControls.value = shouldForcePortraitControls || shouldForceLandscapeControls || !hasArtControls
@@ -2598,24 +2598,33 @@ h1 {
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
-  right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+  position: fixed;
+  right: max(92px, calc(env(safe-area-inset-right, 0px) + 92px));
   bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
+  z-index: 2147483000;
+  display: flex !important;
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
+  position: fixed;
+  z-index: 2147482999;
   bottom: max(66px, calc(env(safe-area-inset-bottom, 0px) + 66px));
 }
 
 @media (max-width: 768px) and (orientation: portrait) {
-  .player:not(.is-forced-landscape) .mobile-danmu-controls {
-    display: flex;
-    right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+  .player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
+    position: fixed;
+    display: flex !important;
+    right: max(92px, calc(env(safe-area-inset-right, 0px) + 92px));
     bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
+    z-index: 2147483000;
   }
 
   .player:not(.is-forced-landscape) .mobile-danmu-settings {
+    position: fixed;
     display: block;
     bottom: max(66px, calc(env(safe-area-inset-bottom, 0px) + 66px));
+    z-index: 2147482999;
   }
 }
 
@@ -3346,7 +3355,7 @@ img.play-icon {
 
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    display: none !important;
+    display: flex !important;
   }
 
   .player.is-forced-landscape {
