@@ -252,17 +252,18 @@ const shouldShowMobileDanmuControls = computed(() => {
       shouldShowPortraitFloatingDanmuControls() ||
       isForcedLandscapeActive()
 })
+const shouldShowMobileDanmuInlineControls = computed(() => isMobileUiActive() && isPortraitMobilePlayer())
 const shouldShowMobileDanmuPortalControls = computed(() => {
   if (!isMobileUiActive()) {
     return false
   }
-  if (isPortraitMobilePlayer()) {
-    return true
+  if (shouldShowMobileDanmuInlineControls.value) {
+    return false
   }
   return shouldShowMobileDanmuControls.value
 })
 const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.value || isForcedLandscapeActive())
-const mobileDanmuPortalPortraitActive = computed(() => shouldShowMobileDanmuPortalControls.value && !mobileDanmuPortalLandscapeActive.value)
+const mobileDanmuPortalPortraitActive = computed(() => isMobileUiActive() && isPortraitMobilePlayer() && !mobileDanmuPortalLandscapeActive.value)
 
 const setting = ref({
   url: "",
@@ -2292,6 +2293,32 @@ onMounted(async () => {
           <span :style="{ width: `${gestureFeedback.progress}%` }"></span>
         </div>
       </div>
+      <div
+          class="mobile-danmu-controls is-player-inline"
+          :class="{ 'is-visible': shouldShowMobileDanmuInlineControls }"
+          aria-label="弹幕控制"
+      >
+        <button
+            type="button"
+            class="mobile-danmu-button mobile-danmu-toggle"
+            :class="{ 'is-muted': !mobileDanmuVisible }"
+            :aria-pressed="mobileDanmuVisible"
+            aria-label="弹幕开关"
+            @click.stop.prevent="toggleMobileDanmuVisible"
+        >
+          弹
+        </button>
+        <button
+            type="button"
+            class="mobile-danmu-button"
+            :class="{ 'is-active': showMobileDanmuSettings }"
+            aria-label="弹幕设置"
+            @click.stop.prevent="toggleMobileDanmuSettings"
+        >
+          <span>弹</span>
+          <i class='bx bx-slider-alt'></i>
+        </button>
+      </div>
       <Teleport to="body">
         <div
             class="mobile-danmu-controls is-mobile-portal"
@@ -2731,6 +2758,22 @@ h1 {
   display: flex !important;
 }
 
+.player.is-mobile-player .mobile-danmu-controls.is-player-inline.is-visible {
+  position: absolute;
+  right: max(92px, calc(env(safe-area-inset-right, 0px) + 92px));
+  bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+  z-index: 100090;
+  display: flex !important;
+  gap: 7px;
+  padding: 0;
+}
+
+.player.is-mobile-player .mobile-danmu-controls.is-player-inline .mobile-danmu-button {
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.62);
+}
+
 .mobile-danmu-controls.is-mobile-portal.is-portrait-portal.is-visible {
   right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
   bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
@@ -2749,7 +2792,7 @@ h1 {
   background: rgba(18, 21, 28, 0.82);
 }
 
-.player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls:not(.is-player-inline).is-visible {
   position: fixed;
   right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
   bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
@@ -2779,7 +2822,7 @@ h1 {
 
 @media (max-width: 768px) and (orientation: portrait) {
   .mobile-danmu-controls.is-mobile-portal.is-visible,
-  .player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
+  .player:not(.is-forced-landscape) .mobile-danmu-controls:not(.is-player-inline).is-visible {
     position: fixed;
     display: flex !important;
     right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
@@ -3524,7 +3567,7 @@ img.play-icon {
 
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    display: flex !important;
+    display: none !important;
     width: 34px;
     min-width: 34px;
   }
