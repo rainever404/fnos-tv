@@ -223,6 +223,23 @@ const filterRows = computed(() => [
   {key: 'watched', label: '是否已观看', options: watchedOptions}
 ])
 
+const activeFilterChips = computed(() => {
+  const chips = []
+  for (const row of filterRows.value) {
+    const value = filters.value[row.key]
+    if (!value) {
+      continue
+    }
+    const option = row.options.find(item => String(item.value) === String(value))
+    chips.push({
+      key: row.key,
+      label: row.label,
+      text: option?.label || String(value)
+    })
+  }
+  return chips
+})
+
 function applyRouteState(targetRoute = route, {resetList = true} = {}) {
   guid.value = targetRoute.params.guid || targetRoute.query.gallery_uid || null
   category.value = targetRoute.params.guid ? null : routeCategory(targetRoute)
@@ -829,7 +846,12 @@ watch(
         <div class="seriesTab-item">
           <div class="sort-menu">
             <input id="video-list-filter-toggle" class="sort-toggle video-list-toolbar-toggle" type="checkbox">
-            <label class="toolbar-pill filter-pill" for="video-list-filter-toggle" aria-label="筛选">
+            <label
+                class="toolbar-pill filter-pill"
+                :class="{ active: activeFilterCount > 0 }"
+                for="video-list-filter-toggle"
+                aria-label="筛选"
+            >
               <span>{{ filterLabel }}</span>
               <i class='bx bx-chevron-down'></i>
             </label>
@@ -917,6 +939,20 @@ watch(
       </div>
       <div class="list-total">{{ listCountText }}</div>
     </div>
+    <div v-if="activeFilterChips.length" class="active-filter-bar" aria-label="已选筛选">
+      <button
+          v-for="chip in activeFilterChips"
+          :key="chip.key"
+          type="button"
+          class="active-filter-chip"
+          :aria-label="`清除${chip.label}${chip.text}`"
+          @click="clearFilter(chip.key)"
+      >
+        <span>{{ chip.label }}：{{ chip.text }}</span>
+        <i class='bx bx-x'></i>
+      </button>
+      <button type="button" class="active-filter-clear" @click="clearAllFilters">清空</button>
+    </div>
     <div class="card-show-content view-card-list" :class="layoutClass">
       <div class="view-item" v-for="item in MediaDbInfo" :key="item.guid">
         <div class="poster-frame" :class="{ 'person-poster-frame': isPerson(item) }">
@@ -995,7 +1031,7 @@ watch(
   justify-content: flex-start;
   gap: 16px;
   min-height: 36px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .list-title {
@@ -1097,8 +1133,8 @@ watch(
   height: 36px;
   padding: 0 14px;
   color: var(--fn-text);
-  background: transparent;
-  border: 1px solid var(--fn-border);
+  background: var(--fn-top-control);
+  border: 1px solid transparent;
   border-radius: 999px;
   box-sizing: border-box;
   cursor: pointer;
@@ -1133,8 +1169,66 @@ watch(
 
 .toolbar-pill:hover,
 .sort-toggle:checked + .toolbar-pill {
-  background: var(--fn-top-control);
+  background: var(--fn-top-control-hover);
   border-color: rgba(10, 132, 255, 0.2);
+}
+
+.toolbar-pill.active {
+  color: var(--fn-blue);
+  background: rgba(10, 132, 255, 0.1);
+  border-color: rgba(10, 132, 255, 0.22);
+}
+
+.toolbar-pill.active i {
+  color: var(--fn-blue);
+}
+
+.active-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin: -8px 0 24px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.active-filter-chip,
+.active-filter-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  color: var(--fn-blue);
+  background: rgba(10, 132, 255, 0.1);
+  border: 1px solid rgba(10, 132, 255, 0.14);
+  border-radius: 999px;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.active-filter-chip:hover,
+.active-filter-clear:hover {
+  background: rgba(10, 132, 255, 0.16);
+  border-color: rgba(10, 132, 255, 0.24);
+}
+
+.active-filter-chip i {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.active-filter-clear {
+  color: var(--fn-muted);
+  background: var(--fn-top-control);
+  border-color: transparent;
 }
 
 .sort-trigger {
@@ -1592,6 +1686,8 @@ watch(
   .list-toolbar {
     padding-right: 0;
     flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-bottom: 14px;
   }
 
   .list-title {
@@ -1606,6 +1702,8 @@ watch(
 
   .list-total {
     width: 100%;
+    height: auto;
+    min-height: 20px;
     margin-left: 0;
     line-height: 18px;
   }
@@ -1621,6 +1719,17 @@ watch(
     min-width: auto;
     padding: 0 14px;
     white-space: nowrap;
+  }
+
+  .active-filter-bar {
+    margin: -4px 0 18px;
+    padding-bottom: 4px;
+  }
+
+  .active-filter-chip,
+  .active-filter-clear {
+    height: 30px;
+    font-size: 13px;
   }
 
   .view-item-title {
