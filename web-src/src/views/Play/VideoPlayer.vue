@@ -129,6 +129,7 @@ const touchState = {
 let playerTouchFrame = null;
 let mobileDanmuFallbackSyncTimer = null;
 let mobileDanmuPanelTouchHandledAt = 0;
+const boundMobileDanmuPanelTriggers = new WeakSet();
 
 const qualitySelector = ref([]);
 const currentQuality = ref(null);
@@ -233,6 +234,8 @@ const mobileDanmuVisible = ref(true);
 const showMobileDanmuSettings = ref(false);
 const showMobileDanmuFallbackControls = ref(mobileUiActive.value);
 const mobileArtDanmuControlsVisible = ref(false);
+const mobileControlMenu = ref('');
+const mobilePlaybackRate = ref(Number(localStorage.playbackRate || 1) || 1);
 const mobileDanmuSetting = ref({
   opacity: Math.round((Number(danmu_setting.opacity) || 0.58) * 100),
   fontSize: getMobileDanmuFontSize(danmu_setting.fontSize),
@@ -284,6 +287,15 @@ const shouldShowMobileDanmuPortalControls = computed(() => {
 })
 const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.value || isForcedLandscapeActive())
 const mobileDanmuPortalPortraitActive = computed(() => isMobileUiActive() && isPortraitMobilePlayer() && !mobileDanmuPortalLandscapeActive.value)
+const shouldShowMobileExtraControls = computed(() => isMobileUiActive() && isPortraitMobilePlayer())
+const mobileQualityOptions = computed(() => qualitySelector.value.flatMap(group => group.selector || []))
+const mobileSubtitleOptions = computed(() => {
+  const streams = StreamList.value?.subtitle_streams || []
+  return [...new Map(streams.map(item => [item.index, item])).values()]
+})
+const mobileQualityLabel = computed(() => currentQuality.value?.resolution || QualityData.value?.[0]?.resolution || '画质')
+const mobileSubtitleLabel = computed(() => currentSubtitle.value ? '字幕' : '字幕')
+const mobileRateOptions = [0.5, 0.8, 1, 1.2, 1.5, 1.8, 2, 2.5, 2.8, 3]
 
 const setting = ref({
   url: "",
@@ -517,7 +529,7 @@ function isPlayerInteractiveTarget(target) {
     return false
   }
   return !!target.closest(
-      '.art-setting, .art-contextmenus, .art-volume-panel, .art-control, .artplayer-plugin-danmuku, .apd-config-panel, .apd-style-panel, .mobile-danmu-controls, .mobile-danmu-settings, .player-back-button, button, a, input, textarea, select, [contenteditable="true"]'
+      '.art-setting, .art-contextmenus, .art-volume-panel, .art-control, .artplayer-plugin-danmuku, .apd-config-panel, .apd-style-panel, .mobile-danmu-controls, .mobile-danmu-settings, .mobile-extra-controls, .mobile-extra-menu, .player-back-button, button, a, input, textarea, select, [contenteditable="true"]'
   )
 }
 
@@ -575,8 +587,53 @@ function closeMobileDanmuPanels() {
     return
   }
   showMobileDanmuSettings.value = false
+  mobileControlMenu.value = ''
   playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open').forEach(panel => {
     panel.classList.remove('is-panel-open')
+  })
+}
+
+function preventMobileDanmuTriggerEvent(event) {
+  event?.preventDefault?.()
+  event?.stopPropagation?.()
+  event?.stopImmediatePropagation?.()
+}
+
+function toggleMobileDanmuSettingsFromTrigger(event) {
+  if (!isMobileUiActive()) {
+    return
+  }
+  const now = Date.now()
+  if (event?.type === 'click' && now - mobileDanmuPanelTouchHandledAt < 520) {
+    preventMobileDanmuTriggerEvent(event)
+    return
+  }
+  const shouldOpen = !showMobileDanmuSettings.value
+  closeMobileDanmuPanels()
+  if (shouldOpen) {
+    mobileControlMenu.value = ''
+    showMobileDanmuSettings.value = true
+  }
+  mobileDanmuPanelTouchHandledAt = now
+  preventMobileDanmuTriggerEvent(event)
+}
+
+function bindMobileDanmuPanelTriggers() {
+  if (!isMobileUiActive()) {
+    return
+  }
+  const root = playerFrame.value
+  if (!root) {
+    return
+  }
+  root.querySelectorAll('.artplayer-plugin-danmuku .apd-config, .artplayer-plugin-danmuku .apd-style, .art-control-mobile-danmu-settings-trigger').forEach(trigger => {
+    if (boundMobileDanmuPanelTriggers.has(trigger)) {
+      return
+    }
+    boundMobileDanmuPanelTriggers.add(trigger)
+    ;['touchend', 'click'].forEach(type => {
+      trigger.addEventListener(type, toggleMobileDanmuSettingsFromTrigger, {capture: true, passive: false})
+    })
   })
 }
 
@@ -605,9 +662,11 @@ function syncMobileDanmuFallbackControls() {
   }
   if (art && playerFrame.value) {
     bindPlayerTouchListeners()
+    bindMobileDanmuPanelTriggers()
   }
   window.requestAnimationFrame(() => {
     refreshMobileUiState()
+    bindMobileDanmuPanelTriggers()
     const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
         isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
     mobileArtDanmuControlsVisible.value = hasArtControls
@@ -652,14 +711,12 @@ function handleMobileDanmuPanelClick(event) {
   const target = event.target
   const triggerFromDuplicateClick = event.type === 'click' &&
       Date.now() - mobileDanmuPanelTouchHandledAt < 450 &&
-      target?.closest?.('.apd-config, .apd-style')
+      target?.closest?.('.apd-config, .apd-style, .art-control-mobile-danmu-settings-trigger')
   if (triggerFromDuplicateClick) {
-    event.preventDefault()
-    event.stopPropagation()
-    event.stopImmediatePropagation?.()
+    preventMobileDanmuTriggerEvent(event)
     return
   }
-  if (target?.closest?.('.mobile-danmu-controls, .mobile-danmu-settings')) {
+  if (target?.closest?.('.mobile-danmu-controls, .mobile-danmu-settings, .mobile-extra-controls, .mobile-extra-menu')) {
     return
   }
   if (!root || !target || !root.contains(target)) {
@@ -669,22 +726,12 @@ function handleMobileDanmuPanelClick(event) {
   if (target.closest('.apd-config-panel, .apd-style-panel')) {
     return
   }
-  const panelTrigger = target.closest('.apd-config, .apd-style')
+  const panelTrigger = target.closest('.apd-config, .apd-style, .art-control-mobile-danmu-settings-trigger')
   if (!panelTrigger || !root.contains(panelTrigger)) {
     closeMobileDanmuPanels()
     return
   }
-  const shouldOpen = !showMobileDanmuSettings.value
-  closeMobileDanmuPanels()
-  if (shouldOpen) {
-    showMobileDanmuSettings.value = true
-  }
-  if (event.type === 'touchend') {
-    mobileDanmuPanelTouchHandledAt = Date.now()
-  }
-  event.preventDefault()
-  event.stopPropagation()
-  event.stopImmediatePropagation?.()
+  toggleMobileDanmuSettingsFromTrigger(event)
 }
 
 function handleMobileFullscreenControlClick(event) {
@@ -772,10 +819,39 @@ function toggleMobileDanmuVisible() {
 }
 
 function toggleMobileDanmuSettings() {
+  mobileControlMenu.value = ''
   showMobileDanmuSettings.value = !showMobileDanmuSettings.value
   playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open').forEach(panel => {
     panel.classList.remove('is-panel-open')
   })
+}
+
+function toggleMobileControlMenu(menu) {
+  showMobileDanmuSettings.value = false
+  mobileControlMenu.value = mobileControlMenu.value === menu ? '' : menu
+}
+
+async function selectMobileQuality(option) {
+  if (!option) {
+    return
+  }
+  await switchQuality(option)
+  mobileControlMenu.value = ''
+}
+
+function selectMobilePlaybackRate(rate) {
+  const nextRate = Number(rate) || 1
+  if (art) {
+    art.playbackRate = nextRate
+  }
+  mobilePlaybackRate.value = nextRate
+  localStorage.playbackRate = nextRate
+  mobileControlMenu.value = ''
+}
+
+async function selectMobileSubtitle(option) {
+  await switchSubtitle(option || {html: '关闭字幕', guid: null, index: -1})
+  mobileControlMenu.value = ''
 }
 
 function toggleMobileDanmuMode(mode) {
@@ -1676,7 +1752,6 @@ async function getVideoConfig() {
 
 // 添加字幕切换函数
 async function switchSubtitle(item, $dom, event) {
-  debugger
   if (!item || !item.guid) {
     // 关闭字幕
     currentSubtitle.value = "";
@@ -1720,7 +1795,7 @@ async function UpdateControl(_art) {
   // 添加画质选择器
   if (qualitySelector.value.length > 0) {
     const qualityControl = {
-      disable: (!art.fullscreen && COMMON.isMo),
+      disable: false,
       index: 1,
       name: '画质',
       position: 'right',
@@ -1742,7 +1817,7 @@ async function UpdateControl(_art) {
   }
 
   let 倍速 = {
-    disable: (!art.fullscreen && COMMON.isMo),
+    disable: false,
     index: 2,
     name: '倍速',
     position: 'right',
@@ -1787,7 +1862,7 @@ async function UpdateControl(_art) {
   // 添加字幕选择器
   if (StreamList.value && StreamList.value.subtitle_streams && StreamList.value.subtitle_streams.length > 0) {
     const subtitleControl = {
-      disable: (!art.fullscreen && COMMON.isMo),
+      disable: false,
       index: 3,
       name: '字幕',
       position: 'right',
@@ -1837,7 +1912,7 @@ async function UpdateControl(_art) {
     }
 
     let 选集 = {
-      disable: (!art.fullscreen && COMMON.isMo),
+      disable: false,
       name: '选集',
       index: 4,
       position: 'right',
@@ -1997,6 +2072,7 @@ const artF = async (data) => {
   art.on('ready', ready);
   art.on('video:ratechange', () => {
     localStorage.playbackRate = art.playbackRate;
+    mobilePlaybackRate.value = Number(art.playbackRate || 1);
   });
   let lastSkipIndex = -1;
   art.on("video:timeupdate", () => {
@@ -2330,6 +2406,75 @@ onMounted(async () => {
         <div v-if="gestureFeedback.progress !== null" class="gesture-feedback-progress" aria-hidden="true">
           <span :style="{ width: `${gestureFeedback.progress}%` }"></span>
         </div>
+      </div>
+      <div
+          v-if="shouldShowMobileExtraControls"
+          class="mobile-extra-controls"
+          @click.stop
+          @touchstart.stop
+          @touchmove.stop
+          @touchend.stop
+      >
+        <button type="button" @click.stop.prevent="toggleMobileControlMenu('quality')">
+          {{ mobileQualityLabel }}
+        </button>
+        <button type="button" @click.stop.prevent="toggleMobileControlMenu('rate')">
+          {{ mobilePlaybackRate }}X
+        </button>
+        <button type="button" @click.stop.prevent="toggleMobileControlMenu('subtitle')">
+          {{ mobileSubtitleLabel }}
+        </button>
+      </div>
+      <div
+          v-if="shouldShowMobileExtraControls && mobileControlMenu"
+          class="mobile-extra-menu"
+          @click.stop
+          @touchstart.stop
+          @touchmove.stop
+          @touchend.stop
+      >
+        <template v-if="mobileControlMenu === 'quality'">
+          <button
+              v-for="option in mobileQualityOptions"
+              :key="`${option.resolution}-${option.bitrate}`"
+              type="button"
+              :class="{ 'is-active': currentQuality?.resolution === option.resolution && currentQuality?.bitrate === option.bitrate }"
+              @click.stop.prevent="selectMobileQuality(option)"
+          >
+            {{ option.resolution }} <small v-if="option.bitrate">({{ (option.bitrate / 1000000).toFixed(1) }}Mbps)</small>
+          </button>
+          <button v-if="!mobileQualityOptions.length" type="button" disabled>暂无清晰度</button>
+        </template>
+        <template v-else-if="mobileControlMenu === 'rate'">
+          <button
+              v-for="rate in mobileRateOptions"
+              :key="rate"
+              type="button"
+              :class="{ 'is-active': Number(mobilePlaybackRate) === Number(rate) }"
+              @click.stop.prevent="selectMobilePlaybackRate(rate)"
+          >
+            {{ rate }}X
+          </button>
+        </template>
+        <template v-else-if="mobileControlMenu === 'subtitle'">
+          <button
+              type="button"
+              :class="{ 'is-active': !currentSubtitle }"
+              @click.stop.prevent="selectMobileSubtitle({ html: '关闭字幕', guid: null, index: -1 })"
+          >
+            关闭字幕
+          </button>
+          <button
+              v-for="subtitle in mobileSubtitleOptions"
+              :key="subtitle.guid || subtitle.index"
+              type="button"
+              :class="{ 'is-active': currentSubtitle?.guid === subtitle.guid }"
+              @click.stop.prevent="selectMobileSubtitle({ ...subtitle, html: `${subtitle.title || ''}${subtitle.language || ''}` || '字幕' })"
+          >
+            {{ subtitle.title || '字幕' }}{{ subtitle.language || '' }}
+          </button>
+          <button v-if="!mobileSubtitleOptions.length" type="button" disabled>暂无字幕</button>
+        </template>
       </div>
       <Teleport to="body">
         <div
@@ -2830,6 +2975,86 @@ h1 {
   display: flex !important;
 }
 
+.mobile-extra-controls,
+.mobile-extra-menu {
+  display: none;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-extra-controls {
+  position: fixed;
+  right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px));
+  bottom: max(76px, calc(env(safe-area-inset-bottom, 0px) + 76px));
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  backdrop-filter: saturate(180%) blur(14px);
+  touch-action: manipulation;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-extra-controls button {
+  min-width: 44px;
+  height: 34px;
+  padding: 0 9px;
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(18, 21, 28, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-extra-menu {
+  position: fixed;
+  right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px));
+  bottom: max(122px, calc(env(safe-area-inset-bottom, 0px) + 122px));
+  z-index: 2147483001;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(96px, 1fr));
+  gap: 8px;
+  width: min(282px, calc(100vw - 24px));
+  max-height: min(320px, calc(100svh - 176px));
+  padding: 10px;
+  overflow-y: auto;
+  background: rgba(18, 21, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.44);
+  backdrop-filter: saturate(180%) blur(18px);
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-extra-menu button {
+  min-height: 34px;
+  padding: 0 10px;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-extra-menu button.is-active {
+  color: #fff;
+  background: rgba(0, 174, 236, 0.92);
+  border-color: rgba(0, 174, 236, 0.92);
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-extra-menu button:disabled {
+  opacity: 0.56;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-extra-menu small {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 11px;
+}
+
 .mobile-danmu-settings.is-mobile-portal {
   position: fixed;
   right: max(12px, env(safe-area-inset-right, 0px));
@@ -2887,38 +3112,103 @@ h1 {
 }
 
 @media (max-width: 820px) and (orientation: portrait), (pointer: coarse) and (orientation: portrait) {
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
+    display: flex !important;
+    align-items: center;
+    gap: 2px !important;
+    width: 100%;
+    min-width: 0;
+    padding-inline: max(8px, env(safe-area-inset-left, 0px)) max(8px, env(safe-area-inset-right, 0px));
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
+    min-width: 0;
+    gap: 2px !important;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
+    flex: 0 0 auto;
+  }
+
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center) {
-    flex: 0 0 92px !important;
-    width: 92px !important;
-    min-width: 92px !important;
+    flex: 0 0 74px !important;
+    width: 74px !important;
+    min-width: 74px !important;
     overflow: visible !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center .artplayer-plugin-danmuku) {
-    width: 84px !important;
-    min-width: 84px !important;
-    flex: 0 0 84px !important;
+    width: 72px !important;
+    min-width: 72px !important;
+    flex: 0 0 72px !important;
     justify-content: center;
-    gap: 10px !important;
+    gap: 4px !important;
     overflow: visible !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .artplayer-plugin-danmuku .apd-toggle),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .artplayer-plugin-danmuku .apd-config) {
     display: inline-flex !important;
-    flex: 0 0 34px !important;
+    flex: 0 0 32px !important;
     align-items: center;
     justify-content: center;
-    width: 34px !important;
-    min-width: 34px !important;
-    height: 34px !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
     overflow: visible !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .artplayer-plugin-danmuku .apd-icon) {
-    width: 28px !important;
+    width: 26px !important;
     max-width: none !important;
-    height: 28px !important;
+    height: 26px !important;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
+    display: flex !important;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    overflow: visible !important;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control) {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    align-items: center;
+    justify-content: center;
+    width: auto !important;
+    min-width: 24px !important;
+    max-width: 58px;
+    height: 40px !important;
+    padding-inline: 2px !important;
+    overflow: hidden;
+    font-size: 12px !important;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-volume),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-setting),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-fullscreen),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-fullscreenWeb) {
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time) {
+    max-width: 98px;
+    font-size: 12px !important;
+    white-space: nowrap;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-selector-value),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control span) {
+    max-width: 54px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
