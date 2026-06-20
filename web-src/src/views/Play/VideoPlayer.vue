@@ -128,6 +128,7 @@ const touchState = {
 };
 let playerTouchFrame = null;
 let mobileDanmuFallbackSyncTimer = null;
+let mobileDanmuPanelTouchHandledAt = 0;
 
 const qualitySelector = ref([]);
 const currentQuality = ref(null);
@@ -649,6 +650,15 @@ function handleMobileDanmuPanelClick(event) {
   }
   const root = playerFrame.value
   const target = event.target
+  const triggerFromDuplicateClick = event.type === 'click' &&
+      Date.now() - mobileDanmuPanelTouchHandledAt < 450 &&
+      target?.closest?.('.apd-config, .apd-style')
+  if (triggerFromDuplicateClick) {
+    event.preventDefault()
+    event.stopPropagation()
+    event.stopImmediatePropagation?.()
+    return
+  }
   if (target?.closest?.('.mobile-danmu-controls, .mobile-danmu-settings')) {
     return
   }
@@ -664,17 +674,17 @@ function handleMobileDanmuPanelClick(event) {
     closeMobileDanmuPanels()
     return
   }
-  const shouldOpen = !panelTrigger.classList.contains('is-panel-open')
+  const shouldOpen = !showMobileDanmuSettings.value
   closeMobileDanmuPanels()
   if (shouldOpen) {
-    if (isMobileUiActive()) {
-      showMobileDanmuSettings.value = true
-    } else {
-      panelTrigger.classList.add('is-panel-open')
-    }
+    showMobileDanmuSettings.value = true
+  }
+  if (event.type === 'touchend') {
+    mobileDanmuPanelTouchHandledAt = Date.now()
   }
   event.preventDefault()
   event.stopPropagation()
+  event.stopImmediatePropagation?.()
 }
 
 function handleMobileFullscreenControlClick(event) {
@@ -2255,6 +2265,7 @@ onBeforeRouteLeave((to, from) => {
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
   stopMobileDanmuFallbackSyncLoop()
@@ -2272,6 +2283,7 @@ onBeforeUnmount(async () => {
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
   stopMobileDanmuFallbackSyncLoop()
@@ -2282,6 +2294,7 @@ onMounted(async () => {
   startMobileDanmuFallbackSyncLoop()
   window.addEventListener('keydown', handlePlayerKeydown)
   document.addEventListener('click', handleMobileDanmuPanelClick, true)
+  document.addEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.addEventListener('click', handleMobileFullscreenControlClick, true)
   addMobileLandscapeListeners()
   await onMountedFun();
