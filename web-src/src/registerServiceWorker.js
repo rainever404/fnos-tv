@@ -1,32 +1,23 @@
 /* eslint-disable no-console */
 
-import { register } from 'register-service-worker'
+async function clearLegacyServiceWorker() {
+  if (!('serviceWorker' in navigator)) {
+    return
+  }
 
-if (process.env.NODE_ENV === 'production') {
-  register(`${process.env.BASE_URL}service-worker.js`, {
-    ready () {
-      console.log(
-        'App is being served from cache by a service worker.\n' +
-        'For more details, visit https://goo.gl/AFskqB'
-      )
-    },
-    registered () {
-      console.log('Service worker has been registered.')
-    },
-    cached () {
-      console.log('Content has been cached for offline use.')
-    },
-    updatefound () {
-      console.log('New content is downloading.')
-    },
-    updated () {
-      console.log('New content is available; please refresh.')
-    },
-    offline () {
-      console.log('No internet connection found. App is running in offline mode.')
-    },
-    error (error) {
-      console.error('Error during service worker registration:', error)
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations()
+    await Promise.all(registrations.map(registration => registration.unregister()))
+
+    if ('caches' in window) {
+      const cacheNames = await window.caches.keys()
+      await Promise.all(cacheNames.map(cacheName => window.caches.delete(cacheName)))
     }
-  })
+  } catch (error) {
+    console.warn('Service worker cleanup failed:', error)
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', clearLegacyServiceWorker)
 }
