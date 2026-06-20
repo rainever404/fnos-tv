@@ -464,7 +464,7 @@ function isPlayerInteractiveTarget(target) {
 function refreshMobileUiState() {
   const active = isMobileRuntime()
   mobileUiActive.value = active
-  mobilePortraitDanmuControlsActive.value = active && !isForcedLandscapeActive() && isPortraitViewport()
+  mobilePortraitDanmuControlsActive.value = shouldForceMobileDanmuFallbackControls()
   if (!active) {
     showMobileDanmuSettings.value = false
     showMobileDanmuFallbackControls.value = false
@@ -478,6 +478,10 @@ function isMobileUiActive() {
 
 function isForcedLandscapeActive() {
   return isMobileUiActive() && playerFrame.value?.classList.contains('is-forced-landscape')
+}
+
+function shouldForceMobileDanmuFallbackControls() {
+  return mobileUiActive.value && !isForcedLandscapeActive() && (isPortraitViewport() || !fullscreenElement())
 }
 
 function touchPointForPlayer(touch) {
@@ -531,7 +535,8 @@ function syncMobileDanmuFallbackControls() {
     const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
         isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
     // 竖屏控制条空间不足时 Artplayer 会挤掉自定义弹幕按钮，固定显示浮动兜底入口。
-    const shouldForcePortraitControls = mobilePortraitDanmuControlsActive.value
+    const shouldForcePortraitControls = shouldForceMobileDanmuFallbackControls()
+    mobilePortraitDanmuControlsActive.value = shouldForcePortraitControls
     showMobileDanmuFallbackControls.value = shouldForcePortraitControls || !hasArtControls
   })
 }
@@ -2531,23 +2536,23 @@ h1 {
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
-  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-  bottom: max(82px, calc(env(safe-area-inset-bottom, 0px) + 82px));
+  right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+  bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
-  bottom: max(126px, calc(env(safe-area-inset-bottom, 0px) + 126px));
+  bottom: max(78px, calc(env(safe-area-inset-bottom, 0px) + 78px));
 }
 
 @media (max-width: 768px) and (orientation: portrait) {
   .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls {
     display: flex;
-    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-    bottom: max(82px, calc(env(safe-area-inset-bottom, 0px) + 82px));
+    right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+    bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
-    bottom: max(126px, calc(env(safe-area-inset-bottom, 0px) + 126px));
+    bottom: max(78px, calc(env(safe-area-inset-bottom, 0px) + 78px));
   }
 }
 
@@ -3302,7 +3307,11 @@ img.play-icon {
   }
 
   .player.is-forced-landscape .mobile-danmu-controls {
-    display: none;
+    display: none !important;
+  }
+
+  .player.is-forced-landscape .mobile-danmu-controls.is-visible {
+    display: none !important;
   }
 
   .player.is-forced-landscape .mobile-danmu-settings {
