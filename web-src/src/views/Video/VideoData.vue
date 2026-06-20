@@ -764,7 +764,7 @@ onMounted(async () => {
             </div>
           </div>
           <n-scrollbar ref="seasonRef" x-scrollable>
-            <div style="white-space: nowrap;">
+            <div class="detail-scroll-strip">
               <div class="show-card-list">
                 <div class="show-card-item" v-for="(item, index) in SeasonData" :key="index">
                   <router-link :to="{
@@ -795,9 +795,9 @@ onMounted(async () => {
                  @mouseenter="play_item_guid = item.guid"
                  @mouseleave="play_item_guid = null" @click="Play(item.guid)">
               <div>
-                <img v-if="item.poster!== undefined && item.poster.length > 0" loading="lazy" class='gallery-img'
-                     v-lazy='COMMON.mediaImageUrl(item.poster, 400, "/images/not_gellery.png")' style="border-radius:10px">
-                <img v-else loading="lazy" class='gallery-img' v-lazy="'/images/not_gellery.png'">
+                <img v-if="item.poster!== undefined && item.poster.length > 0" loading="lazy" class="gallery-img episode-thumb"
+                     v-lazy='COMMON.mediaImageUrl(item.poster, 400, "/images/not_gellery.png")'>
+                <img v-else loading="lazy" class="gallery-img episode-thumb" v-lazy="'/images/not_gellery.png'">
                 <!-- 播放图标 (仅在 hover 时显示) -->
                 <div v-if="play_item_guid === item.guid" class="play-icon">
                   <i class="bx bx-play"></i>
@@ -832,7 +832,7 @@ onMounted(async () => {
             <!--            </div>-->
           </div>
           <n-scrollbar ref="siderRef" x-scrollable>
-            <div style="white-space: nowrap;">
+            <div class="detail-scroll-strip">
               <div class="show-card-list">
                 <div class="show-card-item person-card" v-for="(item, index) in PersonList" :key="index">
                   <router-link :to="personRoute(item)">
@@ -1172,6 +1172,10 @@ span.button-text {
   gap: 20px;
 }
 
+.detail-scroll-strip {
+  white-space: nowrap;
+}
+
 .show-title {
   color: var(--fn-text);
   font-size: 1.2em;
@@ -1242,7 +1246,7 @@ span.button-text {
 }
 
 .view-item-tag-list .count {
-  background-color: #2d8cf0 !important;
+  background-color: var(--fn-blue) !important;
   border-radius: 50%;
   width: 20px;
   height: 20px;
@@ -1332,6 +1336,10 @@ span.button-text {
 /* 鼠标悬浮时放大 */
 .view-item:hover .gallery-img {
   transform: scale(1.05);
+}
+
+.episode-thumb {
+  border-radius: 8px;
 }
 
 /* 播放按钮 */
@@ -1752,7 +1760,7 @@ span.button-text {
 
 .detailButton:hover {
   color: #fff;
-  background: #0066ff;
+  background: var(--fn-blue);
   box-shadow: 0 10px 26px rgba(10, 132, 255, 0.32);
   transform: translateY(-1px);
 }
