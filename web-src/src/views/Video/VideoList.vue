@@ -1242,9 +1242,10 @@ watch(
 }
 
 .view-card-list {
-  --poster-card-width: 170px;
+  --poster-card-width: 165px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--poster-card-width), 1fr));
+  grid-template-columns: repeat(auto-fill, var(--poster-card-width));
+  justify-content: start;
   grid-gap: 26px 20px;
   padding: 0;
 }

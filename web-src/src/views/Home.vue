@@ -40,8 +40,8 @@ const dropdownOptions = [
 function updateCarouselDensity() {
   const width = window.innerWidth;
   const usable = width <= 768 ? Math.max(320, width - 28) : Math.max(720, width - 348);
-  per_view.value = width <= 768 ? 1 : Math.max(2, Math.min(6.6, usable / 346));
-  per_card.value = width <= 768 ? 3 : Math.max(5, Math.min(11.2, usable / 203));
+  per_view.value = width <= 768 ? 1 : Math.max(2, Math.min(6.8, (usable + 16) / 317));
+  per_card.value = width <= 768 ? 3 : Math.max(5, Math.min(12, (usable + 20) / 185));
 }
 
 updateCarouselDensity();

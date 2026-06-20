@@ -80,6 +80,7 @@ const touchState = {
   height: 0,
   moved: false
 };
+let playerTouchFrame = null;
 
 const qualitySelector = ref([]);
 const currentQuality = ref(null);
@@ -164,7 +165,7 @@ function getMobileDanmuFontSize(value) {
 
 const mobileDanmuVisible = ref(true);
 const showMobileDanmuSettings = ref(false);
-const showMobileDanmuFallbackControls = ref(false);
+const showMobileDanmuFallbackControls = ref(MOBILE_UA);
 const mobileDanmuSetting = ref({
   opacity: Math.round((Number(danmu_setting.opacity) || 0.58) * 100),
   fontSize: getMobileDanmuFontSize(danmu_setting.fontSize),
@@ -764,7 +765,10 @@ function handleTouchMove(event) {
     touchState.mode = absX >= absY ? 'seek' : (touchState.startX < touchState.width / 2 ? 'brightness' : 'volume')
   }
 
-  event.preventDefault()
+  if (event.cancelable) {
+    event.preventDefault()
+  }
+  event.stopPropagation()
   touchState.moved = true
 
   if (touchState.mode === 'seek') {
@@ -802,6 +806,34 @@ function handleTouchEnd() {
   }
   touchState.active = false
   touchState.mode = ''
+}
+
+function bindPlayerTouchListeners() {
+  const frame = playerFrame.value
+  if (!MOBILE_UA || !frame) {
+    return
+  }
+  if (playerTouchFrame === frame) {
+    return
+  }
+  removePlayerTouchListeners()
+  frame.addEventListener('touchstart', handleTouchStart, {capture: true, passive: true})
+  frame.addEventListener('touchmove', handleTouchMove, {capture: true, passive: false})
+  frame.addEventListener('touchend', handleTouchEnd, {capture: true, passive: true})
+  frame.addEventListener('touchcancel', handleTouchEnd, {capture: true, passive: true})
+  playerTouchFrame = frame
+}
+
+function removePlayerTouchListeners() {
+  const frame = playerTouchFrame
+  if (!MOBILE_UA || !frame) {
+    return
+  }
+  frame.removeEventListener('touchstart', handleTouchStart, {capture: true})
+  frame.removeEventListener('touchmove', handleTouchMove, {capture: true})
+  frame.removeEventListener('touchend', handleTouchEnd, {capture: true})
+  frame.removeEventListener('touchcancel', handleTouchEnd, {capture: true})
+  playerTouchFrame = null
 }
 
 async function lockLandscapeForMobile() {
@@ -1960,6 +1992,7 @@ async function getInstance(_art) {
   art.id = episode_guid.value
   art.url = url.value
   applyPlayerBrightness()
+  bindPlayerTouchListeners()
   scheduleMobileDanmuFallbackSync()
 }
 
@@ -1998,6 +2031,7 @@ onBeforeRouteLeave((to, from) => {
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
+  removePlayerTouchListeners()
   cleanupMobileLandscape()
 });
 
@@ -2012,6 +2046,7 @@ onBeforeUnmount(async () => {
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
+  removePlayerTouchListeners()
   cleanupMobileLandscape()
 })
 onMounted(async () => {
@@ -2042,10 +2077,6 @@ onMounted(async () => {
         ref="playerFrame"
         class="player"
         :class="{ 'is-mobile-player': MOBILE_UA }"
-        @touchstart="handleTouchStart"
-        @touchmove="handleTouchMove"
-        @touchend="handleTouchEnd"
-        @touchcancel="handleTouchEnd"
     >
       <Artplayer class="art-player" @get-instance="getInstance" :option="setting" :style="ArtplayerStyle"/>
       <div class="player-brightness-overlay" :style="{ opacity: brightnessOverlayOpacity }"></div>
