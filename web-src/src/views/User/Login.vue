@@ -173,6 +173,10 @@ function toggleQrMode() {
   }
 }
 
+function showForgotPasswordTip() {
+  COMMON.ShowMsg('请通过飞牛 NAS 找回或重置账号密码')
+}
+
 onMounted(async () => {
   await getConfig();
   if (route.query.code !== undefined) {
@@ -200,15 +204,9 @@ watch(() => route.query.code, (code) => {
           <h2 class="card-title">{{ isQr ? '扫码登录' : '账号登录' }}</h2>
           <div class="create-post-from" v-if="!isQr">
             <div class="form-control">
-              <div class="icon">
-                <i class='bx bx-user'></i>
-              </div>
               <input v-model="user.username" type="text" name="账号" placeholder="用户名" autocomplete="username" required="">
             </div>
             <div class="form-control password-control">
-              <div class="icon">
-                <i class='bx bx-lock-alt'></i>
-              </div>
               <input v-model="user.password" :type="showPassword ? 'text' : 'password'" name="密码" placeholder="密码" required=""
                      autocomplete="off" @keyup.enter="LoginUser">
               <button class="password-toggle" type="button" aria-label="切换密码显示" @click="showPassword = !showPassword">
@@ -220,8 +218,8 @@ watch(() => route.query.code, (code) => {
                 <input v-model="rememberAccount" type="checkbox">
                 <span>记住账号</span>
               </label>
-              <button class="inline-action" type="button" @click="toggleQrMode">
-                扫码登录
+              <button class="inline-action" type="button" @click="showForgotPasswordTip">
+                忘记密码?
               </button>
             </div>
             <div class="form-control">
@@ -249,7 +247,6 @@ watch(() => route.query.code, (code) => {
           </div>
           <div class="login-options">
             <button class="btn option-btn" @click="OpenNasLogin">
-              <i class='bx bx-server'></i>
               使用 NAS 登录
             </button>
           </div>
@@ -387,20 +384,10 @@ watch(() => route.query.code, (code) => {
   width: 100%;
 }
 
-.form-control .icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.62);
-  z-index: 1;
-  font-size: 18px;
-}
-
 .form-control input {
   width: 100%;
   height: 48px;
-  padding: 0 44px 0 42px;
+  padding: 0 14px;
   color: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
@@ -411,6 +398,10 @@ watch(() => route.query.code, (code) => {
   background: rgba(255, 255, 255, 0.12);
   box-sizing: border-box;
   -webkit-appearance: none;
+}
+
+.password-control input {
+  padding-right: 44px;
 }
 
 .form-control input::placeholder {
@@ -575,7 +566,7 @@ watch(() => route.query.code, (code) => {
   color: white;
   background: #0a84ff;
   border: 1px solid #0a84ff;
-  box-shadow: 0 8px 20px rgba(10, 132, 255, 0.26);
+  box-shadow: none;
 }
 
 .login-btn:hover {
@@ -584,7 +575,6 @@ watch(() => route.query.code, (code) => {
 }
 
 .option-btn {
-  gap: 8px;
   color: rgba(255, 255, 255, 0.92);
   white-space: nowrap;
   background: rgba(255, 255, 255, 0.02);
@@ -594,10 +584,6 @@ watch(() => route.query.code, (code) => {
 .option-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.24);
-}
-
-.option-btn i {
-  font-size: 19px;
 }
 
 @media (max-width: 768px) {
