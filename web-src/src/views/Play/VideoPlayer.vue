@@ -164,6 +164,7 @@ function getMobileDanmuFontSize(value) {
 
 const mobileDanmuVisible = ref(true);
 const showMobileDanmuSettings = ref(false);
+const showMobileDanmuFallbackControls = ref(false);
 const mobileDanmuSetting = ref({
   opacity: Math.round((Number(danmu_setting.opacity) || 0.58) * 100),
   fontSize: getMobileDanmuFontSize(danmu_setting.fontSize),
@@ -451,6 +452,45 @@ function closeMobileDanmuPanels() {
   playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open').forEach(panel => {
     panel.classList.remove('is-panel-open')
   })
+}
+
+function isMobileArtControlVisible(selector) {
+  const root = playerFrame.value
+  const el = root?.querySelector?.(selector)
+  if (!root || !el) {
+    return false
+  }
+  const style = window.getComputedStyle(el)
+  if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) {
+    return false
+  }
+  const rect = el.getBoundingClientRect()
+  return rect.width >= 20 &&
+      rect.height >= 20 &&
+      rect.right > 0 &&
+      rect.left < window.innerWidth &&
+      rect.bottom > 0 &&
+      rect.top < window.innerHeight
+}
+
+function syncMobileDanmuFallbackControls() {
+  if (!MOBILE_UA) {
+    return
+  }
+  window.requestAnimationFrame(() => {
+    const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
+        isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
+    showMobileDanmuFallbackControls.value = !hasArtControls
+  })
+}
+
+function scheduleMobileDanmuFallbackSync() {
+  if (!MOBILE_UA) {
+    return
+  }
+  syncMobileDanmuFallbackControls()
+  window.setTimeout(syncMobileDanmuFallbackControls, 160)
+  window.setTimeout(syncMobileDanmuFallbackControls, 640)
 }
 
 function handleMobileDanmuPanelClick(event) {
@@ -877,6 +917,7 @@ function handleDocumentFullscreenChange() {
   } else if (mobileLandscapeActive) {
     exitMobileLandscapeFullscreen()
   }
+  scheduleMobileDanmuFallbackSync()
 }
 
 function addMobileLandscapeListeners() {
@@ -888,6 +929,8 @@ function addMobileLandscapeListeners() {
   })
   window.addEventListener('orientationchange', syncMobileLandscapeFallback)
   window.addEventListener('resize', syncMobileLandscapeFallback)
+  window.addEventListener('orientationchange', scheduleMobileDanmuFallbackSync)
+  window.addEventListener('resize', scheduleMobileDanmuFallbackSync)
 }
 
 function removeMobileLandscapeListeners() {
@@ -899,6 +942,8 @@ function removeMobileLandscapeListeners() {
   })
   window.removeEventListener('orientationchange', syncMobileLandscapeFallback)
   window.removeEventListener('resize', syncMobileLandscapeFallback)
+  window.removeEventListener('orientationchange', scheduleMobileDanmuFallbackSync)
+  window.removeEventListener('resize', scheduleMobileDanmuFallbackSync)
 }
 
 function cleanupMobileLandscape() {
@@ -1681,6 +1726,7 @@ async function ready() {
   await UpdateControl(art);
   art.plugins.artplayerPluginDanmuku.reset();
   syncMobileDanmuVisible();
+  scheduleMobileDanmuFallbackSync();
 
 }
 
@@ -1906,6 +1952,7 @@ async function getInstance(_art) {
   art.id = episode_guid.value
   art.url = url.value
   applyPlayerBrightness()
+  scheduleMobileDanmuFallbackSync()
 }
 
 const onMountedFun = async () => {
@@ -1998,7 +2045,12 @@ onMounted(async () => {
         <div class="gesture-feedback-title">{{ gestureFeedback.title }}</div>
         <div class="gesture-feedback-value">{{ gestureFeedback.value }}</div>
       </div>
-      <div v-if="MOBILE_UA" class="mobile-danmu-controls" aria-label="弹幕控制">
+      <div
+          v-if="MOBILE_UA"
+          class="mobile-danmu-controls"
+          :class="{ 'is-visible': showMobileDanmuFallbackControls }"
+          aria-label="弹幕控制"
+      >
         <button
             type="button"
             class="mobile-danmu-button mobile-danmu-toggle"
@@ -2354,6 +2406,10 @@ h1 {
 
 .player.is-mobile-player .mobile-danmu-settings {
   display: block;
+}
+
+.player.is-mobile-player .mobile-danmu-controls.is-visible {
+  display: flex;
 }
 
 .mobile-danmu-controls {

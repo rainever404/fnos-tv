@@ -65,12 +65,19 @@ const listCountText = computed(() => {
 })
 
 const sortModeLabel = computed(() => {
-  return modes.find(item => item.value === mode.value)?.label || '添加日期'
+  return pageSortModes.value.find(item => item.value === mode.value)?.label || (isFavoritePage.value ? '收藏时间' : '添加日期')
 })
 
 const layoutClass = computed(() => {
   return `layout-${layoutMode.value}`
 })
+
+const pageSortModes = computed(() => modes.map(item => {
+  if (isFavoritePage.value && item.value === 'create_time') {
+    return {...item, label: '收藏时间'}
+  }
+  return item
+}))
 
 const activeFilterCount = computed(() => {
   return Object.values(filters.value).filter(Boolean).length
@@ -145,6 +152,7 @@ const favoriteTabs = [
   {value: 'movie', label: '电影'},
   {value: 'tv', label: '电视节目'},
   {value: 'live', label: '电视直播'},
+  {value: 'episode', label: '单集'},
   {value: 'person', label: '人物'}
 ]
 
@@ -738,7 +746,7 @@ watch(
 
 <template>
 
-  <div class="content">
+  <div class="content" :class="{ 'favorite-content': isFavoritePage }">
     <div class="list-title">{{ galleryTitle }}</div>
     <div v-if="isFavoritePage" class="favorite-tabs" role="tablist" aria-label="收藏分类">
       <router-link
@@ -803,7 +811,7 @@ watch(
                 排序方式
               </div>
               <div class="sort-list">
-                <label class="sort-item" v-for="item in modes" :key="item.value">
+                <label class="sort-item" v-for="item in pageSortModes" :key="item.value">
                   <input type="radio" name="sort-mode" :value="item.value" :checked="mode === item.value"
                          @change="setSortMode(item.value)">
                   <span>{{ item.label }}</span>
@@ -822,7 +830,7 @@ watch(
             </div>
           </div>
         </div>
-        <div class="seriesTab-item">
+        <div v-if="!isFavoritePage" class="seriesTab-item">
           <div class="sort-menu">
             <input id="video-list-layout-toggle" class="sort-toggle" type="checkbox">
             <label class="toolbar-pill layout-pill" for="video-list-layout-toggle" aria-label="布局">
@@ -928,23 +936,26 @@ watch(
 .favorite-tabs {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 30px;
   max-width: 100%;
   margin: -8px 0 22px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--fn-border);
 }
 
 .favorite-tab {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 72px;
-  height: 36px;
-  padding: 0 16px;
+  flex: 0 0 auto;
+  min-width: 0;
+  height: 28px;
+  padding: 0;
   color: var(--fn-muted);
   background: transparent;
-  border-radius: 999px;
+  border-radius: 0;
   box-sizing: border-box;
   font-size: 14px;
   line-height: 20px;
@@ -953,13 +964,22 @@ watch(
 
 .favorite-tab:hover {
   color: var(--fn-text);
-  background: var(--fn-top-control);
 }
 
 .favorite-tab.active {
   color: var(--fn-blue);
-  background: var(--fn-nav-active);
   font-weight: 500;
+}
+
+.favorite-tab.active::after {
+  position: absolute;
+  right: 0;
+  bottom: -15px;
+  left: 0;
+  height: 2px;
+  background: var(--fn-blue);
+  border-radius: 999px;
+  content: "";
 }
 
 .list-total {
@@ -1192,6 +1212,12 @@ watch(
   grid-template-columns: repeat(auto-fill, minmax(var(--poster-card-width), 1fr));
   grid-gap: 26px 20px;
   padding: 0;
+}
+
+.favorite-content .view-card-list {
+  --poster-card-width: 165px;
+  grid-template-columns: repeat(auto-fill, var(--poster-card-width));
+  justify-content: start;
 }
 
 .view-card-list.layout-compact {

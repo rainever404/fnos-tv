@@ -1,5 +1,5 @@
 import requests
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 
 import Config
 from Config import fnos_username, fnos_password
@@ -20,6 +20,8 @@ api_app = Blueprint('api', __name__, url_prefix='/api')
 
 @api_app.before_request
 def before_request():
+    if request.path.startswith('/api/image/'):
+        return
     if 'getFnUrl' not in request.path:
         url = Config.fnos_url + '/v/api/v1/user/info'
         sign = generate_signature({
@@ -115,13 +117,51 @@ def update_video_config():
             _guid = episode_guid
             parent_guid = guid
         for item in value:
-            if parent_guid is not  None:
+            if parent_guid is not None:
                 item['parent_guid'] = parent_guid
             db.add(guid=_guid, **item)
     return {
         'code': 0,
         "msg": 'ok'
     }
+
+
+@api_app.get('/image/<path:image_path>')
+def proxy_image(image_path):
+    params = {
+        key: value
+        for key, value in request.args.items()
+        if value is not None
+    }
+    upstream_path = f'/v/api/v1/sys/img/{image_path}'
+    sign = generate_signature({
+        'method': "GET",
+        'url': upstream_path,
+        'params': params,
+        'data': {}
+    }, "16CCEB3D-AB42-077D-36A1-F355324E4237")
+    authorization = request.headers.get('authorization') or request.cookies.get('authorization')
+    headers = {
+        'authx': sign
+    }
+    if authorization:
+        headers['authorization'] = authorization
+    cookie = request.headers.get('Cookie')
+    if cookie:
+        headers['Cookie'] = cookie
+    res = requests.get(
+        f'{Config.fnos_url}{upstream_path}',
+        params=params,
+        headers=headers,
+        timeout=20
+    )
+    response = Response(
+        res.content,
+        status=res.status_code,
+        content_type=res.headers.get('Content-Type', 'application/octet-stream')
+    )
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    return response
 
 
 @api_app.get('/play')

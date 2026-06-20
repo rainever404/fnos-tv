@@ -179,6 +179,10 @@ function normalizedImageBase() {
   return String(imgUrl || '').replace(/\/+$/, '').replace(/\/92\/17$/, '')
 }
 
+function imageProxyUrl(path, width) {
+  return appendImageWidth(`/api/image/${path.replace(/^\/+/, '')}`, width)
+}
+
 function appendImageWidth(url, width) {
   if (!width || /[?&]w=/.test(url)) {
     return url
@@ -200,8 +204,10 @@ function mediaImageUrl(value, width = 200, fallback = '/images/not_video.jpg') {
 
   const clean = raw.replace(/^\/+/, '')
   const hasOfficialBucket = /^(t\/p\/|[0-9a-f]{2}\/[0-9a-f]{2}\/)/i.test(clean)
-  const path = hasOfficialBucket ? clean : `92/17/${clean}`
-  return appendImageWidth(`${normalizedImageBase()}/${path}`, width)
+  if (hasOfficialBucket) {
+    return imageProxyUrl(clean, width)
+  }
+  return appendImageWidth(`${normalizedImageBase()}/92/17/${clean}`, width)
 }
 
 function profileImageUrl(value, width = 120, fallback = '/images/not_person.jpg') {
@@ -217,8 +223,10 @@ function profileImageUrl(value, width = 120, fallback = '/images/not_person.jpg'
   }
 
   const clean = raw.replace(/^\/+/, '')
-  const path = clean.startsWith('t/p/') ? clean : `t/p/w220_and_h330_face/${clean}`
-  return appendImageWidth(`${normalizedImageBase()}/${path}`, width)
+  if (clean.startsWith('t/p/')) {
+    return imageProxyUrl(clean, width)
+  }
+  return appendImageWidth(`${normalizedImageBase()}/t/p/w220_and_h330_face/${clean}`, width)
 }
 
 function initConfig() {
