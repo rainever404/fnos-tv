@@ -27,6 +27,11 @@ const routes = [
         component: () => import('../views/Video/VideoData.vue')
     },
     {
+        path: '/person',
+        name: 'PersonData',
+        component: () => import('../views/Person/PersonData.vue')
+    },
+    {
         path: '/player',
         name: 'VideoPlayer',
         component: () => import('../views/Play/VideoPlayer.vue')

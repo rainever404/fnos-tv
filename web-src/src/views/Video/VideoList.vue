@@ -384,6 +384,10 @@ function formatRating(item) {
 }
 
 function releaseYear(item) {
+  if (isPerson(item)) {
+    const count = item?.known_for_item_count || item?.item_count || item?.work_count
+    return count ? `${count} 个作品` : '人物'
+  }
   const source = item?.release_date || item?.air_date || item?.year || item?.premiere_date || item?.create_time || ''
   const match = String(source).match(/\d{4}/)
   return match ? match[0] : ''
@@ -394,6 +398,10 @@ function displayTitle(item) {
 }
 
 function posterUrl(item, width = 200) {
+  if (isPerson(item)) {
+    const profile = item?.profile_path || item?.avatar || item?.poster || ''
+    return profile ? `${COMMON.imgUrl}/t/p/w220_and_h330_face/${String(profile).replace(/^\/+/, '')}?w=${width}` : '/images/not_person.jpg'
+  }
   const poster = item?.poster || item?.posters || ''
   if (!poster) {
     return '/images/not_video.jpg'
@@ -417,6 +425,14 @@ function normalizeGalleryType(value) {
 
 function getItemRoute(item) {
   const type = item?.type || item?.gallery_type || item?.ancestor_category || 'Video'
+  if (type === 'Person') {
+    return {
+      path: '/person',
+      query: {
+        guid: item?.guid || item?.item_guid
+      }
+    }
+  }
   const itemGuid = type === 'Episode' ? (item?.parent_guid || item?.guid) : item?.guid
   return {
     path: '/video',
@@ -437,6 +453,14 @@ function isFavorite(item) {
 
 function isWatched(item) {
   return Boolean(item?.played || item?.watched)
+}
+
+function isPerson(item) {
+  return (item?.type || item?.gallery_type || item?.ancestor_category) === 'Person'
+}
+
+function canMarkWatched(item) {
+  return !isPerson(item)
 }
 
 function notifyFavoriteUpdated() {
@@ -789,7 +813,7 @@ watch(
     </div>
     <div class="card-show-content view-card-list" :class="layoutClass">
       <div class="view-item" v-for="item in MediaDbInfo" :key="item.guid">
-        <div class="poster-frame">
+        <div class="poster-frame" :class="{ 'person-poster-frame': isPerson(item) }">
           <router-link class="poster-cover-link" :to="getItemRoute(item)">
             <div class="poster-inner">
               <img loading="lazy" class="carousel-img" v-lazy='posterUrl(item)'>
@@ -805,6 +829,7 @@ watch(
           </div>
           <div class="card-action-row">
             <button
+                v-if="canMarkWatched(item)"
                 type="button"
                 class="card-action-button"
                 :class="{ active: isWatched(item) }"
@@ -1172,6 +1197,11 @@ watch(
   background: var(--fn-panel);
 }
 
+.poster-frame.person-poster-frame {
+  aspect-ratio: 1;
+  border-radius: 999px;
+}
+
 .poster-inner {
   position: absolute;
   top: 1px;
@@ -1180,6 +1210,11 @@ watch(
   left: 1px;
   border-radius: 8px;
   overflow: hidden;
+}
+
+.person-poster-frame .poster-inner,
+.person-poster-frame img.carousel-img {
+  border-radius: 999px;
 }
 
 .view-card-list img.carousel-img {

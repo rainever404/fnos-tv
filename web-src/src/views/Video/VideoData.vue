@@ -414,6 +414,15 @@ function formatPersonRole(item) {
   return map[item?.job] || map[item?.known_for_department] || item?.job || ''
 }
 
+function personRoute(item) {
+  return {
+    path: '/person',
+    query: {
+      guid: item?.id || item?.guid || item?.person_guid
+    }
+  }
+}
+
 async function GetTagDictionaries() {
   const [genres, countries, languages] = await Promise.allSettled([
     COMMON.requests("GET", "/api/v1/tag/genres?lan=zh-CN", true),
@@ -764,9 +773,9 @@ onMounted(async () => {
             <div style="white-space: nowrap;">
               <div class="show-card-list">
                 <div class="show-card-item person-card" v-for="(item, index) in PersonList" :key="index">
-                  <router-link :to="{ path: '/person', query: { id: item.id, } }">
+                  <router-link :to="personRoute(item)">
                     <div class="show-img person-avatar">
-                      <img v-if="item.profile_path!==''" loading="lazy"
+                      <img v-if="item.profile_path" loading="lazy"
                            v-lazy='COMMON.imgUrl + "/t/p/w220_and_h330_face/" + item.profile_path'
                            alt="">
                       <img v-else loading="lazy" v-lazy="'/images/not_person.jpg'" alt="">

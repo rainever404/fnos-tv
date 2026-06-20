@@ -26,6 +26,8 @@ function GetSigin(config) {
 
 
 function instanceRequestBase(config) {
+  config.headers['x-trim-client'] = 'web';
+  config.headers['x-trim-client-version'] = '610';
   config.headers.authx = GetSigin(config);
   return config;
 }

@@ -32,6 +32,7 @@ const isDetailPage = computed(() => route.path === '/video');
 const searchOpen = ref(false);
 const searchKeyword = ref('');
 const searchResults = ref([]);
+const searchActiveTab = ref('all');
 const searchLoading = ref(false);
 const searchInputRef = ref(null);
 const favoriteCount = ref(0);
@@ -170,6 +171,28 @@ const categoryNavItems = computed(() => {
       }
     }
   ]
+})
+
+const searchTabOptions = computed(() => {
+  const tabs = [
+    {key: 'all', label: '全部'},
+    {key: 'movie', label: '电影'},
+    {key: 'tv', label: '电视节目'},
+    {key: 'live', label: '电视直播'},
+    {key: 'person', label: '人物'},
+    {key: 'other', label: '其他'}
+  ]
+  return tabs.map(tab => ({
+    ...tab,
+    count: searchResults.value.filter(item => tab.key === 'all' || searchCategory(item) === tab.key).length
+  }))
+})
+
+const visibleSearchResults = computed(() => {
+  if (searchActiveTab.value === 'all') {
+    return searchResults.value
+  }
+  return searchResults.value.filter(item => searchCategory(item) === searchActiveTab.value)
 })
 
 if (COMMON.isMo) {
@@ -397,6 +420,14 @@ function handleSettingsSelect(key) {
 function getSearchRoute(item) {
   const type = normalizeSearchType(item?.type || item?.gallery_type || item?.ancestor_category)
   const rawGuid = item?.guid || item?.item_guid
+  if (type === 'Person') {
+    return {
+      path: '/person',
+      query: {
+        guid: rawGuid
+      }
+    }
+  }
   const itemGuid = item?.type === 'Episode' ? (item.parent_guid || rawGuid) : rawGuid
   return {
     path: '/video',
@@ -459,14 +490,19 @@ function normalizeSearchType(value) {
   if (value === 'Episode' || value === 'Season' || value === 'season') {
     return 'season'
   }
+  if (value === 'Person') {
+    return 'Person'
+  }
   return normalizeGalleryType(value || 'Video')
 }
 
 function normalizeSearchItem(item) {
+  const type = normalizeSearchType(item?.type || item?.gallery_type || item?.ancestor_category)
   return {
     ...item,
-    library_title: item?.library_title || item?.ancestor_name || item?.parent_title || '',
-    library_category: item?.library_category || item?.ancestor_category || item?.type || ''
+    gallery_type: type,
+    library_title: item?.library_title || item?.ancestor_name || item?.parent_title || searchCategoryTitle(type),
+    library_category: item?.library_category || item?.ancestor_category || item?.type || type
   }
 }
 
@@ -483,6 +519,10 @@ function localSearch(keyword) {
 }
 
 function searchPosterUrl(item, width = 120) {
+  if (searchCategory(item) === 'person') {
+    const profile = item?.profile_path || item?.avatar || item?.poster || ''
+    return profile ? `${COMMON.imgUrl}/t/p/w220_and_h330_face/${String(profile).replace(/^\/+/, '')}?w=${width}` : '/images/not_person.jpg'
+  }
   const poster = item?.poster || item?.posters || ''
   if (!poster) {
     return '/images/not_video.jpg'
@@ -496,9 +536,47 @@ function searchTitle(item) {
 }
 
 function searchYear(item) {
+  if (searchCategory(item) === 'person') {
+    const count = item?.known_for_item_count || item?.item_count || item?.work_count
+    return count ? `${count} 个作品` : '人物'
+  }
   const source = item?.release_date || item?.year || item?.create_time || ''
   const match = String(source).match(/\d{4}/)
   return match ? match[0] : item?.library_title || ''
+}
+
+function searchCategory(item) {
+  const type = normalizeSearchType(item?.type || item?.gallery_type || item?.ancestor_category)
+  if (type === 'Movie') {
+    return 'movie'
+  }
+  if (type === 'TV' || type === 'season') {
+    return 'tv'
+  }
+  if (type === 'LiveChannel') {
+    return 'live'
+  }
+  if (type === 'Person') {
+    return 'person'
+  }
+  return 'other'
+}
+
+function searchCategoryTitle(type) {
+  const normalized = normalizeSearchType(type)
+  if (normalized === 'Movie') {
+    return '电影'
+  }
+  if (normalized === 'TV' || normalized === 'season') {
+    return '电视节目'
+  }
+  if (normalized === 'LiveChannel') {
+    return '电视直播'
+  }
+  if (normalized === 'Person') {
+    return '人物'
+  }
+  return '其他'
 }
 
 async function performSearch(keyword, requestId) {
@@ -509,9 +587,11 @@ async function performSearch(keyword, requestId) {
     }
     const list = searchListFromResponse(res).map(normalizeSearchItem).slice(0, 30)
     searchResults.value = list.length > 0 ? list : localSearch(keyword)
+    searchActiveTab.value = 'all'
   } catch {
     if (requestId === searchRequestId) {
       searchResults.value = localSearch(keyword)
+      searchActiveTab.value = 'all'
     }
   } finally {
     if (requestId === searchRequestId) {
@@ -530,6 +610,7 @@ function queueSearch(value, delay = 280) {
   }
   if (!keyword) {
     searchResults.value = []
+    searchActiveTab.value = 'all'
     searchLoading.value = false
     return
   }
@@ -552,6 +633,7 @@ function closeSearch({clear = false} = {}) {
   if (clear) {
     searchKeyword.value = ''
     searchResults.value = []
+    searchActiveTab.value = 'all'
     searchLoading.value = false
   }
 }
@@ -559,6 +641,7 @@ function closeSearch({clear = false} = {}) {
 function clearSearch() {
   searchKeyword.value = ''
   searchResults.value = []
+  searchActiveTab.value = 'all'
   searchLoading.value = false
   nextTick(() => {
     searchInputRef.value?.focus()
@@ -729,20 +812,41 @@ watch(
                         <div v-if="searchLoading" class="search-empty">
                           搜索中...
                         </div>
-                        <div class="search-result-list" v-else-if="searchResults.length > 0">
-                          <router-link
-                              class="search-result-item"
-                              v-for="(item, index) in searchResults"
-                              :key="searchItemKey(item, index)"
-                              :to="getSearchRoute(item)"
-                              @click="selectSearchResult"
-                          >
-                            <img loading="lazy" v-lazy='searchPosterUrl(item)' alt="">
-                            <div class="search-result-meta">
-                              <div class="search-result-title">{{ searchTitle(item) }}</div>
-                              <div class="search-result-subtitle">{{ searchYear(item) }} · {{ item.library_title }}</div>
-                            </div>
-                          </router-link>
+                        <div v-else-if="searchResults.length > 0" class="search-panel">
+                          <div class="search-tabs" role="tablist" aria-label="搜索分类">
+                            <button
+                                v-for="item in searchTabOptions"
+                                :key="item.key"
+                                class="search-tab"
+                                :class="{ active: searchActiveTab === item.key }"
+                                type="button"
+                                role="tab"
+                                :aria-selected="searchActiveTab === item.key"
+                                @click="searchActiveTab = item.key"
+                            >
+                              <span>{{ item.label }}</span>
+                              <span v-if="item.count > 0" class="search-tab-count">{{ item.count }}</span>
+                            </button>
+                          </div>
+                          <div class="search-result-list" v-if="visibleSearchResults.length > 0">
+                            <router-link
+                                class="search-result-item"
+                                :class="`type-${searchCategory(item)}`"
+                                v-for="(item, index) in visibleSearchResults"
+                                :key="searchItemKey(item, index)"
+                                :to="getSearchRoute(item)"
+                                @click="selectSearchResult"
+                            >
+                              <img loading="lazy" v-lazy='searchPosterUrl(item)' alt="">
+                              <div class="search-result-meta">
+                                <div class="search-result-title">{{ searchTitle(item) }}</div>
+                                <div class="search-result-subtitle">{{ searchYear(item) }} · {{ item.library_title }}</div>
+                              </div>
+                            </router-link>
+                          </div>
+                          <div v-else class="search-empty compact">
+                            当前分类无结果
+                          </div>
                         </div>
                         <div v-else class="search-empty">
                           没有匹配的内容
@@ -1426,7 +1530,7 @@ body {
   top: 48px;
   right: 0;
   z-index: 40;
-  width: 340px;
+  width: 430px;
   max-width: calc(100vw - 32px);
   padding: 8px;
   color: var(--fn-text);
@@ -1701,7 +1805,7 @@ body {
 
   .search-popover {
     right: -92px;
-    width: min(340px, calc(100vw - 24px));
+    width: min(430px, calc(100vw - 24px));
   }
 
   .home.detail-page .n-layout-header {
@@ -1733,6 +1837,51 @@ body {
   padding-right: 2px;
 }
 
+.search-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  margin: 2px 2px 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.search-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 10px;
+  color: var(--fn-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.search-tab:hover {
+  color: var(--fn-text);
+  background: var(--fn-top-control);
+}
+
+.search-tab.active {
+  color: var(--fn-blue);
+  background: var(--fn-nav-active);
+  font-weight: 600;
+}
+
+.search-tab-count {
+  color: inherit;
+  font-size: 12px;
+  opacity: 0.72;
+}
+
 .search-result-item {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
@@ -1755,6 +1904,10 @@ body {
   background: var(--fn-panel);
 }
 
+.search-result-item.type-person img {
+  border-radius: 999px;
+}
+
 .search-result-title {
   overflow: hidden;
   color: var(--fn-text);
@@ -1775,5 +1928,9 @@ body {
 .search-empty {
   padding: 24px 8px 18px;
   text-align: center;
+}
+
+.search-empty.compact {
+  padding: 18px 8px 14px;
 }
 </style>
