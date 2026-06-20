@@ -153,6 +153,26 @@ function getStoredDanmuSetting() {
 
 const danmu_setting = getStoredDanmuSetting()
 window.localStorage.danmu_setting = JSON.stringify({value: danmu_setting})
+function getMobileDanmuFontSize(value) {
+  const text = String(value ?? '')
+  if (text.includes('%')) {
+    return window.innerWidth <= 768 ? 24 : 28
+  }
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) && parsed >= 16 ? parsed : (window.innerWidth <= 768 ? 24 : 28)
+}
+
+const mobileDanmuVisible = ref(true);
+const showMobileDanmuSettings = ref(false);
+const mobileDanmuSetting = ref({
+  opacity: Math.round((Number(danmu_setting.opacity) || 0.58) * 100),
+  fontSize: getMobileDanmuFontSize(danmu_setting.fontSize),
+  speed: Number(danmu_setting.speed) || 8.5,
+  area: Array.isArray(danmu_setting.margin) ? Number.parseFloat(danmu_setting.margin[1]) || 85 : 85,
+  modes: Array.isArray(danmu_setting.modes) ? [...danmu_setting.modes] : [0, 1, 2],
+  antiOverlap: danmu_setting.antiOverlap !== false,
+  synchronousPlayback: danmu_setting.synchronousPlayback !== false
+});
 
 const setting = ref({
   url: "",
@@ -373,7 +393,7 @@ function isEditableTarget(target) {
 
 function isPlayerInteractiveTarget(target) {
   return !!target?.closest?.(
-      '.art-bottom, .art-setting, .art-contextmenus, .art-volume-panel, .art-control, .artplayer-plugin-danmuku, .apd-config-panel, .apd-style-panel, .player-back-button, button, a, input, textarea, select, [contenteditable="true"]'
+      '.art-bottom, .art-setting, .art-contextmenus, .art-volume-panel, .art-control, .artplayer-plugin-danmuku, .apd-config-panel, .apd-style-panel, .mobile-danmu-controls, .mobile-danmu-settings, .player-back-button, button, a, input, textarea, select, [contenteditable="true"]'
   )
 }
 
@@ -398,6 +418,7 @@ function closeMobileDanmuPanels() {
   if (!MOBILE_UA) {
     return
   }
+  showMobileDanmuSettings.value = false
   playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open').forEach(panel => {
     panel.classList.remove('is-panel-open')
   })
@@ -411,6 +432,9 @@ function handleMobileDanmuPanelClick(event) {
   const target = event.target
   if (!root || !target || !root.contains(target)) {
     closeMobileDanmuPanels()
+    return
+  }
+  if (target.closest('.mobile-danmu-controls, .mobile-danmu-settings')) {
     return
   }
   if (target.closest('.apd-config-panel, .apd-style-panel')) {
@@ -428,6 +452,87 @@ function handleMobileDanmuPanelClick(event) {
   }
   event.preventDefault()
   event.stopPropagation()
+}
+
+function getDanmuPlugin() {
+  return art?.plugins?.artplayerPluginDanmuku || null
+}
+
+function syncMobileDanmuVisible() {
+  const danmu = getDanmuPlugin()
+  if (danmu) {
+    mobileDanmuVisible.value = !danmu.isHide
+  }
+}
+
+function persistMobileDanmuSetting(nextValue) {
+  Object.assign(danmu_setting, nextValue)
+  try {
+    window.localStorage.danmu_setting = JSON.stringify({value: danmu_setting})
+  } catch {
+  }
+}
+
+function syncMobileDanmuSettingFromOption(option = danmu_setting) {
+  mobileDanmuSetting.value = {
+    ...mobileDanmuSetting.value,
+    opacity: Math.round((Number(option.opacity) || 0.58) * 100),
+    fontSize: getMobileDanmuFontSize(option.fontSize),
+    speed: Number(option.speed) || mobileDanmuSetting.value.speed,
+    area: Array.isArray(option.margin) ? Number.parseFloat(option.margin[1]) || mobileDanmuSetting.value.area : mobileDanmuSetting.value.area,
+    modes: Array.isArray(option.modes) && option.modes.length ? [...option.modes] : mobileDanmuSetting.value.modes,
+    antiOverlap: option.antiOverlap !== false,
+    synchronousPlayback: option.synchronousPlayback !== false
+  }
+}
+
+function applyMobileDanmuSetting(partial = {}) {
+  const nextValue = {
+    opacity: clamp(mobileDanmuSetting.value.opacity, 20, 100) / 100,
+    fontSize: `${clamp(mobileDanmuSetting.value.fontSize, 16, 42)}px`,
+    speed: clamp(mobileDanmuSetting.value.speed, 1, 10),
+    margin: [5, `${clamp(mobileDanmuSetting.value.area, 25, 100)}%`],
+    modes: mobileDanmuSetting.value.modes.length ? [...mobileDanmuSetting.value.modes] : [0],
+    antiOverlap: mobileDanmuSetting.value.antiOverlap,
+    synchronousPlayback: mobileDanmuSetting.value.synchronousPlayback,
+    ...partial
+  }
+  persistMobileDanmuSetting(nextValue)
+  getDanmuPlugin()?.config(nextValue)
+}
+
+function toggleMobileDanmuVisible() {
+  const danmu = getDanmuPlugin()
+  if (!danmu) {
+    return
+  }
+  if (danmu.isHide) {
+    danmu.show()
+  } else {
+    danmu.hide()
+  }
+  syncMobileDanmuVisible()
+}
+
+function toggleMobileDanmuSettings() {
+  showMobileDanmuSettings.value = !showMobileDanmuSettings.value
+  playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open').forEach(panel => {
+    panel.classList.remove('is-panel-open')
+  })
+}
+
+function toggleMobileDanmuMode(mode) {
+  const modes = new Set(mobileDanmuSetting.value.modes)
+  if (modes.has(mode)) {
+    modes.delete(mode)
+  } else {
+    modes.add(mode)
+  }
+  if (modes.size === 0) {
+    modes.add(mode)
+  }
+  mobileDanmuSetting.value.modes = [...modes].sort((a, b) => a - b)
+  applyMobileDanmuSetting()
 }
 
 function showGestureFeedback(title, value, autoHide = false) {
@@ -1539,6 +1644,7 @@ async function ready() {
 
   await UpdateControl(art);
   art.plugins.artplayerPluginDanmuku.reset();
+  syncMobileDanmuVisible();
 
 }
 
@@ -1707,7 +1813,10 @@ const artF = async (data) => {
     delete o.mount;
     art.storage.set("value", o);
     art.storage.name = 'artplayer_settings';
+    syncMobileDanmuSettingFromOption(o);
   });
+  art.on('artplayerPluginDanmuku:show', syncMobileDanmuVisible);
+  art.on('artplayerPluginDanmuku:hide', syncMobileDanmuVisible);
   art.on('artplayerPluginDanmuku:visible', (danmu) => {
     const $ref = danmu.$ref;
     let text = $ref.textContent;
@@ -1851,6 +1960,103 @@ onMounted(async () => {
       <div class="gesture-feedback" :class="{ 'is-visible': gestureFeedback.visible }">
         <div class="gesture-feedback-title">{{ gestureFeedback.title }}</div>
         <div class="gesture-feedback-value">{{ gestureFeedback.value }}</div>
+      </div>
+      <div v-if="MOBILE_UA" class="mobile-danmu-controls" aria-label="弹幕控制">
+        <button
+            type="button"
+            class="mobile-danmu-button mobile-danmu-toggle"
+            :class="{ 'is-muted': !mobileDanmuVisible }"
+            :aria-pressed="mobileDanmuVisible"
+            aria-label="弹幕开关"
+            @click.stop.prevent="toggleMobileDanmuVisible"
+        >
+          弹
+        </button>
+        <button
+            type="button"
+            class="mobile-danmu-button"
+            :class="{ 'is-active': showMobileDanmuSettings }"
+            aria-label="弹幕设置"
+            @click.stop.prevent="toggleMobileDanmuSettings"
+        >
+          <span>弹</span>
+          <i class='bx bx-slider-alt'></i>
+        </button>
+      </div>
+      <div
+          v-if="MOBILE_UA"
+          class="mobile-danmu-settings"
+          :class="{ 'is-visible': showMobileDanmuSettings }"
+          @click.stop
+          @touchstart.stop
+          @touchmove.stop
+          @touchend.stop
+      >
+        <div class="mobile-danmu-settings-header">
+          <span>弹幕设置</span>
+          <button type="button" aria-label="关闭弹幕设置" @click.stop.prevent="showMobileDanmuSettings = false">
+            <i class='bx bx-x'></i>
+          </button>
+        </div>
+        <div class="mobile-danmu-mode-row">
+          <button
+              type="button"
+              :class="{ 'is-active': mobileDanmuSetting.modes.includes(0) }"
+              @click.stop.prevent="toggleMobileDanmuMode(0)"
+          >
+            滚动
+          </button>
+          <button
+              type="button"
+              :class="{ 'is-active': mobileDanmuSetting.modes.includes(1) }"
+              @click.stop.prevent="toggleMobileDanmuMode(1)"
+          >
+            顶部
+          </button>
+          <button
+              type="button"
+              :class="{ 'is-active': mobileDanmuSetting.modes.includes(2) }"
+              @click.stop.prevent="toggleMobileDanmuMode(2)"
+          >
+            底部
+          </button>
+        </div>
+        <label class="mobile-danmu-slider">
+          <span>不透明度</span>
+          <input v-model.number="mobileDanmuSetting.opacity" type="range" min="20" max="100" step="1" @input="applyMobileDanmuSetting()">
+          <em>{{ mobileDanmuSetting.opacity }}%</em>
+        </label>
+        <label class="mobile-danmu-slider">
+          <span>字号</span>
+          <input v-model.number="mobileDanmuSetting.fontSize" type="range" min="16" max="42" step="1" @input="applyMobileDanmuSetting()">
+          <em>{{ mobileDanmuSetting.fontSize }}px</em>
+        </label>
+        <label class="mobile-danmu-slider">
+          <span>速度</span>
+          <input v-model.number="mobileDanmuSetting.speed" type="range" min="1" max="10" step="0.5" @input="applyMobileDanmuSetting()">
+          <em>{{ mobileDanmuSetting.speed }}</em>
+        </label>
+        <label class="mobile-danmu-slider">
+          <span>显示区域</span>
+          <input v-model.number="mobileDanmuSetting.area" type="range" min="25" max="100" step="5" @input="applyMobileDanmuSetting()">
+          <em>{{ mobileDanmuSetting.area }}%</em>
+        </label>
+        <div class="mobile-danmu-switches">
+          <button
+              type="button"
+              :class="{ 'is-active': mobileDanmuSetting.antiOverlap }"
+              @click.stop.prevent="mobileDanmuSetting.antiOverlap = !mobileDanmuSetting.antiOverlap; applyMobileDanmuSetting()"
+          >
+            防重叠
+          </button>
+          <button
+              type="button"
+              :class="{ 'is-active': mobileDanmuSetting.synchronousPlayback }"
+              @click.stop.prevent="mobileDanmuSetting.synchronousPlayback = !mobileDanmuSetting.synchronousPlayback; applyMobileDanmuSetting()"
+          >
+            同步倍速
+          </button>
+        </div>
       </div>
     </div>
 
@@ -2071,7 +2277,7 @@ h1 {
   position: absolute;
   top: 50%;
   left: 50%;
-  z-index: 120;
+  z-index: 100050;
   min-width: 124px;
   padding: 12px 18px;
   color: #fff;
@@ -2102,6 +2308,174 @@ h1 {
   font-size: 20px;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.mobile-danmu-controls,
+.mobile-danmu-settings {
+  display: none;
+}
+
+.mobile-danmu-controls {
+  position: absolute;
+  right: max(92px, calc(env(safe-area-inset-right, 0px) + 92px));
+  bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+  z-index: 100040;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.mobile-danmu-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(0, 0, 0, 0.54);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  backdrop-filter: blur(12px);
+}
+
+.mobile-danmu-button i {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.mobile-danmu-button.is-active {
+  color: #fff;
+  background: rgba(0, 174, 236, 0.9);
+  border-color: rgba(0, 174, 236, 0.9);
+}
+
+.mobile-danmu-button.is-muted {
+  color: rgba(255, 255, 255, 0.54);
+}
+
+.mobile-danmu-button.is-muted::after {
+  position: absolute;
+  width: 20px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 999px;
+  content: "";
+  transform: rotate(-38deg);
+}
+
+.mobile-danmu-settings {
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: max(74px, calc(env(safe-area-inset-bottom, 0px) + 74px));
+  z-index: 100060;
+  box-sizing: border-box;
+  width: min(342px, calc(100vw - 24px));
+  max-height: min(56vh, 430px);
+  padding: 14px;
+  overflow-y: auto;
+  color: #fff;
+  background: rgba(18, 21, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.44);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  backdrop-filter: saturate(180%) blur(18px);
+}
+
+.mobile-danmu-settings.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.mobile-danmu-settings-header,
+.mobile-danmu-mode-row,
+.mobile-danmu-switches {
+  display: flex;
+  align-items: center;
+}
+
+.mobile-danmu-settings-header {
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.mobile-danmu-settings-header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: rgba(255, 255, 255, 0.82);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  font-size: 20px;
+}
+
+.mobile-danmu-mode-row,
+.mobile-danmu-switches {
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mobile-danmu-mode-row button,
+.mobile-danmu-switches button {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  color: rgba(255, 255, 255, 0.74);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.mobile-danmu-mode-row button.is-active,
+.mobile-danmu-switches button.is-active {
+  color: #fff;
+  background: rgba(0, 174, 236, 0.84);
+  border-color: rgba(0, 174, 236, 0.9);
+}
+
+.mobile-danmu-slider {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr) 48px;
+  gap: 10px;
+  align-items: center;
+  min-height: 34px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+}
+
+.mobile-danmu-slider + .mobile-danmu-slider {
+  margin-top: 8px;
+}
+
+.mobile-danmu-slider input {
+  width: 100%;
+  accent-color: #00aeec;
+}
+
+.mobile-danmu-slider em {
+  color: #00aeec;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .player-topbar {
@@ -2624,6 +2998,14 @@ img.play-icon {
     --art-selector-max-height: min(220px, calc(100svh - 96px));
   }
 
+  .mobile-danmu-controls {
+    display: flex;
+  }
+
+  .mobile-danmu-settings {
+    display: block;
+  }
+
   :deep(.art-video-player .art-controls-center) {
     display: flex !important;
     flex: 0 0 auto;
@@ -2689,6 +3071,11 @@ img.play-icon {
     font-size: 22px;
   }
 
+  .player.is-forced-landscape .mobile-danmu-controls,
+  .player.is-forced-landscape .mobile-danmu-settings {
+    display: none;
+  }
+
   :global(body.player-forced-landscape-active) .player-topbar {
     opacity: 0;
     pointer-events: none;
@@ -2697,6 +3084,13 @@ img.play-icon {
   .player.is-forced-landscape :deep(.art-video-player .apd-config-panel),
   .player.is-forced-landscape :deep(.art-video-player .apd-style-panel) {
     bottom: 38px;
+  }
+
+  @media (orientation: landscape) {
+    .mobile-danmu-controls,
+    .mobile-danmu-settings {
+      display: none;
+    }
   }
 }
 

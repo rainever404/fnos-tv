@@ -25,7 +25,7 @@ const router = useRouter();
 const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 const systemDark = ref(systemThemeQuery.matches);
 const legacyDark = VueCookies.get("dark");
-const themeMode = ref(VueCookies.get("theme_mode") || (legacyDark === "true" ? "dark" : legacyDark === "false" ? "light" : "system"));
+const themeMode = ref(VueCookies.get("theme_mode") || (legacyDark === "true" ? "dark" : legacyDark === "false" ? "light" : "dark"));
 const dark = computed(() => themeMode.value === "dark" || (themeMode.value === "system" && systemDark.value));
 const theme = computed(() => dark.value ? darkTheme : null);
 const isDetailPage = computed(() => route.path === '/video');

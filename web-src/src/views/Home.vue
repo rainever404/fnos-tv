@@ -352,10 +352,9 @@ onUnmounted(() => {
               <div v-if="getLibraryPreview(item.guid).length === 0" class="library-empty">
                 <i class='bx bx-film'></i>
               </div>
-            </div>
-            <div class="library-meta">
-              <div class="library-label">{{ item.title }}</div>
-              <div class="library-subtitle">{{ libraryMetaText(item) }}</div>
+              <div class="library-title-overlay">
+                {{ item.title }}
+              </div>
             </div>
           </router-link>
         </div>
@@ -920,18 +919,27 @@ img.carousel-img {
 }
 
 .library-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, 284px);
+  display: flex;
   gap: 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 0 6px;
+  scrollbar-width: none;
+}
+
+.library-grid::-webkit-scrollbar {
+  display: none;
 }
 
 .library-card {
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
-  width: 284px;
-  min-height: 198px;
-  padding: 4px 4px 10px;
+  flex: 0 0 256px;
+  width: 256px;
+  height: auto;
+  aspect-ratio: 256 / 184;
+  padding: 0;
   color: var(--fn-text);
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid var(--fn-border);
@@ -959,13 +967,12 @@ img.carousel-img {
   z-index: 1;
   display: flex;
   gap: 1px;
-  grid-template-columns: repeat(3, 1fr);
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: 100%;
   margin: 0;
   overflow: hidden;
   background: rgba(198, 202, 207, 0.15);
-  border-radius: 6px;
+  border-radius: 7px;
 }
 
 .library-posters::after {
@@ -998,7 +1005,6 @@ img.carousel-img {
 
 .library-empty {
   flex: 1 1 100%;
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1009,29 +1015,25 @@ img.carousel-img {
   background: linear-gradient(135deg, var(--fn-panel), var(--fn-bg));
 }
 
-.library-meta {
+.library-title-overlay {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-  padding: 10px 6px 0;
-}
-
-.library-label {
+  align-items: center;
+  justify-content: center;
+  min-height: 39px;
+  padding: 0 14px;
+  box-sizing: border-box;
   overflow: hidden;
-  color: var(--fn-text);
+  color: #fff;
+  background: linear-gradient(180deg, rgba(12, 13, 16, 0.16), rgba(12, 13, 16, 0.82));
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 21px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.library-subtitle {
-  overflow: hidden;
-  color: var(--fn-muted);
-  font-size: 13px;
-  line-height: 19px;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1333,12 +1335,12 @@ img.carousel-img,
   }
 
   .library-grid {
-    grid-template-columns: 1fr;
     gap: 12px;
   }
 
   .library-card {
-    width: 100%;
+    flex-basis: min(256px, calc(100vw - 56px));
+    width: min(256px, calc(100vw - 56px));
   }
 
   .card-shows {
