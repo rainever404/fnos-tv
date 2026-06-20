@@ -334,12 +334,7 @@ onUnmounted(() => {
               class="library-card"
               v-for="item in visibleLibraries"
               :key="item.guid"
-              :to="{
-                path: '/list', query: {
-                  gallery_uid: item.guid,
-                  gallery_type: item.category
-                }
-              }"
+              :to="`/library/${item.guid}`"
           >
             <div class="library-posters">
               <img

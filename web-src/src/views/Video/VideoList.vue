@@ -224,14 +224,27 @@ const filterRows = computed(() => [
 ])
 
 function applyRouteState(targetRoute = route, {resetList = true} = {}) {
-  guid.value = targetRoute.query.gallery_uid || null
-  category.value = targetRoute.query.category || null
+  guid.value = targetRoute.params.guid || targetRoute.query.gallery_uid || null
+  category.value = targetRoute.params.guid ? null : (targetRoute.query.category || legacyTypeCategory(targetRoute.query.type))
   favoriteType.value = targetRoute.query.type || 'all'
   size.value = isRouteFavorite(targetRoute) ? FAVORITE_PAGE_SIZE : DEFAULT_PAGE_SIZE
   if (resetList) {
     MediaDbInfo.value = null
     totalCount.value = 0
   }
+}
+
+function legacyTypeCategory(value) {
+  if (value === 'Movie') {
+    return 'movie'
+  }
+  if (value === 'TV' || value === 'Episode' || value === 'Season') {
+    return 'tv'
+  }
+  if (value === 'LiveChannel') {
+    return 'live'
+  }
+  return null
 }
 
 function categoryTitle(value) {
@@ -610,6 +623,27 @@ async function GetFavoriteOfficialBootstrap() {
   ])
 }
 
+async function GetLibraryOfficialBootstrap() {
+  if (isFavoritePage.value || category.value || !guid.value) {
+    return
+  }
+  const params = new URLSearchParams({
+    ancestor_guid: guid.value,
+    is_favorite: '0'
+  })
+  await Promise.allSettled([
+    COMMON.requests("GET", `/api/v1/tag/list?${params.toString()}`, true),
+    COMMON.requests("POST", '/api/v1/user/getData', true, {
+      key: 'mdb:list:setting',
+      mdb_guid: guid.value
+    }),
+    COMMON.requests("POST", '/api/v1/user/getData', true, {
+      key: 'list:card:setting'
+    }),
+    COMMON.requests("GET", `/api/v1/item/${guid.value}`, true)
+  ])
+}
+
 async function GetMediaDbInfos(requestId = listRequestId) {
   let api = isFavoritePage.value ? '/api/v1/favorite/list' : '/api/v1/item/list'
 
@@ -702,6 +736,7 @@ async function reloadMediaList({resetRouteState = false} = {}) {
   }
   await loadOfficialFilterOptions()
   await GetFavoriteOfficialBootstrap()
+  await GetLibraryOfficialBootstrap()
   if (requestId !== listRequestId) {
     return
   }

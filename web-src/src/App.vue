@@ -385,6 +385,9 @@ function isLibraryActive(item) {
   if (!item) {
     return false
   }
+  if (route.params.guid) {
+    return route.params.guid === item.guid
+  }
   if (route.path === '/list') {
     return route.query.gallery_uid === item.guid
   }
@@ -972,12 +975,7 @@ watch(
                     <ul class="nav-links">
                       <li v-for="(item, index) in allLibraryItems" :key="index">
                         <div>
-                          <router-link :class="{ 'is-active': isLibraryActive(item) }" :to="{
-                                                    path: '/list', query: {
-                                                        gallery_uid: item.guid,
-                                                        gallery_type: item.category
-                                                    }
-                                                }" @click="closeMobileSider">
+                          <router-link :class="{ 'is-active': isLibraryActive(item) }" :to="`/library/${item.guid}`" @click="closeMobileSider">
                                                     <span v-if="item.category === 'Movie'" class="icon">
                                                         <i class='bx bxs-movie'></i>
                                                     </span>
