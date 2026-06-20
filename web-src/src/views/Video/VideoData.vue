@@ -509,8 +509,10 @@ async function GetPayInfo() {
   let _data = {
     "item_guid": guid.value
   }
-  playInfo.value = await COMMON.requests("POST", api, true, _data);
-  play_guid.value = playInfo.value.item.parent_guid===''?guid.value:playInfo.value.item.parent_guid??guid.value;
+  playInfo.value = await COMMON.requests("POST", api, true, _data) || {};
+  const item = playInfo.value?.item || {}
+  const parentGuid = item?.parent_guid
+  play_guid.value = parentGuid === '' || parentGuid === undefined || parentGuid === null ? guid.value : parentGuid;
 }
 
 function detailActionGuid() {
@@ -590,26 +592,28 @@ async function GetEpisodeList() {
   let api = "/api/v1/episode/list/" + guid.value;
   EpisodeList.value = await COMMON.requests("GET", api, true);
   // 滚动到当前观看集
-  setTimeout(function () {
-    goToSlide(playInfo.value.item.episode_number - 1)
-  }, 10)
+  const episodeNumber = Number(playInfo.value?.item?.episode_number)
+  if (Number.isFinite(episodeNumber) && episodeNumber > 0) {
+    setTimeout(function () {
+      goToSlide(episodeNumber - 1)
+    }, 10)
+  }
 }
 
 async function Play(_guid = playInfo.value?.item?.guid || play_guid.value) {
-  if (!_guid) {
+  const episodeGuid = _guid || playInfo.value?.item_guid || VideoDataInfo.value?.play_item_guid || guid.value
+  const parentGuid = play_guid.value || guid.value
+  const playType = playInfo.value?.type || gallery_type.value || VideoDataInfo.value?.type || 'Video'
+  if (!episodeGuid || !parentGuid) {
     return
   }
-  PlayerData.episode_guid = _guid
-  let _gallery_type = gallery_type.value;
-  if(_gallery_type === "season"){
-    _gallery_type = "TV"
-  }
+  PlayerData.episode_guid = episodeGuid
   proxy.$router.push({
     path: "/player",
     query: {
-      gallery_type: playInfo.value.type,
-      guid: play_guid.value,
-      episode_guid: _guid,
+      gallery_type: playType === 'season' ? 'TV' : playType,
+      guid: parentGuid,
+      episode_guid: episodeGuid,
       media_guid: playInfo.value?.media_guid || undefined
     }
   })
@@ -636,13 +640,13 @@ const onMountedFun = async () => {
 
 // 下一张
 const goNext = () => {
-  let _index = EpisodeCarouselRef.value.getCurrentIndex();
+  let _index = EpisodeCarouselRef.value?.getCurrentIndex?.() || 0;
   EpisodeCarouselRef.value?.to(_index + per_view.value);
 };
 
 // 上一张
 const goPrev = () => {
-  let _index = EpisodeCarouselRef.value.getCurrentIndex();
+  let _index = EpisodeCarouselRef.value?.getCurrentIndex?.() || 0;
   EpisodeCarouselRef.value?.to(_index - per_view.value);
 };
 
