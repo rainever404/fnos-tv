@@ -407,16 +407,51 @@ function getSearchRoute(item) {
 }
 
 function searchListFromResponse(res) {
-  const candidates = [
-    res,
-    res?.list,
-    res?.items,
-    res?.data,
-    res?.data?.list,
-    res?.result,
-    res?.result?.list
-  ]
-  return candidates.find(item => Array.isArray(item)) || []
+  const collected = []
+  const seen = new Set()
+  collectSearchItems(res, collected)
+  return collected.filter(item => {
+    const key = item?.guid || item?.item_guid || `${searchTitle(item)}-${item?.type || ''}`
+    if (!key || seen.has(key)) {
+      return false
+    }
+    seen.add(key)
+    return true
+  })
+}
+
+function collectSearchItems(value, collected) {
+  if (!value) {
+    return
+  }
+  if (Array.isArray(value)) {
+    value.forEach(item => collectSearchItems(item, collected))
+    return
+  }
+  if (typeof value !== 'object') {
+    return
+  }
+  if (looksLikeSearchItem(value)) {
+    collected.push(value)
+    return
+  }
+  for (const key of ['list', 'items', 'data', 'result', 'records']) {
+    if (value[key] !== undefined) {
+      collectSearchItems(value[key], collected)
+    }
+  }
+  if (collected.length === 0) {
+    Object.values(value).forEach(item => collectSearchItems(item, collected))
+  }
+}
+
+function looksLikeSearchItem(value) {
+  return Boolean(
+      value
+      && typeof value === 'object'
+      && (value.guid || value.item_guid)
+      && (value.title || value.name || value.tv_title || value.parent_title)
+  )
 }
 
 function normalizeSearchType(value) {
@@ -463,6 +498,45 @@ function searchYear(item) {
   const source = item?.release_date || item?.year || item?.create_time || ''
   const match = String(source).match(/\d{4}/)
   return match ? match[0] : item?.library_title || ''
+}
+
+async function performSearch(keyword, requestId) {
+  try {
+    const res = await COMMON.requests("GET", `/api/v1/search/list?q=${encodeURIComponent(keyword)}`, true)
+    if (requestId !== searchRequestId) {
+      return
+    }
+    const list = searchListFromResponse(res).map(normalizeSearchItem).slice(0, 30)
+    searchResults.value = list.length > 0 ? list : localSearch(keyword)
+  } catch {
+    if (requestId === searchRequestId) {
+      searchResults.value = localSearch(keyword)
+    }
+  } finally {
+    if (requestId === searchRequestId) {
+      searchLoading.value = false
+    }
+  }
+}
+
+function queueSearch(value, delay = 280) {
+  const keyword = value.trim()
+  searchRequestId += 1
+  const requestId = searchRequestId
+  if (searchTimer) {
+    window.clearTimeout(searchTimer)
+    searchTimer = null
+  }
+  if (!keyword) {
+    searchResults.value = []
+    searchLoading.value = false
+    return
+  }
+  searchLoading.value = true
+  searchTimer = window.setTimeout(() => {
+    searchTimer = null
+    performSearch(keyword, requestId)
+  }, delay)
 }
 
 async function runFunByPath(path, fun) {
@@ -516,52 +590,35 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('fnos-tv:favorites-updated', handleFavoriteUpdated)
+  if (searchTimer) {
+    window.clearTimeout(searchTimer)
+    searchTimer = null
+  }
 })
 
 // 监听路由变化
 watch(
     () => route.fullPath,
     async (newPath, oldPath) => {
-      if (newPath === "/" || newPath === "/favorite" || (oldPath?.startsWith('/player') && route.path !== '/player')) {
+      if (newPath === "/" || (oldPath?.startsWith('/player') && route.path !== '/player')) {
         await onMountedFun();
+      } else if (newPath === "/favorite" || newPath?.startsWith('/favorite?')) {
+        await GetFavoriteSummary();
       }
     }
 );
 
 watch(
     searchKeyword,
+    (value) => queueSearch(value)
+)
+
+watch(
+    searchOpen,
     (value) => {
-      const keyword = value.trim()
-      searchRequestId += 1
-      const requestId = searchRequestId
-      if (searchTimer) {
-        window.clearTimeout(searchTimer)
-        searchTimer = null
+      if (value && searchKeyword.value.trim() && !searchResults.value.length && !searchLoading.value) {
+        queueSearch(searchKeyword.value, 0)
       }
-      if (!keyword) {
-        searchResults.value = []
-        searchLoading.value = false
-        return
-      }
-      searchLoading.value = true
-      searchTimer = window.setTimeout(async () => {
-        try {
-          const res = await COMMON.requests("GET", `/api/v1/search/list?q=${encodeURIComponent(keyword)}`, true)
-          if (requestId !== searchRequestId) {
-            return
-          }
-          const list = searchListFromResponse(res)
-          searchResults.value = list.map(normalizeSearchItem).slice(0, 30)
-        } catch {
-          if (requestId === searchRequestId) {
-            searchResults.value = localSearch(keyword)
-          }
-        } finally {
-          if (requestId === searchRequestId) {
-            searchLoading.value = false
-          }
-        }
-      }, 280)
     }
 )
 

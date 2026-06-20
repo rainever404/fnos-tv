@@ -29,6 +29,16 @@ const layoutMode = ref('official');
 const category = ref(null);
 const favoriteType = ref('all');
 let listRequestId = 0;
+const filterOptionsLoaded = ref(false);
+const officialGenreOptions = ref([]);
+const officialCountryOptions = ref([]);
+const filters = ref({
+  genres: '',
+  locate: '',
+  decade: '',
+  resolution: '',
+  watched: ''
+});
 
 function isRouteFavorite(targetRoute = route) {
   return targetRoute.path === '/favorite'
@@ -60,6 +70,14 @@ const sortModeLabel = computed(() => {
 
 const layoutClass = computed(() => {
   return `layout-${layoutMode.value}`
+})
+
+const activeFilterCount = computed(() => {
+  return Object.values(filters.value).filter(Boolean).length
+})
+
+const filterLabel = computed(() => {
+  return activeFilterCount.value > 0 ? `筛选 ${activeFilterCount.value}` : '筛选'
 })
 
 
@@ -130,6 +148,73 @@ const favoriteTabs = [
   {value: 'person', label: '人物'}
 ]
 
+const fallbackGenreOptions = [
+  {label: '冒险', value: 12},
+  {label: '剧情', value: 18},
+  {label: '动作', value: 1},
+  {label: '动画', value: 16},
+  {label: '喜剧', value: 35},
+  {label: '家庭', value: 10751},
+  {label: '悬疑', value: 9648},
+  {label: '犯罪', value: 80},
+  {label: '纪录', value: 99},
+  {label: '科幻奇幻', value: 878},
+  {label: '历史', value: 36},
+  {label: '恐怖', value: 27},
+  {label: '惊悚', value: 53},
+  {label: '爱情', value: 10749},
+  {label: '音乐', value: 10402},
+  {label: '战争与政治', value: 10752}
+]
+
+const fallbackCountryOptions = [
+  {label: '美国', value: 'US'},
+  {label: '中国大陆', value: 'CN'},
+  {label: '日本', value: 'JP'},
+  {label: '韩国', value: 'KR'},
+  {label: '法国', value: 'FR'},
+  {label: '英国', value: 'GB'},
+  {label: '中国香港', value: 'HK'},
+  {label: '中国台湾', value: 'TW'},
+  {label: '俄罗斯', value: 'RU'},
+  {label: '印度', value: 'IN'},
+  {label: '加拿大', value: 'CA'},
+  {label: '澳大利亚', value: 'AU'},
+  {label: '意大利', value: 'IT'},
+  {label: '泰国', value: 'TH'}
+]
+
+const decadeOptions = [
+  {label: '2020年代', value: '2020s'},
+  {label: '2010年代', value: '2010s'},
+  {label: '2000年代', value: '2000s'},
+  {label: '1990年代', value: '1990s'},
+  {label: '1980年代', value: '1980s'},
+  {label: '1970年代', value: '1970s'},
+  {label: '其他', value: 'other'}
+]
+
+const resolutionOptions = [
+  {label: '4k', value: '4k'},
+  {label: '1080P', value: '1080p'},
+  {label: '720P', value: '720p'},
+  {label: '480P', value: '480p'},
+  {label: '其他', value: 'other'}
+]
+
+const watchedOptions = [
+  {label: '已观看', value: '1'},
+  {label: '未观看', value: '0'}
+]
+
+const filterRows = computed(() => [
+  {key: 'genres', label: '类型', options: officialGenreOptions.value.length ? officialGenreOptions.value : fallbackGenreOptions},
+  {key: 'resolution', label: '分辨率', options: resolutionOptions},
+  {key: 'locate', label: '国家/地区', options: officialCountryOptions.value.length ? officialCountryOptions.value : fallbackCountryOptions},
+  {key: 'decade', label: '发行年份', options: decadeOptions},
+  {key: 'watched', label: '是否已观看', options: watchedOptions}
+])
+
 function applyRouteState(targetRoute = route, {resetList = true} = {}) {
   guid.value = targetRoute.query.gallery_uid || null
   category.value = targetRoute.query.category || null
@@ -182,6 +267,112 @@ function favoriteTypes(value) {
 
 function shouldExcludeGroupedVideo(value) {
   return ['all', 'other'].includes(value)
+}
+
+function responseList(res) {
+  if (Array.isArray(res)) {
+    return res
+  }
+  if (Array.isArray(res?.list)) {
+    return res.list
+  }
+  if (Array.isArray(res?.data)) {
+    return res.data
+  }
+  if (Array.isArray(res?.data?.list)) {
+    return res.data.list
+  }
+  if (res && typeof res === 'object') {
+    return Object.values(res).filter(item => item && typeof item === 'object')
+  }
+  return []
+}
+
+function pickOptionValue(item, keys) {
+  for (const key of keys) {
+    const value = item?.[key]
+    if (value !== undefined && value !== null && value !== '') {
+      return value
+    }
+  }
+  return ''
+}
+
+function normalizeFilterOptions(res, valueKeys) {
+  return responseList(res).map(item => {
+    const label = pickOptionValue(item, ['name', 'title', 'label', 'zh', 'cn', 'text'])
+    const value = pickOptionValue(item, valueKeys)
+    return label && value !== '' ? {label: String(label), value} : null
+  }).filter(Boolean)
+}
+
+async function loadOfficialFilterOptions() {
+  if (filterOptionsLoaded.value) {
+    return
+  }
+  filterOptionsLoaded.value = true
+  const [genresRes, countriesRes] = await Promise.allSettled([
+    COMMON.requests("GET", '/api/v1/tag/genres?lan=zh-CN', true),
+    COMMON.requests("GET", '/api/v1/tag/iso3166?lan=zh-CN', true)
+  ])
+  if (genresRes.status === 'fulfilled') {
+    const options = normalizeFilterOptions(genresRes.value, ['id', 'value', 'guid', 'key'])
+    if (options.length) {
+      officialGenreOptions.value = options
+    }
+  }
+  if (countriesRes.status === 'fulfilled') {
+    const options = normalizeFilterOptions(countriesRes.value, ['iso_3166_1', 'code', 'value', 'id', 'key'])
+    if (options.length) {
+      officialCountryOptions.value = options
+    }
+  }
+}
+
+function hasActiveFilters() {
+  return activeFilterCount.value > 0
+}
+
+function applyActiveFilters(tags) {
+  if (filters.value.genres) {
+    tags.genres = filters.value.genres
+  }
+  if (filters.value.locate) {
+    tags.locate = filters.value.locate
+  }
+  if (filters.value.decade) {
+    tags.decade = filters.value.decade
+  }
+  if (filters.value.resolution) {
+    tags.resolution = filters.value.resolution
+  }
+  if (filters.value.watched) {
+    tags.watched = filters.value.watched
+  }
+  return tags
+}
+
+async function setFilter(key, value) {
+  filters.value = {
+    ...filters.value,
+    [key]: value
+  }
+  await reloadMediaList()
+}
+
+async function clearFilter(key) {
+  await setFilter(key, '')
+}
+
+async function clearAllFilters() {
+  filters.value = {
+    genres: '',
+    locate: '',
+    decade: '',
+    resolution: '',
+    watched: ''
+  }
+  await reloadMediaList()
 }
 
 function formatRating(item) {
@@ -370,6 +561,7 @@ async function GetMediaDbInfos(requestId = listRequestId) {
     if (types.length) {
       _data.tags.type = types
     }
+    applyActiveFilters(_data.tags)
   } else if (category.value) {
     _data = {
       "tags": {
@@ -383,6 +575,7 @@ async function GetMediaDbInfos(requestId = listRequestId) {
     if (shouldExcludeGroupedVideo(category.value)) {
       _data.exclude_grouped_video = 1
     }
+    applyActiveFilters(_data.tags)
   } else {
     _data = {
       "ancestor_guid": guid.value,
@@ -399,6 +592,7 @@ async function GetMediaDbInfos(requestId = listRequestId) {
       "sort_column": MediaDbData.sort_column,
       "page_size": size.value
     }
+    applyActiveFilters(_data.tags)
   }
   let res = await COMMON.requests("POST", api, true, _data);
   if (requestId !== listRequestId) {
@@ -411,23 +605,11 @@ async function GetMediaDbInfos(requestId = listRequestId) {
 
 async function GetMediaDbCount(requestId = listRequestId) {
   if (isFavoritePage.value) {
-    const data = {
-      tags: {},
-      sort_type: MediaDbData.sort_type,
-      sort_column: MediaDbData.sort_column,
-      page: 1,
-      page_size: FAVORITE_PAGE_SIZE
-    }
-    const types = favoriteTypes(favoriteType.value)
-    if (types.length) {
-      data.tags.type = types
-    }
-    const res = await COMMON.requests("POST", '/api/v1/favorite/list', true, data);
-    if (requestId !== listRequestId) {
-      return
-    }
-    const count = Number(res?.total || 0)
-    totalCount.value = Number.isFinite(count) ? count : 0
+    totalCount.value = 0
+    return
+  }
+  if (hasActiveFilters()) {
+    totalCount.value = 0
     return
   }
   let api = '/api/v1/mediadb/sum'
@@ -453,6 +635,7 @@ async function reloadMediaList({resetRouteState = false} = {}) {
   if (resetRouteState) {
     applyRouteState(route)
   }
+  await loadOfficialFilterOptions()
   await GetFavoriteOfficialBootstrap()
   if (requestId !== listRequestId) {
     return
@@ -517,12 +700,36 @@ watch(
           <div class="sort-menu">
             <input id="video-list-filter-toggle" class="sort-toggle" type="checkbox">
             <label class="toolbar-pill filter-pill" for="video-list-filter-toggle" aria-label="筛选">
-              <span>筛选</span>
+              <span>{{ filterLabel }}</span>
               <i class='bx bx-chevron-down'></i>
             </label>
             <div class="sort-popover filter-popover" role="dialog" aria-label="筛选">
-              <div class="sort-popover-header">筛选</div>
-              <div class="filter-empty">当前媒体库暂无可用筛选条件</div>
+              <div class="filter-row" v-for="row in filterRows" :key="row.key">
+                <div class="filter-row-title">{{ row.label }}</div>
+                <div class="filter-options">
+                  <button
+                      type="button"
+                      class="filter-option"
+                      :class="{ active: !filters[row.key] }"
+                      @click="clearFilter(row.key)"
+                  >
+                    全部
+                  </button>
+                  <button
+                      v-for="item in row.options"
+                      :key="`${row.key}-${item.value}`"
+                      type="button"
+                      class="filter-option"
+                      :class="{ active: filters[row.key] === item.value }"
+                      @click="setFilter(row.key, item.value)"
+                  >
+                    {{ item.label }}
+                  </button>
+                </div>
+              </div>
+              <div class="filter-actions" v-if="activeFilterCount > 0">
+                <button type="button" class="filter-reset" @click="clearAllFilters">重置筛选</button>
+              </div>
             </div>
           </div>
         </div>
@@ -795,9 +1002,17 @@ watch(
   text-align: left;
 }
 
-.filter-popover,
 .layout-popover {
   width: 220px;
+}
+
+.filter-popover {
+  left: 0;
+  right: auto;
+  width: min(980px, calc(100vw - 340px));
+  max-height: 360px;
+  overflow: auto;
+  padding: 20px 22px;
 }
 
 .sort-toggle:not(:checked) ~ .sort-popover {
@@ -838,6 +1053,70 @@ watch(
   color: var(--fn-soft);
   font-size: 14px;
   line-height: 1.5;
+}
+
+.filter-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.filter-row:last-child {
+  margin-bottom: 0;
+}
+
+.filter-row-title {
+  flex: 0 0 84px;
+  color: var(--fn-soft);
+  font-size: 14px;
+  line-height: 24px;
+}
+
+.filter-options {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.filter-option,
+.filter-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 2px 12px;
+  color: var(--fn-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.filter-option:hover,
+.filter-reset:hover {
+  color: var(--fn-text);
+  background: var(--fn-top-control);
+}
+
+.filter-option.active {
+  color: var(--fn-blue);
+  font-weight: 600;
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.filter-reset {
+  color: var(--fn-blue);
 }
 
 .view-card-list {
@@ -1139,6 +1418,24 @@ watch(
   .sort-popover {
     right: -8px;
     width: min(280px, calc(100vw - 32px));
+  }
+
+  .filter-popover {
+    left: 0;
+    right: auto;
+    width: min(680px, calc(100vw - 32px));
+    max-height: 60vh;
+  }
+
+  .filter-row {
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .filter-row-title {
+    flex: none;
+    line-height: 20px;
   }
 }
 
