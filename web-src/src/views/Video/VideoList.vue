@@ -152,9 +152,9 @@ const favoriteTabs = [
   {value: 'movie', label: '电影'},
   {value: 'tv', label: '电视节目'},
   {value: 'live', label: '电视直播'},
-  {value: 'episode', label: '单集'},
   {value: 'person', label: '人物'}
 ]
+const favoriteTabValues = new Set(favoriteTabs.map(item => item.value))
 
 const fallbackGenreOptions = [
   {label: '冒险', value: 12},
@@ -226,7 +226,7 @@ const filterRows = computed(() => [
 function applyRouteState(targetRoute = route, {resetList = true} = {}) {
   guid.value = targetRoute.params.guid || targetRoute.query.gallery_uid || null
   category.value = targetRoute.params.guid ? null : routeCategory(targetRoute)
-  favoriteType.value = targetRoute.query.type || 'all'
+  favoriteType.value = normalizeFavoriteType(targetRoute.query.type)
   size.value = isRouteFavorite(targetRoute) ? FAVORITE_PAGE_SIZE : DEFAULT_PAGE_SIZE
   if (resetList) {
     MediaDbInfo.value = null
@@ -242,6 +242,11 @@ function routeCategory(targetRoute = route) {
 function normalizeCategory(value) {
   const nextValue = String(value || '')
   return ['all', 'movie', 'tv', 'live', 'other'].includes(nextValue) ? nextValue : null
+}
+
+function normalizeFavoriteType(value) {
+  const nextValue = String(value || 'all')
+  return favoriteTabValues.has(nextValue) ? nextValue : 'all'
 }
 
 function legacyTypeCategory(value) {
@@ -286,9 +291,6 @@ function favoriteTypes(value) {
   }
   if (value === 'live') {
     return ['LiveChannel']
-  }
-  if (value === 'episode') {
-    return ['Episode']
   }
   if (value === 'person') {
     return ['Person']
