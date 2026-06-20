@@ -383,11 +383,10 @@ onUnmounted(() => {
                   <div class="view-item-title landscape-title">
                     {{ item.type === 'Episode' ? item.tv_title : item.title }}
                   </div>
-                  <div v-if="item.type === 'Episode'" class="view-item-title"
-                       style="font-size: 0.8em;color:rgba(0, 0, 0, 0.4);">
+                  <div v-if="item.type === 'Episode'" class="continue-subtitle">
                     第 {{ item.season_number }} 季·第 {{ item.episode_number }} 集
                   </div>
-                  <div v-else class="view-item-title" style="font-size: 0.8em;color:rgba(0, 0, 0, 0.4);">
+                  <div v-else class="continue-subtitle">
                     电影
                   </div>
                 </router-link>
@@ -1218,6 +1217,19 @@ img.carousel-img,
 
 .continue-link .landscape-title {
   margin-top: 0;
+}
+
+.continue-subtitle {
+  min-height: 18px;
+  margin-top: 3px;
+  padding: 0 2px;
+  overflow: hidden;
+  color: var(--fn-soft);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .view-item .view-item-title + .view-item-title {

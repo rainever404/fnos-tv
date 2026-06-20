@@ -66,6 +66,8 @@ const mobilePortraitDanmuControlsActive = ref(MOBILE_UA);
 let art = null;
 let lastDanmuLoadedUntil = 0;
 let mobileLandscapeActive = false;
+const mobileLandscapeModeActive = ref(false);
+const forcedLandscapeActive = ref(false);
 const fullscreenChangeEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
 const guid = ref(null);
 const episode_guid = ref(null);
@@ -228,7 +230,13 @@ const shouldShowMobileDanmuControls = computed(() => {
       shouldShowPortraitFloatingDanmuControls() ||
       isForcedLandscapeActive()
 })
-const mobileDanmuPortalLandscapeActive = computed(() => isForcedLandscapeActive())
+const shouldShowPortraitDanmuDock = computed(() => {
+  return isMobileUiActive() && !mobileLandscapeModeActive.value && !forcedLandscapeActive.value
+})
+const shouldShowMobileDanmuPortalControls = computed(() => {
+  return shouldShowMobileDanmuControls.value && forcedLandscapeActive.value
+})
+const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.value || isForcedLandscapeActive())
 
 const setting = ref({
   url: "",
@@ -506,7 +514,7 @@ function isMobileUiActive() {
 }
 
 function isForcedLandscapeActive() {
-  return isMobileUiActive() && playerFrame.value?.classList.contains('is-forced-landscape')
+  return isMobileUiActive() && (forcedLandscapeActive.value || playerFrame.value?.classList.contains('is-forced-landscape'))
 }
 
 function shouldForceMobileDanmuFallbackControls() {
@@ -563,6 +571,9 @@ function syncMobileDanmuFallbackControls() {
   if (!refreshMobileUiState()) {
     return
   }
+  if (art && playerFrame.value) {
+    bindPlayerTouchListeners()
+  }
   window.requestAnimationFrame(() => {
     refreshMobileUiState()
     const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
@@ -613,6 +624,23 @@ function handleMobileDanmuPanelClick(event) {
   }
   event.preventDefault()
   event.stopPropagation()
+}
+
+function handleMobileFullscreenControlClick(event) {
+  if (!isMobileUiActive()) {
+    return
+  }
+  const target = event.target
+  if (!target?.closest) {
+    return
+  }
+  const fullscreenControl = target.closest('.art-control-fullscreen, .art-control-fullscreenWeb')
+  if (!fullscreenControl || !playerFrame.value?.contains(fullscreenControl)) {
+    return
+  }
+  event.preventDefault()
+  event.stopPropagation()
+  void toggleMobileLandscapeFullscreen()
 }
 
 function getDanmuPlugin() {
@@ -912,7 +940,7 @@ function bindPlayerTouchListeners() {
 
 function removePlayerTouchListeners() {
   const frame = playerTouchFrame
-  if (!isMobileUiActive() || !frame) {
+  if (!frame) {
     return
   }
   frame.removeEventListener('touchstart', handleTouchStart, {capture: true})
@@ -1015,6 +1043,7 @@ function shouldUseLandscapeFallback() {
 }
 
 function setForcedLandscape(active) {
+  forcedLandscapeActive.value = !!active
   const frame = playerFrame.value
   document.documentElement.classList.toggle('player-forced-landscape-active', active)
   document.body.classList.toggle('player-forced-landscape-active', active)
@@ -1038,6 +1067,7 @@ async function enterMobileLandscapeFullscreen() {
     return
   }
   mobileLandscapeActive = true
+  mobileLandscapeModeActive.value = true
   setForcedLandscape(shouldUseLandscapeFallback())
   await requestBrowserFullscreen(playerFullscreenTarget())
   await lockLandscapeForMobile()
@@ -1049,6 +1079,7 @@ async function enterMobileLandscapeFullscreen() {
 
 async function exitMobileLandscapeFullscreen() {
   mobileLandscapeActive = false
+  mobileLandscapeModeActive.value = false
   setForcedLandscape(false)
   await unlockOrientationForMobile()
   await exitBrowserFullscreen()
@@ -1069,6 +1100,7 @@ function handleDocumentFullscreenChange() {
   }
   if (fullscreenElement()) {
     mobileLandscapeActive = true
+    mobileLandscapeModeActive.value = true
     lockLandscapeForMobile()
     syncMobileLandscapeFallback()
   } else if (mobileLandscapeActive) {
@@ -2037,6 +2069,7 @@ const artF = async (data) => {
   art.on('fullscreen', async (state) => {
     if (state && isMobileUiActive()) {
       mobileLandscapeActive = true
+      mobileLandscapeModeActive.value = true
       setForcedLandscape(shouldUseLandscapeFallback())
       await lockLandscapeForMobile();
       syncMobileLandscapeFallback()
@@ -2046,6 +2079,7 @@ const artF = async (data) => {
       await lockLandscapeForMobile();
     } else if (isMobileUiActive()) {
       mobileLandscapeActive = false
+      mobileLandscapeModeActive.value = false
       setForcedLandscape(false)
       await unlockOrientationForMobile();
       scheduleMobileDanmuFallbackSync()
@@ -2159,6 +2193,7 @@ onBeforeRouteLeave((to, from) => {
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
   cleanupMobileLandscape()
 });
@@ -2174,6 +2209,7 @@ onBeforeUnmount(async () => {
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
   cleanupMobileLandscape()
 })
@@ -2181,6 +2217,7 @@ onMounted(async () => {
   refreshMobileUiState()
   window.addEventListener('keydown', handlePlayerKeydown)
   document.addEventListener('click', handleMobileDanmuPanelClick, true)
+  document.addEventListener('click', handleMobileFullscreenControlClick, true)
   addMobileLandscapeListeners()
   await onMountedFun();
 })
@@ -2216,10 +2253,36 @@ onMounted(async () => {
           <span :style="{ width: `${gestureFeedback.progress}%` }"></span>
         </div>
       </div>
+      <div
+          class="mobile-danmu-controls is-portrait-dock"
+          :class="{ 'is-visible': shouldShowPortraitDanmuDock }"
+          aria-label="弹幕控制"
+      >
+        <button
+            type="button"
+            class="mobile-danmu-button mobile-danmu-toggle"
+            :class="{ 'is-muted': !mobileDanmuVisible }"
+            :aria-pressed="mobileDanmuVisible"
+            aria-label="弹幕开关"
+            @click.stop.prevent="toggleMobileDanmuVisible"
+        >
+          弹
+        </button>
+        <button
+            type="button"
+            class="mobile-danmu-button"
+            :class="{ 'is-active': showMobileDanmuSettings }"
+            aria-label="弹幕设置"
+            @click.stop.prevent="toggleMobileDanmuSettings"
+        >
+          <span>弹</span>
+          <i class='bx bx-slider-alt'></i>
+        </button>
+      </div>
       <Teleport to="body">
         <div
             class="mobile-danmu-controls is-mobile-portal"
-            :class="{ 'is-visible': shouldShowMobileDanmuControls, 'is-forced-landscape-portal': mobileDanmuPortalLandscapeActive }"
+            :class="{ 'is-visible': shouldShowMobileDanmuPortalControls, 'is-forced-landscape-portal': mobileDanmuPortalLandscapeActive }"
             aria-label="弹幕控制"
         >
           <button
@@ -2565,6 +2628,11 @@ h1 {
   transform: translate(-50%, -50%) scale(1);
 }
 
+.player.is-mobile-player .gesture-feedback {
+  position: fixed;
+  z-index: 2147483001;
+}
+
 .gesture-feedback-title {
   margin-bottom: 4px;
   color: rgba(255, 255, 255, 0.76);
@@ -2634,6 +2702,18 @@ h1 {
   display: flex !important;
 }
 
+.player.is-mobile-player .mobile-danmu-controls.is-portrait-dock.is-visible {
+  position: fixed;
+  right: max(112px, calc(env(safe-area-inset-right, 0px) + 112px));
+  bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
+  z-index: 2147483000;
+  display: flex !important;
+}
+
+.player.is-forced-landscape .mobile-danmu-controls.is-portrait-dock {
+  display: none !important;
+}
+
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
   position: fixed;
   right: max(112px, calc(env(safe-area-inset-right, 0px) + 112px));
@@ -2657,6 +2737,7 @@ h1 {
 
 @media (max-width: 768px) and (orientation: portrait) {
   .mobile-danmu-controls.is-mobile-portal.is-visible,
+  .mobile-danmu-controls.is-portrait-dock.is-visible,
   .player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
     position: fixed;
     display: flex !important;
