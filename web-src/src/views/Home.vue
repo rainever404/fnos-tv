@@ -139,43 +139,6 @@ function formatRating(item) {
   return rating.toFixed(1)
 }
 
-function resolutionTags(item) {
-  const raw = item?.media_stream?.resolutions || item?.media_stream?.resolution || item?.resolution || []
-  const values = Array.isArray(raw) ? raw : [raw]
-  const seen = new Set()
-  const tags = []
-  for (const value of values) {
-    const label = normalizeResolutionLabel(value)
-    if (!label || seen.has(label)) {
-      continue
-    }
-    seen.add(label)
-    tags.push(label)
-    if (tags.length >= 2) {
-      break
-    }
-  }
-  return tags
-}
-
-function normalizeResolutionLabel(value) {
-  if (value === undefined || value === null) {
-    return ''
-  }
-  const text = String(value).trim()
-  if (!text || text.toLowerCase() === 'others') {
-    return ''
-  }
-  if (/^4k$/i.test(text)) {
-    return '4K'
-  }
-  const match = text.match(/(\d{3,4})\s*p/i)
-  if (match) {
-    return `${match[1]}P`
-  }
-  return text.toUpperCase()
-}
-
 function patchItemsByGuid(list, guid, patch) {
   if (!Array.isArray(list)) {
     return
@@ -446,13 +409,6 @@ onUnmounted(() => {
                       </div> -->
                       <!--                  <p>{{ item }}</p>-->
                       <div class="view-item-tag-right">
-                        <div
-                            v-for="tag in resolutionTags(item)"
-                            :key="`${item.guid}-resolution-${tag}`"
-                            class="view-item-tag resolution"
-                        >
-                          {{ tag }}
-                        </div>
                         <div v-if="isWatched(item)" class="view-item-tag count">
                           <i class='bx bx-check'></i>
                         </div>
@@ -1266,17 +1222,6 @@ img.carousel-img,
   border-radius: 5px;
   font-size: 13px;
   font-weight: 800;
-}
-
-.view-item-tag.resolution {
-  min-width: auto;
-  height: 21px;
-  padding: 0 6px;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 21px;
-  letter-spacing: 0;
 }
 
 .view-item-tag-list .count {
