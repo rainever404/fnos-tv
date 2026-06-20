@@ -252,9 +252,17 @@ const shouldShowMobileDanmuControls = computed(() => {
       shouldShowPortraitFloatingDanmuControls() ||
       isForcedLandscapeActive()
 })
-const shouldUsePortraitDanmuPortalControls = computed(() => isMobileUiActive() && isPortraitMobilePlayer())
+const shouldUsePortraitDanmuPortalControls = computed(() => {
+  return isMobileUiActive() &&
+      isPortraitMobilePlayer() &&
+      showMobileDanmuFallbackControls.value &&
+      !mobileArtDanmuControlsVisible.value
+})
 const shouldShowMobileDanmuInlineControls = computed(() => {
-  return isMobileUiActive() && isPortraitMobilePlayer() && !shouldUsePortraitDanmuPortalControls.value
+  return isMobileUiActive() &&
+      isPortraitMobilePlayer() &&
+      !shouldUsePortraitDanmuPortalControls.value &&
+      !mobileArtDanmuControlsVisible.value
 })
 const shouldShowMobileDanmuPortalControls = computed(() => {
   if (!isMobileUiActive()) {
@@ -614,11 +622,10 @@ function syncMobileDanmuFallbackControls() {
     const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
         isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
     mobileArtDanmuControlsVisible.value = hasArtControls
-    // 手机竖屏时 Artplayer 可能误判按钮可见但实际被控制条挤出，固定保留浮层入口。
     const shouldForcePortraitControls = isPortraitMobilePlayer()
     const shouldForceLandscapeControls = isForcedLandscapeActive()
     mobilePortraitDanmuControlsActive.value = shouldForcePortraitControls || shouldForceLandscapeControls
-    showMobileDanmuFallbackControls.value = shouldForcePortraitControls || shouldForceLandscapeControls || !hasArtControls
+    showMobileDanmuFallbackControls.value = shouldForceLandscapeControls || !hasArtControls
   })
 }
 
@@ -2806,8 +2813,8 @@ h1 {
 }
 
 .mobile-danmu-controls.is-mobile-portal.is-portrait-portal.is-visible {
-  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-  bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
+  right: max(98px, calc(env(safe-area-inset-right, 0px) + 98px));
+  bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
   gap: 10px;
   padding: 5px;
   background: rgba(0, 0, 0, 0.42);
@@ -2840,9 +2847,9 @@ h1 {
 
 .mobile-danmu-settings.is-mobile-portal.is-portrait-portal {
   right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
-  bottom: max(142px, calc(env(safe-area-inset-bottom, 0px) + 142px));
+  bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 72px));
   width: min(342px, calc(100vw - 20px));
-  max-height: min(430px, calc(100svh - 174px));
+  max-height: min(430px, calc(100svh - 104px));
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
@@ -2856,8 +2863,8 @@ h1 {
   .player:not(.is-forced-landscape) .mobile-danmu-controls:not(.is-player-inline).is-visible {
     position: fixed;
     display: flex !important;
-    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-    bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
+    right: max(98px, calc(env(safe-area-inset-right, 0px) + 98px));
+    bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
     z-index: 2147483000;
   }
 
@@ -2866,8 +2873,8 @@ h1 {
     position: fixed;
     display: block;
     right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
-    bottom: max(142px, calc(env(safe-area-inset-bottom, 0px) + 142px));
-    max-height: min(430px, calc(100svh - 174px));
+    bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 72px));
+    max-height: min(430px, calc(100svh - 104px));
     z-index: 2147482999;
   }
 }
@@ -3618,7 +3625,7 @@ img.play-icon {
 
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    display: none !important;
+    display: flex !important;
     width: 34px;
     min-width: 34px;
   }
