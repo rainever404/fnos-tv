@@ -38,6 +38,7 @@ const searchResults = ref([]);
 const searchActiveTab = ref('all');
 const searchLoading = ref(false);
 const searchInputRef = ref(null);
+const searchRootRef = ref(null);
 const favoriteCount = ref(0);
 let searchTimer = null;
 let searchRequestId = 0;
@@ -646,6 +647,13 @@ function queueSearch(value, delay = 280) {
   }, delay)
 }
 
+function submitSearch() {
+  if (!searchKeyword.value.trim()) {
+    return
+  }
+  queueSearch(searchKeyword.value, 0)
+}
+
 function openSearch() {
   searchOpen.value = true
   nextTick(() => {
@@ -675,6 +683,16 @@ function clearSearch() {
 
 function selectSearchResult() {
   closeSearch({clear: true})
+}
+
+function handleSearchOutsideClick(event) {
+  if (!searchOpen.value) {
+    return
+  }
+  if (searchRootRef.value?.contains?.(event.target)) {
+    return
+  }
+  closeSearch()
 }
 
 async function runFunByPath(path, fun) {
@@ -725,6 +743,8 @@ onMounted(async () => {
   window.addEventListener('resize', handleWindowResize)
   window.addEventListener('keydown', handleGlobalKeydown)
   window.addEventListener('fnos-tv:favorites-updated', handleFavoriteUpdated)
+  document.addEventListener('click', handleSearchOutsideClick)
+  document.addEventListener('touchstart', handleSearchOutsideClick)
   await onMountedFun();
 })
 
@@ -732,6 +752,8 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleWindowResize)
   window.removeEventListener('keydown', handleGlobalKeydown)
   window.removeEventListener('fnos-tv:favorites-updated', handleFavoriteUpdated)
+  document.removeEventListener('click', handleSearchOutsideClick)
+  document.removeEventListener('touchstart', handleSearchOutsideClick)
   document.body.classList.remove('mobile-sider-open')
   if (searchTimer) {
     window.clearTimeout(searchTimer)
@@ -808,7 +830,7 @@ watch(
                   </div>
                 </div>
                 <div class="header-right">
-                  <div class="top-search" :class="{ open: searchOpen || searchKeyword.trim() }">
+                  <div ref="searchRootRef" class="top-search" :class="{ open: searchOpen || searchKeyword.trim() }">
                     <n-button
                         v-if="!searchOpen && !searchKeyword.trim()"
                         class="topbar-control"
@@ -831,6 +853,7 @@ watch(
                           placeholder="搜索片名、演员"
                           autocomplete="off"
                           @focus="searchOpen = true"
+                          @keydown.enter.prevent="submitSearch"
                           @keydown.esc="closeSearch({ clear: true })"
                       >
                       <button
@@ -848,8 +871,10 @@ watch(
                           role="dialog"
                           aria-label="搜索结果"
                       >
-                        <div v-if="searchLoading" class="search-empty">
-                          搜索中...
+                        <div v-if="searchLoading" class="search-state">
+                          <div class="search-state-spinner" aria-hidden="true"></div>
+                          <div class="search-state-title">正在搜索</div>
+                          <div class="search-state-desc">{{ searchKeyword.trim() }}</div>
                         </div>
                         <div v-else-if="searchResults.length > 0" class="search-panel">
                           <div class="search-tabs" role="tablist" aria-label="搜索分类">
@@ -883,12 +908,19 @@ watch(
                               </div>
                             </router-link>
                           </div>
-                          <div v-else class="search-empty compact">
-                            当前分类无结果
+                          <div v-else class="search-state compact">
+                            <div class="search-state-icon" aria-hidden="true">
+                              <i class='bx bx-search-alt'></i>
+                            </div>
+                            <div class="search-state-title">当前分类无结果</div>
                           </div>
                         </div>
-                        <div v-else class="search-empty">
-                          没有匹配的内容
+                        <div v-else class="search-state">
+                          <div class="search-state-icon" aria-hidden="true">
+                            <i class='bx bx-search-alt'></i>
+                          </div>
+                          <div class="search-state-title">没有匹配的内容</div>
+                          <div class="search-state-desc">换个片名、演员或关键词再试试</div>
                         </div>
                       </div>
                     </div>
@@ -2044,18 +2076,61 @@ body {
 }
 
 .search-result-subtitle,
-.search-empty {
+.search-state-desc {
   margin-top: 3px;
   color: var(--fn-soft);
   font-size: 13px;
 }
 
-.search-empty {
-  padding: 24px 8px 18px;
+.search-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 142px;
+  padding: 24px 12px 20px;
+  color: var(--fn-soft);
   text-align: center;
 }
 
-.search-empty.compact {
-  padding: 18px 8px 14px;
+.search-state.compact {
+  min-height: 104px;
+  padding: 18px 10px 14px;
+}
+
+.search-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 10px;
+  color: var(--fn-muted);
+  background: var(--fn-top-control);
+  border-radius: 50%;
+  font-size: 22px;
+}
+
+.search-state-title {
+  color: var(--fn-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.search-state-spinner {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 12px;
+  border: 3px solid rgba(127, 127, 127, 0.2);
+  border-top-color: var(--fn-blue);
+  border-radius: 50%;
+  animation: search-loading-spin 0.8s linear infinite;
+}
+
+@keyframes search-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
