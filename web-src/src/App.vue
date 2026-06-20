@@ -29,6 +29,7 @@ const themeMode = ref(VueCookies.get("theme_mode") || (legacyDark === "true" ? "
 const dark = computed(() => themeMode.value === "dark" || (themeMode.value === "system" && systemDark.value));
 const theme = computed(() => dark.value ? darkTheme : null);
 const isDetailPage = computed(() => route.path === '/video');
+const hasDetailBackButton = computed(() => route.path === '/video' || route.path === '/person');
 const searchOpen = ref(false);
 const searchKeyword = ref('');
 const searchResults = ref([]);
@@ -875,7 +876,7 @@ watch(
                 </div>
               </div>
             </n-layout-header>
-            <button v-if="isDetailPage" class="detail-back-button" type="button" aria-label="返回" @click="goBack">
+            <button v-if="hasDetailBackButton" class="detail-back-button" type="button" aria-label="返回" @click="goBack">
               <i class='bx bx-chevron-left'></i>
             </button>
             <n-layout position="absolute" :style="{ top: '0' }" has-sider>
@@ -1586,7 +1587,7 @@ body {
   width: 36px;
   height: 36px;
   padding: 0;
-  color: #fff;
+  color: var(--fn-text);
   background: transparent;
   border: 0;
   border-radius: 999px;
@@ -1595,6 +1596,14 @@ body {
 }
 
 .detail-back-button:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.home.detail-page .detail-back-button {
+  color: #fff;
+}
+
+.home.detail-page .detail-back-button:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 
