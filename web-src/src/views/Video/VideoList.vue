@@ -433,8 +433,25 @@ function posterUrl(item, width = 200) {
     const profile = item?.profile_path || item?.avatar || item?.poster || ''
     return COMMON.profileImageUrl(profile, width)
   }
-  const poster = item?.poster || item?.posters || ''
+  const poster = item?.poster || item?.posters || item?.poster_list || ''
   return COMMON.mediaImageUrl(poster, width)
+}
+
+function posterImages(item, width = 400) {
+  if (isPerson(item)) {
+    return [posterUrl(item, width)]
+  }
+  const posters = Array.isArray(item?.poster_list)
+      ? item.poster_list.filter(Boolean).slice(0, 4)
+      : []
+  if (posters.length) {
+    return posters.map(image => COMMON.mediaImageUrl(image, width))
+  }
+  return [posterUrl(item, width)]
+}
+
+function isPosterMosaic(item) {
+  return !isPerson(item) && Array.isArray(item?.poster_list) && item.poster_list.length > 1
 }
 
 function normalizeGalleryType(value) {
@@ -490,6 +507,10 @@ function isWatched(item) {
 
 function isPerson(item) {
   return (item?.type || item?.gallery_type || item?.ancestor_category) === 'Person'
+}
+
+function isDirectory(item) {
+  return (item?.type || item?.gallery_type) === 'Directory'
 }
 
 function canMarkWatched(item) {
@@ -870,12 +891,30 @@ watch(
       <div class="view-item" v-for="item in MediaDbInfo" :key="item.guid">
         <div class="poster-frame" :class="{ 'person-poster-frame': isPerson(item) }">
           <router-link class="poster-cover-link" :to="getItemRoute(item)">
-            <div class="poster-inner">
-              <img loading="lazy" class="carousel-img" v-lazy='posterUrl(item)'>
+            <div
+                class="poster-inner"
+                :class="[
+                  { 'poster-mosaic': isPosterMosaic(item) },
+                  isPosterMosaic(item) ? `mosaic-count-${posterImages(item).length}` : ''
+                ]"
+            >
+              <template v-if="isPosterMosaic(item)">
+                <img
+                    v-for="(image, imageIndex) in posterImages(item)"
+                    :key="`${item.guid}-poster-${imageIndex}`"
+                    loading="lazy"
+                    class="carousel-img mosaic-image"
+                    v-lazy="image"
+                >
+              </template>
+              <img v-else loading="lazy" class="carousel-img" v-lazy='posterUrl(item)'>
             </div>
           </router-link>
           <div class="view-item-header">
             <div class="view-item-tag-list">
+              <div v-if="isDirectory(item)" class="view-item-folder">
+                <i class='bx bx-folder'></i>
+              </div>
               <div v-if="formatRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
               <div class="view-item-tag-right">
                 <div v-if="isWatched(item)" class="view-item-tag count">
@@ -1221,7 +1260,7 @@ watch(
 }
 
 .view-card-list {
-  --poster-card-width: 165px;
+  --poster-card-width: 152px;
   display: grid;
   grid-template-columns: repeat(auto-fill, var(--poster-card-width));
   justify-content: start;
@@ -1237,12 +1276,12 @@ watch(
 }
 
 .view-card-list.layout-compact {
-  --poster-card-width: 150px;
+  --poster-card-width: 143px;
   grid-gap: 22px 18px;
 }
 
 .view-card-list.layout-large {
-  --poster-card-width: 200px;
+  --poster-card-width: 190px;
   grid-gap: 30px 22px;
 }
 
@@ -1308,6 +1347,33 @@ watch(
   object-fit: cover;
   background: var(--fn-panel);
   transition: filter 0.18s ease;
+}
+
+.poster-mosaic {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  background: rgb(29, 29, 31);
+}
+
+.poster-mosaic img.carousel-img {
+  min-width: 0;
+  min-height: 0;
+  border-radius: 0;
+}
+
+.poster-mosaic .mosaic-image:first-child {
+  grid-column: 1 / -1;
+}
+
+.poster-mosaic.mosaic-count-4 .mosaic-image:first-child {
+  grid-column: auto;
+}
+
+.poster-mosaic.mosaic-count-2 .mosaic-image:first-child {
+  grid-row: 1 / -1;
+  grid-column: auto;
 }
 
 .view-item-title {
@@ -1426,6 +1492,29 @@ watch(
   position: absolute;
   top: 0;
   left: 0;
+}
+
+.view-item-folder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  box-sizing: border-box;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.view-item-folder i {
+  font-size: 17px;
+  line-height: 1;
 }
 
 .view-item-tag {
