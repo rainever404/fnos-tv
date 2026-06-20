@@ -1106,7 +1106,7 @@ async function enterMobileLandscapeFullscreen() {
   }
   mobileLandscapeActive = true
   mobileLandscapeModeActive.value = true
-  setForcedLandscape(shouldUseLandscapeFallback())
+  setForcedLandscape(true)
   await requestBrowserFullscreen(playerFullscreenTarget())
   await lockLandscapeForMobile()
   syncMobileLandscapeFallback()
@@ -1139,6 +1139,7 @@ function handleDocumentFullscreenChange() {
   if (fullscreenElement()) {
     mobileLandscapeActive = true
     mobileLandscapeModeActive.value = true
+    setForcedLandscape(true)
     lockLandscapeForMobile()
     syncMobileLandscapeFallback()
   } else if (mobileLandscapeActive) {
@@ -2731,8 +2732,8 @@ h1 {
 }
 
 .mobile-danmu-controls.is-mobile-portal.is-portrait-portal.is-visible {
-  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-  bottom: max(92px, calc(env(safe-area-inset-bottom, 0px) + 92px));
+  right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+  bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
   gap: 10px;
   padding: 5px;
   background: rgba(0, 0, 0, 0.42);
@@ -2750,8 +2751,8 @@ h1 {
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
   position: fixed;
-  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-  bottom: max(92px, calc(env(safe-area-inset-bottom, 0px) + 92px));
+  right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+  bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
   z-index: 2147483000;
   display: flex !important;
 }
@@ -2765,9 +2766,9 @@ h1 {
 
 .mobile-danmu-settings.is-mobile-portal.is-portrait-portal {
   right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
-  bottom: max(144px, calc(env(safe-area-inset-bottom, 0px) + 144px));
+  bottom: max(74px, calc(env(safe-area-inset-bottom, 0px) + 74px));
   width: min(342px, calc(100vw - 20px));
-  max-height: min(430px, calc(100svh - 184px));
+  max-height: min(430px, calc(100svh - 114px));
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
@@ -2781,8 +2782,8 @@ h1 {
   .player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
     position: fixed;
     display: flex !important;
-    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-    bottom: max(92px, calc(env(safe-area-inset-bottom, 0px) + 92px));
+    right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+    bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
     z-index: 2147483000;
   }
 
@@ -2790,7 +2791,7 @@ h1 {
   .player:not(.is-forced-landscape) .mobile-danmu-settings {
     position: fixed;
     display: block;
-    bottom: max(66px, calc(env(safe-area-inset-bottom, 0px) + 66px));
+    bottom: max(74px, calc(env(safe-area-inset-bottom, 0px) + 74px));
     z-index: 2147482999;
   }
 }
