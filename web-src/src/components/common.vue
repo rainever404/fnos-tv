@@ -127,8 +127,9 @@ async function requests(method, uri, isLogin = false, data = {}) {
   } else {
     let params = {}
     if (uri.indexOf('?') !== -1) {
-      params = Object.fromEntries(new URLSearchParams(uri.split("?")[1]).entries());
-      uri = uri.split('?')[0]
+      const parts = uri.split(/\?(.+)/)
+      params = Object.fromEntries(new URLSearchParams(parts[1]).entries());
+      uri = parts[0]
     }
     return await instance.get(uri, {params: params})
   }

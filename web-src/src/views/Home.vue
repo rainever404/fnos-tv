@@ -129,13 +129,20 @@ function getPlaybackParentGuid(item) {
 }
 
 function getPlaybackRoute(item) {
+  const query = {
+    gallery_type: item?.type || item?.gallery_type,
+    guid: getPlaybackParentGuid(item),
+    episode_guid: item?.guid || item?.item_guid,
+    media_guid: item?.media_guid || item?.play_info?.media_guid || item?.media?.guid
+  }
+  Object.keys(query).forEach(key => {
+    if (query[key] === undefined || query[key] === null || query[key] === '') {
+      delete query[key]
+    }
+  })
   return {
     path: '/player',
-    query: {
-      gallery_type: item.type,
-      guid: getPlaybackParentGuid(item),
-      episode_guid: item.guid
-    }
+    query
   }
 }
 
@@ -284,7 +291,7 @@ const handleDropdownSelect = async (key) => {
       try {
         // 调用移除API
         await COMMON.requests("DELETE", `/api/v1/play/record`, true, {
-          "item_guid": item.guid
+          "item_guid": itemActionGuid(item)
         })
         message.success('已从继续观看中移除')
         // 重新获取播放列表
@@ -304,7 +311,8 @@ const handleClickOutside = () => {
 
 async function GetPlayList() {
   let api = "/api/v1/play/list"
-  playList.value = await COMMON.requests("GET", api, true);
+  const result = await COMMON.requests("GET", api, true);
+  playList.value = Array.isArray(result) ? result : [];
 }
 
 // 下一张
