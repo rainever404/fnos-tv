@@ -1260,7 +1260,7 @@ watch(
 }
 
 .view-card-list {
-  --poster-card-width: 152px;
+  --poster-card-width: 170px;
   display: grid;
   grid-template-columns: repeat(auto-fill, var(--poster-card-width));
   justify-content: start;
@@ -1269,7 +1269,7 @@ watch(
 }
 
 .favorite-content .view-card-list {
-  --poster-card-width: 165px;
+  --poster-card-width: 170px;
   grid-template-columns: repeat(auto-fill, var(--poster-card-width));
   justify-content: start;
   padding-top: 10px;
