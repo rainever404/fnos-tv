@@ -315,8 +315,13 @@ onUnmounted(() => {
               <div v-if="getLibraryPreview(item.guid).length === 0" class="library-empty">
                 <i class='bx bx-film'></i>
               </div>
-              <div class="library-title-overlay">
+            </div>
+            <div class="library-card-info">
+              <div class="library-title">
                 {{ item.title }}
+              </div>
+              <div class="library-meta">
+                {{ libraryMetaText(item) }}
               </div>
             </div>
           </router-link>
@@ -900,29 +905,26 @@ img.carousel-img {
   box-sizing: border-box;
   flex: 0 0 256px;
   width: 256px;
-  height: 185px;
+  min-height: 200px;
   padding: 0;
   color: var(--fn-text);
-  background: #f5f6f8;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
   box-shadow: none;
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  transition: transform 0.18s ease;
 }
 
 .library-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(10, 132, 255, 0.28);
-  background: #eef0f4;
 }
 
 .dark .library-card {
-  background: #19191a;
-  border-color: rgba(255, 255, 255, 0.12);
+  background: transparent;
 }
 
 .dark .library-card:hover {
-  background: #202023;
+  background: transparent;
 }
 
 .library-posters {
@@ -931,35 +933,28 @@ img.carousel-img {
   display: flex;
   gap: 1px;
   width: 100%;
-  height: 100%;
+  height: 144px;
   margin: 0;
   overflow: hidden;
   background: linear-gradient(180deg, #eef0f3 0, #e4e6ea 76%, #d7dbe1 100%);
-  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  box-sizing: border-box;
 }
 
 .dark .library-posters {
+  border-color: rgba(255, 255, 255, 0.12);
   background: linear-gradient(180deg, #1b1b1d 0, #151517 72%, #0d0d0f 100%);
 }
 
 .library-posters::before {
-  content: "";
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 1;
-  height: 48px;
-  background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0)),
-      linear-gradient(180deg, rgba(15, 23, 42, 0.24), rgba(15, 23, 42, 0.68));
-  pointer-events: none;
+  display: none;
+  content: none;
 }
 
 .dark .library-posters::before {
-  background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.74));
+  display: none;
+  content: none;
 }
 
 .library-posters::after {
@@ -987,7 +982,7 @@ img.carousel-img {
 .library-posters img {
   flex: 1 1 0;
   min-width: 0;
-  height: 144px;
+  height: 100%;
   object-fit: cover;
 }
 
@@ -997,37 +992,45 @@ img.carousel-img {
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 144px;
+  height: 100%;
   color: var(--fn-soft);
   font-size: 34px;
   background: linear-gradient(135deg, var(--fn-panel), var(--fn-bg));
 }
 
-.library-title-overlay {
-  position: absolute;
-  bottom: 7px;
-  left: 50%;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: min(132px, calc(100% - 64px));
-  height: 31px;
-  padding: 0 12px;
-  box-sizing: border-box;
+.library-card-info {
+  display: grid;
+  gap: 2px;
+  padding: 9px 2px 0;
+  text-align: left;
+}
+
+.library-title {
+  min-width: 0;
   overflow: hidden;
-  color: #fff;
-  background: rgba(13, 15, 18, 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
+  color: var(--fn-text);
   font-size: 15px;
   font-weight: 600;
   line-height: 21px;
-  text-align: center;
   text-overflow: ellipsis;
-  transform: translateX(-50%);
   white-space: nowrap;
-  backdrop-filter: blur(6px);
+}
+
+.library-meta {
+  overflow: hidden;
+  color: var(--fn-soft);
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-card:hover .library-title {
+  color: var(--fn-blue);
+}
+
+.library-title-overlay {
+  display: none;
 }
 
 .carousel-container {
