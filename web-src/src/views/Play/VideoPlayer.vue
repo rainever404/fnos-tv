@@ -230,6 +230,7 @@ function getMobileDanmuFontSize(value) {
 const mobileDanmuVisible = ref(true);
 const showMobileDanmuSettings = ref(false);
 const showMobileDanmuFallbackControls = ref(mobileUiActive.value);
+const mobileArtDanmuControlsVisible = ref(false);
 const mobileDanmuSetting = ref({
   opacity: Math.round((Number(danmu_setting.opacity) || 0.58) * 100),
   fontSize: getMobileDanmuFontSize(danmu_setting.fontSize),
@@ -244,14 +245,21 @@ const shouldShowMobileDanmuControls = computed(() => {
   if (!isMobileUiActive()) {
     return false
   }
-  return !isForcedLandscapeActive() ||
+  return isPortraitMobilePlayer() ||
+      !isForcedLandscapeActive() ||
       showMobileDanmuFallbackControls.value ||
       mobilePortraitDanmuControlsActive.value ||
       shouldShowPortraitFloatingDanmuControls() ||
       isForcedLandscapeActive()
 })
 const shouldShowMobileDanmuPortalControls = computed(() => {
-  return isMobileUiActive() && shouldShowMobileDanmuControls.value
+  if (!isMobileUiActive()) {
+    return false
+  }
+  if (isPortraitMobilePlayer()) {
+    return showMobileDanmuFallbackControls.value || !mobileArtDanmuControlsVisible.value
+  }
+  return shouldShowMobileDanmuControls.value
 })
 const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.value || isForcedLandscapeActive())
 const mobileDanmuPortalPortraitActive = computed(() => shouldShowMobileDanmuPortalControls.value && !mobileDanmuPortalLandscapeActive.value)
@@ -523,12 +531,17 @@ function refreshMobileUiState() {
   if (!active) {
     showMobileDanmuSettings.value = false
     showMobileDanmuFallbackControls.value = false
+    mobileArtDanmuControlsVisible.value = false
   }
   return active
 }
 
 function isMobileUiActive() {
   return mobileUiActive.value || MOBILE_UA || isCompactPlayerViewport()
+}
+
+function isPortraitMobilePlayer() {
+  return isMobileUiActive() && !isForcedLandscapeActive() && (isPortraitViewport() || !fullscreenElement() || isCompactPlayerViewport())
 }
 
 function isForcedLandscapeActive() {
@@ -540,7 +553,7 @@ function shouldForceMobileDanmuFallbackControls() {
 }
 
 function shouldShowPortraitFloatingDanmuControls() {
-  return isMobileUiActive() && !isForcedLandscapeActive() && (isPortraitViewport() || !fullscreenElement() || isCompactPlayerViewport())
+  return isPortraitMobilePlayer()
 }
 
 function touchPointForPlayer(touch) {
@@ -596,11 +609,12 @@ function syncMobileDanmuFallbackControls() {
     refreshMobileUiState()
     const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
         isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
-    // 竖屏非全屏用固定浮层，避免 Artplayer 右侧控制条空间不足时吞掉弹幕入口。
-    const shouldForcePortraitControls = isMobileUiActive() && !isForcedLandscapeActive()
+    mobileArtDanmuControlsVisible.value = hasArtControls
+    // 竖屏优先用底部控制条；如果 Artplayer 因空间不足吞掉按钮，再显示固定浮层兜底。
+    const shouldForcePortraitControls = isPortraitMobilePlayer()
     const shouldForceLandscapeControls = isForcedLandscapeActive()
     mobilePortraitDanmuControlsActive.value = shouldForcePortraitControls || shouldForceLandscapeControls
-    showMobileDanmuFallbackControls.value = shouldForcePortraitControls || shouldForceLandscapeControls || !hasArtControls
+    showMobileDanmuFallbackControls.value = shouldForceLandscapeControls || !hasArtControls
   })
 }
 
@@ -2718,7 +2732,7 @@ h1 {
 
 .mobile-danmu-controls.is-mobile-portal.is-portrait-portal.is-visible {
   right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
-  bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
+  bottom: max(92px, calc(env(safe-area-inset-bottom, 0px) + 92px));
   gap: 10px;
   padding: 5px;
   background: rgba(0, 0, 0, 0.42);
@@ -2736,8 +2750,8 @@ h1 {
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
   position: fixed;
-  right: max(112px, calc(env(safe-area-inset-right, 0px) + 112px));
-  bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
+  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+  bottom: max(92px, calc(env(safe-area-inset-bottom, 0px) + 92px));
   z-index: 2147483000;
   display: flex !important;
 }
@@ -2767,8 +2781,8 @@ h1 {
   .player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
     position: fixed;
     display: flex !important;
-    right: max(112px, calc(env(safe-area-inset-right, 0px) + 112px));
-    bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
+    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+    bottom: max(92px, calc(env(safe-area-inset-bottom, 0px) + 92px));
     z-index: 2147483000;
   }
 
@@ -3281,11 +3295,6 @@ img.play-icon {
   display: flex !important;
 }
 
-.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
-.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-  display: none !important;
-}
-
 :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
   gap: 2px;
 }
@@ -3514,7 +3523,9 @@ img.play-icon {
 
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    display: none !important;
+    display: flex !important;
+    width: 34px;
+    min-width: 34px;
   }
 
   .player.is-forced-landscape {
