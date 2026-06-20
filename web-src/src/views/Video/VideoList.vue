@@ -225,13 +225,23 @@ const filterRows = computed(() => [
 
 function applyRouteState(targetRoute = route, {resetList = true} = {}) {
   guid.value = targetRoute.params.guid || targetRoute.query.gallery_uid || null
-  category.value = targetRoute.params.guid ? null : (targetRoute.query.category || legacyTypeCategory(targetRoute.query.type))
+  category.value = targetRoute.params.guid ? null : routeCategory(targetRoute)
   favoriteType.value = targetRoute.query.type || 'all'
   size.value = isRouteFavorite(targetRoute) ? FAVORITE_PAGE_SIZE : DEFAULT_PAGE_SIZE
   if (resetList) {
     MediaDbInfo.value = null
     totalCount.value = 0
   }
+}
+
+function routeCategory(targetRoute = route) {
+  const value = targetRoute.params?.category || targetRoute.query?.category || legacyTypeCategory(targetRoute.query?.type)
+  return normalizeCategory(value)
+}
+
+function normalizeCategory(value) {
+  const nextValue = String(value || '')
+  return ['all', 'movie', 'tv', 'live', 'other'].includes(nextValue) ? nextValue : null
 }
 
 function legacyTypeCategory(value) {

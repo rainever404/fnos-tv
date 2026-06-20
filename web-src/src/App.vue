@@ -119,10 +119,7 @@ const categoryNavItems = computed(() => {
       count: sumCount('total', mediaTotalCount.value),
       category: 'all',
       to: {
-        path: '/list',
-        query: {
-          category: 'all'
-        }
+        path: '/list/all'
       }
     },
     {
@@ -131,10 +128,7 @@ const categoryNavItems = computed(() => {
       count: sumCount('movie'),
       category: 'movie',
       to: {
-        path: '/list',
-        query: {
-          category: 'movie'
-        }
+        path: '/list/movie'
       }
     },
     {
@@ -143,10 +137,7 @@ const categoryNavItems = computed(() => {
       count: sumCount('tv'),
       category: 'tv',
       to: {
-        path: '/list',
-        query: {
-          category: 'tv'
-        }
+        path: '/list/tv'
       }
     },
     {
@@ -155,10 +146,7 @@ const categoryNavItems = computed(() => {
       count: sumCount('live'),
       category: 'live',
       to: {
-        path: '/list',
-        query: {
-          category: 'live'
-        }
+        path: '/list/live'
       }
     },
     {
@@ -167,10 +155,7 @@ const categoryNavItems = computed(() => {
       count: sumCount('video'),
       category: 'other',
       to: {
-        path: '/list',
-        query: {
-          category: 'other'
-        }
+        path: '/list/other'
       }
     }
   ]
@@ -387,6 +372,10 @@ function isMediaDetailRoute(targetRoute = route) {
   return mediaDetailRouteNames.has(targetRoute.name)
 }
 
+function routeCategory(targetRoute = route) {
+  return targetRoute.params?.category || targetRoute.query?.category || null
+}
+
 function getMediaDetailRoute(itemGuid, type) {
   const normalizedType = normalizeGalleryType(type)
   if (normalizedType === 'Movie' && itemGuid) {
@@ -424,7 +413,7 @@ function isHomeActive() {
 }
 
 function isCategoryActive(item) {
-  return route.path === '/list' && route.query.category === item?.category
+  return (route.name === 'CategoryList' || route.path === '/list') && routeCategory() === item?.category
 }
 
 function isFavoriteActive() {
