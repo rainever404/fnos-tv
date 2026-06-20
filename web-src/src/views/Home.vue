@@ -92,6 +92,14 @@ function isWatched(item) {
   return Boolean(item?.played || item?.watched)
 }
 
+function formatRating(item) {
+  const rating = Number(item?.vote_average)
+  if (!Number.isFinite(rating) || rating <= 0) {
+    return ''
+  }
+  return rating.toFixed(1)
+}
+
 function patchItemsByGuid(list, guid, patch) {
   if (!Array.isArray(list)) {
     return
@@ -368,12 +376,7 @@ onUnmounted(() => {
                 <div class="poster-frame-shell">
                   <div class="view-item-header">
                     <div class="view-item-tag-list">
-                      <div class="view-item-tag rating">
-                        {{
-                          isNaN(Math.floor(item.vote_average * 100) /
-                              100) ? "" : Math.floor(item.vote_average * 100) / 100
-                        }}
-                      </div>
+                      <div v-if="formatRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
                       <!-- <div v-if="item.Type != 'Movie' && item.ChildCount != 0" class="view-item-tag count">
                           {{ item.ChildCount }}
                       </div> -->

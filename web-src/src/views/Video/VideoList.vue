@@ -189,7 +189,7 @@ function formatRating(item) {
   if (!Number.isFinite(rating) || rating <= 0) {
     return ''
   }
-  return String(Math.floor(rating * 10) / 10)
+  return rating.toFixed(1)
 }
 
 function releaseYear(item) {
