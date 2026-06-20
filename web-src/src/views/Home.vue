@@ -82,6 +82,25 @@ function libraryTypeLabel(item) {
   }
 }
 
+function libraryIconClass(item) {
+  switch (item?.category) {
+    case 'Movie':
+      return 'bx bx-film'
+    case 'TV':
+      return 'bx bx-tv'
+    case 'LiveChannel':
+      return 'bx bx-desktop'
+    case 'Music':
+      return 'bx bx-music'
+    case 'Directory':
+      return 'bx bx-folder'
+    case 'Video':
+      return 'bx bx-video'
+    default:
+      return 'bx bx-collection'
+  }
+}
+
 function libraryItemCount(item) {
   const info = MediaDbData.info?.[item?.guid] || {}
   const count = Number(info.total ?? info.total_count ?? info.count ?? info.list?.length ?? 0)
@@ -317,13 +336,19 @@ onUnmounted(() => {
               </div>
             </div>
             <div class="library-card-info">
-              <div class="library-title">
-                {{ item.title }}
+              <div class="library-title-row">
+                <span class="library-type-icon">
+                  <i :class="libraryIconClass(item)"></i>
+                </span>
+                <div class="library-title">
+                  {{ item.title }}
+                </div>
               </div>
               <div class="library-meta">
                 {{ libraryMetaText(item) }}
               </div>
             </div>
+            <i class='bx bx-chevron-right library-arrow'></i>
           </router-link>
         </div>
       </div>
@@ -887,7 +912,7 @@ img.carousel-img {
 
 .library-grid {
   display: flex;
-  gap: 20px;
+  gap: 14px;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0;
@@ -902,28 +927,35 @@ img.carousel-img {
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
-  flex: 0 0 256px;
-  width: 256px;
-  min-height: 200px;
-  padding: 0;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 286px;
+  width: 286px;
+  min-height: 94px;
+  padding: 11px 12px;
   color: var(--fn-text);
-  background: transparent;
-  border: 0;
+  background: var(--fn-panel);
+  border: 1px solid var(--fn-border);
   border-radius: 8px;
   box-shadow: none;
-  transition: transform 0.18s ease;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .library-card:hover {
+  background: var(--fn-panel-hover);
+  border-color: rgba(0, 102, 255, 0.18);
   transform: translateY(-2px);
 }
 
 .dark .library-card {
-  background: transparent;
+  background: var(--fn-panel);
 }
 
 .dark .library-card:hover {
-  background: transparent;
+  background: var(--fn-panel-hover);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .library-posters {
@@ -931,8 +963,8 @@ img.carousel-img {
   z-index: 1;
   display: flex;
   gap: 1px;
-  width: 100%;
-  height: 144px;
+  width: 96px;
+  height: 70px;
   margin: 0;
   overflow: hidden;
   background: linear-gradient(180deg, #eef0f3 0, #e4e6ea 76%, #d7dbe1 100%);
@@ -967,7 +999,7 @@ img.carousel-img {
 }
 
 .library-card:hover .library-posters::after {
-  background: rgba(41, 45, 53, 0.34);
+  background: rgba(41, 45, 53, 0.16);
 }
 
 .dark .library-posters::after {
@@ -975,7 +1007,7 @@ img.carousel-img {
 }
 
 .dark .library-card:hover .library-posters::after {
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(0, 0, 0, 0.18);
 }
 
 .library-posters img {
@@ -999,9 +1031,34 @@ img.carousel-img {
 
 .library-card-info {
   display: grid;
-  gap: 2px;
-  padding: 9px 2px 0;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
   text-align: left;
+}
+
+.library-title-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+}
+
+.library-type-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  color: var(--fn-blue);
+  background: var(--fn-nav-active);
+  border-radius: 6px;
+}
+
+.library-type-icon i {
+  font-size: 15px;
+  line-height: 1;
 }
 
 .library-title {
@@ -1025,6 +1082,16 @@ img.carousel-img {
 }
 
 .library-card:hover .library-title {
+  color: var(--fn-blue);
+}
+
+.library-arrow {
+  color: var(--fn-soft);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.library-card:hover .library-arrow {
   color: var(--fn-blue);
 }
 
@@ -1347,8 +1414,8 @@ img.carousel-img,
   }
 
   .library-card {
-    flex-basis: min(256px, calc(100vw - 56px));
-    width: min(256px, calc(100vw - 56px));
+    flex-basis: min(286px, calc(100vw - 40px));
+    width: min(286px, calc(100vw - 40px));
   }
 
   .card-shows {
