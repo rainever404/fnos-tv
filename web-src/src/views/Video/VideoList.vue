@@ -59,15 +59,29 @@ const galleryTitle = computed(() => {
 
 const listCountText = computed(() => {
   if (MediaDbInfo.value === null) {
-    return '加载中'
+    return '正在加载'
   }
   const loaded = MediaDbInfo.value.length || 0
   const total = totalCount.value || loaded
+  if (!loaded) {
+    return activeFilterCount.value > 0 ? '筛选结果 0 项' : '暂无内容'
+  }
+  if (total > loaded) {
+    return `已显示 ${loaded}/${total}`
+  }
   return `共 ${total} 项`
 })
 
 const sortModeLabel = computed(() => {
   return pageSortModes.value.find(item => item.value === mode.value)?.label || (isFavoritePage.value ? '收藏时间' : '添加日期')
+})
+
+const sortOrderLabel = computed(() => {
+  return orders.find(item => item.value === order.value)?.label || '降序'
+})
+
+const layoutModeLabel = computed(() => {
+  return layoutOptions.find(item => item.value === layoutMode.value)?.label || '默认'
 })
 
 const layoutClass = computed(() => {
@@ -105,6 +119,48 @@ const loadMoreText = computed(() => {
 const filterLabel = computed(() => {
   return activeFilterCount.value > 0 ? `筛选 ${activeFilterCount.value}` : '筛选'
 })
+
+const isListLoading = computed(() => MediaDbInfo.value === null)
+const showEmptyState = computed(() => Array.isArray(MediaDbInfo.value) && MediaDbInfo.value.length === 0)
+
+const listToolbarMeta = computed(() => {
+  const items = [listCountText.value]
+  if (!isListLoading.value && !showEmptyState.value) {
+    items.push(`${sortModeLabel.value} · ${sortOrderLabel.value}`)
+    if (!isFavoritePage.value) {
+      items.push(layoutModeLabel.value)
+    }
+  }
+  return items
+})
+
+const emptyStateTitle = computed(() => {
+  if (activeFilterCount.value > 0) {
+    return '没有符合条件的内容'
+  }
+  if (isFavoritePage.value) {
+    return favoriteType.value === 'all' ? '暂无收藏内容' : `暂无${favoriteTabs.find(item => item.value === favoriteType.value)?.label || ''}收藏`
+  }
+  return '暂无内容'
+})
+
+const emptyStateDescription = computed(() => {
+  if (activeFilterCount.value > 0) {
+    return '调整筛选条件后再试试'
+  }
+  if (isFavoritePage.value) {
+    return '收藏电影、剧集或人物后会出现在这里'
+  }
+  return '当前媒体库还没有可显示的项目'
+})
+
+const showEmptyStateAction = computed(() => activeFilterCount.value > 0)
+
+async function handleEmptyStateAction() {
+  if (activeFilterCount.value > 0) {
+    await clearAllFilters()
+  }
+}
 
 
 const instance = getCurrentInstance();
@@ -952,7 +1008,7 @@ watch(
           <div class="sort-menu">
             <input id="video-list-sort-toggle" class="sort-toggle video-list-toolbar-toggle" type="checkbox">
             <label class="toolbar-pill sort-pill" for="video-list-sort-toggle" aria-label="排序">
-              <span>{{ sortModeLabel }}</span>
+              <span>{{ sortModeLabel }} · {{ sortOrderLabel }}</span>
               <i class='bx bx-chevron-down'></i>
             </label>
             <div class="sort-popover" role="dialog" aria-label="排序">
@@ -984,7 +1040,7 @@ watch(
           <div class="sort-menu">
             <input id="video-list-layout-toggle" class="sort-toggle video-list-toolbar-toggle" type="checkbox">
             <label class="toolbar-pill layout-pill" for="video-list-layout-toggle" aria-label="布局">
-              <span>布局</span>
+              <span>{{ layoutModeLabel }}</span>
               <i class='bx bx-chevron-down'></i>
             </label>
             <div class="sort-popover layout-popover" role="dialog" aria-label="布局">
@@ -1000,7 +1056,15 @@ watch(
           </div>
         </div>
       </div>
-      <div class="list-total">{{ listCountText }}</div>
+      <div class="list-total" aria-live="polite">
+        <span
+            v-for="item in listToolbarMeta"
+            :key="item"
+            class="list-total-item"
+        >
+          {{ item }}
+        </span>
+      </div>
     </div>
     <div v-if="activeFilterChips.length" class="active-filter-bar" aria-label="已选筛选">
       <button
@@ -1016,7 +1080,27 @@ watch(
       </button>
       <button type="button" class="active-filter-clear" @click="clearAllFilters">清空</button>
     </div>
-    <div class="card-show-content view-card-list" :class="layoutClass">
+    <div v-if="isListLoading" class="list-state is-loading" aria-live="polite">
+      <div class="list-loading-spinner" aria-hidden="true"></div>
+      <div class="list-state-title">正在加载内容</div>
+      <div class="list-state-desc">请稍候</div>
+    </div>
+    <div v-else-if="showEmptyState" class="list-state is-empty">
+      <div class="list-state-icon" aria-hidden="true">
+        <i class='bx bx-folder-open'></i>
+      </div>
+      <div class="list-state-title">{{ emptyStateTitle }}</div>
+      <div class="list-state-desc">{{ emptyStateDescription }}</div>
+      <button
+          v-if="showEmptyStateAction"
+          type="button"
+          class="list-state-action"
+          @click="handleEmptyStateAction"
+      >
+        重置筛选
+      </button>
+    </div>
+    <div v-else class="card-show-content view-card-list" :class="layoutClass">
       <div class="view-item" v-for="item in MediaDbInfo" :key="item.guid">
         <div class="poster-frame" :class="{ 'person-poster-frame': isPerson(item) }">
           <router-link class="poster-cover-link" :to="getItemRoute(item)">
@@ -1171,6 +1255,7 @@ watch(
 .list-total {
   display: flex;
   align-items: center;
+  gap: 8px;
   height: 36px;
   min-height: 36px;
   margin-left: auto;
@@ -1178,6 +1263,22 @@ watch(
   font-size: 14px;
   line-height: 20px;
   white-space: nowrap;
+}
+
+.list-total-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.list-total-item + .list-total-item::before {
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  background: var(--fn-soft);
+  border-radius: 50%;
+  content: "";
+  opacity: 0.72;
 }
 
 .seriesTab-list {
@@ -1229,11 +1330,11 @@ watch(
 }
 
 .sort-pill {
-  width: 133px;
+  width: 168px;
 }
 
 .layout-pill {
-  width: 86px;
+  width: 102px;
 }
 
 .toolbar-pill i {
@@ -1455,6 +1556,81 @@ watch(
 
 .filter-reset {
   color: var(--fn-blue);
+}
+
+.list-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: min(360px, calc(100vh - 300px));
+  padding: 42px 16px 28px;
+  color: var(--fn-soft);
+  text-align: center;
+}
+
+.list-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 14px;
+  color: var(--fn-muted);
+  background: var(--fn-top-control);
+  border-radius: 50%;
+  font-size: 30px;
+}
+
+.list-state-title {
+  color: var(--fn-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.list-state-desc {
+  margin-top: 6px;
+  color: var(--fn-soft);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.list-state-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  margin-top: 18px;
+  padding: 0 18px;
+  color: var(--fn-on-accent);
+  background: var(--fn-blue);
+  border: 0;
+  border-radius: 999px;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.list-state-action:hover {
+  filter: brightness(1.04);
+}
+
+.list-loading-spinner {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 14px;
+  border: 3px solid rgba(127, 127, 127, 0.2);
+  border-top-color: var(--fn-blue);
+  border-radius: 50%;
+  animation: list-loading-spin 0.8s linear infinite;
+}
+
+@keyframes list-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .view-card-list {
@@ -1821,6 +1997,8 @@ watch(
     height: auto;
     min-height: 20px;
     margin-left: 0;
+    flex-wrap: wrap;
+    gap: 6px 8px;
     line-height: 18px;
   }
 
@@ -1837,6 +2015,14 @@ watch(
     white-space: nowrap;
   }
 
+  .sort-pill {
+    width: 156px;
+  }
+
+  .layout-pill {
+    width: 96px;
+  }
+
   .active-filter-bar {
     margin: -4px 0 18px;
     padding-bottom: 4px;
@@ -1846,6 +2032,11 @@ watch(
   .active-filter-clear {
     height: 30px;
     font-size: 13px;
+  }
+
+  .list-state {
+    min-height: min(320px, calc(100vh - 240px));
+    padding-top: 32px;
   }
 
   .view-item-title {
