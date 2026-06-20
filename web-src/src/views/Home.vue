@@ -143,6 +143,21 @@ function getVideoRoute(item) {
   }
 }
 
+function libraryByGuid(guid) {
+  return (MediaDbData.list || []).find(item => item.guid === guid)
+}
+
+function isVisibleLibraryShelf(guid) {
+  const library = libraryByGuid(guid)
+  return Boolean(library && library.category !== 'Others')
+}
+
+function getLibraryRouteByGuid(guid) {
+  return {
+    path: `/library/${guid}`
+  }
+}
+
 function itemActionGuid(item) {
   return item?.guid || item?.item_guid || ''
 }
@@ -426,10 +441,14 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="card-shows" v-for="(key, index) in Object.keys(MediaDbData.info)" :key="index">
-        <div v-if="MediaDbData.list.find((item) => item.guid === key).category !== 'Others'">
-          <div class="card-show-title">
-            {{ MediaDbData.list.find((item) => item.guid === key).title }} <i class='bx bx-chevron-right'></i>
-          </div>
+        <div v-if="isVisibleLibraryShelf(key)">
+          <router-link
+              class="card-show-title card-show-title-link"
+              :to="getLibraryRouteByGuid(key)"
+              :aria-label="`进入${libraryByGuid(key)?.title || '媒体库'}列表`"
+          >
+            {{ libraryByGuid(key)?.title }} <i class='bx bx-chevron-right'></i>
+          </router-link>
           <div class="card-show-content view-card">
             <n-carousel :show-dots="false" show-arrow :slides-per-view="per_card" :space-between="20" :loop="false"
                         draggable>
@@ -908,6 +927,27 @@ img.carousel-img {
 .card-show-title i {
   color: var(--fn-soft);
   font-size: 20px;
+}
+
+.card-show-title-link {
+  width: fit-content;
+  max-width: 100%;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.16s ease;
+}
+
+.card-show-title-link:hover,
+.card-show-title-link:hover i {
+  color: var(--fn-blue);
+}
+
+.card-show-title-link i {
+  transition: color 0.16s ease, transform 0.16s ease;
+}
+
+.card-show-title-link:hover i {
+  transform: translateX(2px);
 }
 
 .library-grid {
