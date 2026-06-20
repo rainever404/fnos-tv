@@ -23,6 +23,7 @@ const StreamList = ref(null);
 const GenreMap = ref({})
 const CountryMap = ref({})
 const LanguageMap = ref({})
+const showTechInfoDialog = ref(false)
 const EpisodeCarouselRef = ref(null);
 const play_item_guid = ref(null);
 const play_guid = ref(null)
@@ -200,6 +201,14 @@ const fileInfoItems = computed(() => {
   ].filter(item => item.value)
 })
 
+const fileInfoPathItem = computed(() => {
+  return fileInfoItems.value.find(item => item.label === '文件位置') || null
+})
+
+const fileInfoMetaItems = computed(() => {
+  return fileInfoItems.value.filter(item => item.label !== '文件位置')
+})
+
 const videoInfoCards = computed(() => {
   const cards = []
   const video = selectedVideoStream.value
@@ -228,6 +237,8 @@ const videoInfoCards = computed(() => {
   }
   return cards
 })
+
+const hasDetailedTechInfo = computed(() => videoInfoCards.value.length > 0)
 
 const externalLinks = computed(() => {
   const links = []
@@ -798,10 +809,16 @@ onMounted(async () => {
 
         <div class="detail-info-section" v-if="fileInfoItems.length">
           <h3>文件信息</h3>
-          <div class="file-info-grid">
-            <div class="file-info-row" v-for="item in fileInfoItems" :key="item.label">
-              <span class="file-info-label">{{ item.label }}：</span>
-              <span class="file-info-value">{{ item.value }}</span>
+          <div class="file-info-flow">
+            <div v-if="fileInfoPathItem" class="file-info-row file-info-path-row">
+              <span class="file-info-label">{{ fileInfoPathItem.label }}：</span>
+              <span class="file-info-value">{{ fileInfoPathItem.value }}</span>
+            </div>
+            <div v-if="fileInfoMetaItems.length" class="file-info-meta-line">
+              <span class="file-info-meta-item" v-for="item in fileInfoMetaItems" :key="item.label">
+                <span class="file-info-label">{{ item.label }}：</span>
+                <span class="file-info-value">{{ item.value }}</span>
+              </span>
             </div>
           </div>
         </div>
@@ -809,12 +826,22 @@ onMounted(async () => {
         <div class="detail-info-section" v-if="videoInfoCards.length">
           <div class="detail-info-heading">
             <h3>视频信息</h3>
+            <button
+                v-if="hasDetailedTechInfo"
+                class="tech-info-more"
+                type="button"
+                @click="showTechInfoDialog = true"
+            >
+              查看全部
+            </button>
           </div>
-          <div class="tech-info-grid">
-            <div class="tech-info-card" v-for="item in videoInfoCards" :key="item.label">
+          <div class="tech-info-flow">
+            <div class="tech-info-row" v-for="item in videoInfoCards" :key="item.label">
               <h4>{{ item.label }}</h4>
-              <div class="tech-info-title">{{ item.title }}</div>
-              <div v-if="item.desc" class="tech-info-desc">{{ item.desc }}</div>
+              <div class="tech-info-line">
+                <span class="tech-info-title">{{ item.title }}</span>
+                <span v-if="item.desc" class="tech-info-desc">{{ item.desc }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -824,6 +851,28 @@ onMounted(async () => {
           <a v-for="item in externalLinks" :key="item.label" :href="item.href" target="_blank" rel="noopener">
             {{ item.label }}
           </a>
+        </div>
+      </div>
+    </div>
+    <div
+        v-if="showTechInfoDialog"
+        class="tech-info-dialog-mask"
+        role="presentation"
+        @click.self="showTechInfoDialog = false"
+    >
+      <div class="tech-info-dialog" role="dialog" aria-modal="true" aria-label="视频信息">
+        <div class="tech-info-dialog-header">
+          <h3>视频信息</h3>
+          <button type="button" class="tech-info-dialog-close" aria-label="关闭" @click="showTechInfoDialog = false">
+            <i class='bx bx-x'></i>
+          </button>
+        </div>
+        <div class="tech-info-dialog-list">
+          <div class="tech-info-dialog-card" v-for="item in videoInfoCards" :key="`dialog-${item.label}`">
+            <div class="tech-info-dialog-label">{{ item.label }}</div>
+            <div class="tech-info-dialog-title">{{ item.title }}</div>
+            <div v-if="item.desc" class="tech-info-dialog-desc">{{ item.desc }}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1719,18 +1768,38 @@ span.button-text {
   line-height: 20px;
 }
 
-.file-info-grid {
+.file-info-flow {
   display: grid;
-  gap: 7px;
-  max-width: 1120px;
+  gap: 6px;
+  max-width: 1720px;
   color: var(--fn-muted);
   font-size: 14px;
   line-height: 22px;
 }
 
-.file-info-row {
+.file-info-row,
+.file-info-meta-line {
   display: flex;
+  align-items: center;
   min-width: 0;
+}
+
+.file-info-path-row .file-info-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-info-meta-line {
+  flex-wrap: wrap;
+  gap: 0 18px;
+}
+
+.file-info-meta-item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .file-info-label {
@@ -1740,53 +1809,180 @@ span.button-text {
 
 .file-info-value {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .detail-info-heading {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 18px;
 }
 
-.tech-info-grid {
+.tech-info-more {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0;
+  color: var(--fn-blue);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.tech-info-more:hover {
+  text-decoration: underline;
+}
+
+.tech-info-flow {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  max-width: 1120px;
+  gap: 8px;
+  max-width: 1720px;
+  color: var(--fn-muted);
+  font-size: 14px;
+  line-height: 22px;
 }
 
-.tech-info-card {
-  min-height: 86px;
-  padding: 14px 18px;
-  background: var(--fn-panel);
-  border: 1px solid var(--fn-border);
-  border-radius: 8px;
-  box-sizing: border-box;
+.tech-info-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0;
 }
 
-.tech-info-card h4 {
-  margin: 0 0 8px;
+.tech-info-row h4 {
+  margin: 0;
   color: var(--fn-soft);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 18px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+.tech-info-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  min-width: 0;
 }
 
 .tech-info-title {
   color: var(--fn-text);
   font-size: 14px;
-  font-weight: 650;
-  line-height: 20px;
+  font-weight: 400;
+  line-height: 22px;
 }
 
 .tech-info-desc {
-  margin-top: 4px;
   color: var(--fn-muted);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.tech-info-desc::before {
+  content: "·";
+  margin-right: 8px;
+  color: var(--fn-soft);
+}
+
+.tech-info-dialog-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.42);
+  box-sizing: border-box;
+}
+
+.tech-info-dialog {
+  width: min(560px, 100%);
+  max-height: min(720px, calc(100vh - 48px));
+  overflow: hidden;
+  color: var(--fn-text);
+  background: var(--fn-panel);
+  border: 1px solid var(--fn-border);
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+}
+
+.tech-info-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--fn-border);
+  box-sizing: border-box;
+}
+
+.tech-info-dialog-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.tech-info-dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: var(--fn-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.tech-info-dialog-close:hover {
+  color: var(--fn-text);
+  background: var(--fn-top-control);
+}
+
+.tech-info-dialog-close i {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.tech-info-dialog-list {
+  display: grid;
+  gap: 10px;
+  max-height: calc(min(720px, 100vh - 48px) - 56px);
+  overflow: auto;
+  padding: 16px 18px 18px;
+  box-sizing: border-box;
+}
+
+.tech-info-dialog-card {
+  padding: 12px 14px;
+  background: var(--fn-bg);
+  border: 1px solid var(--fn-border);
+  border-radius: 8px;
+}
+
+.tech-info-dialog-label {
+  color: var(--fn-soft);
   font-size: 13px;
   line-height: 18px;
+}
+
+.tech-info-dialog-title {
+  margin-top: 4px;
+  color: var(--fn-text);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.tech-info-dialog-desc {
+  margin-top: 2px;
+  color: var(--fn-muted);
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .external-link-row {
@@ -1922,19 +2118,30 @@ span.button-text {
     padding: 16px 16px 0;
   }
 
-  .file-info-row {
+  .file-info-row,
+  .file-info-meta-line {
     display: block;
   }
 
-  .file-info-value {
+  .file-info-meta-item {
+    display: block;
+    margin-bottom: 4px;
+    white-space: normal;
+  }
+
+  .file-info-value,
+  .file-info-path-row .file-info-value {
     display: block;
     white-space: normal;
     word-break: break-all;
   }
 
-  .tech-info-grid {
-    grid-template-columns: 1fr;
+  .tech-info-flow {
     gap: 10px;
+  }
+
+  .tech-info-row {
+    grid-template-columns: 42px minmax(0, 1fr);
   }
 
   .external-link-row {

@@ -376,10 +376,11 @@ function isLibraryActive(item) {
   if (route.path === '/list') {
     return route.query.gallery_uid === item.guid
   }
-  if (route.path === '/video') {
-    return normalizeGalleryType(route.query.gallery_type) === item.category
-  }
   return false
+}
+
+function isHomeActive() {
+  return route.path === '/' || route.path === '/video' || route.path === '/person'
 }
 
 function isCategoryActive(item) {
@@ -897,7 +898,7 @@ watch(
                   <div class="navigation">
                     <ul class="nav-links">
                       <li>
-                        <router-link to="/" :class="{ 'is-active': route.path === '/' }">
+                        <router-link to="/" :class="{ 'is-active': isHomeActive() }">
                                                     <span class="icon">
                                                         <i class='bx bx-home'></i>
                                                     </span>
