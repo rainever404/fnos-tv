@@ -954,8 +954,10 @@ watch(
                   v-if="mobileSiderOpen"
                   class="mobile-sider-mask"
                   aria-hidden="true"
+                  @pointerdown.stop.prevent="closeMobileSider"
                   @click="closeMobileSider"
                   @touchstart.stop.prevent="closeMobileSider"
+                  @touchend.stop.prevent="closeMobileSider"
               ></div>
               <n-layout-sider
                 :collapsed="effectiveSiderCollapsed"
@@ -965,7 +967,7 @@ watch(
                 :native-scrollbar="false"
                 bordered
                 :show-collapsed-content="false"
-                :class="{ 'mobile-sider': isMobile }"
+                :class="{ 'mobile-sider': isMobile, 'mobile-sider-open-state': mobileSiderOpen }"
               >
                 <div class="sidebar-brand" @click="Home">
                   <img class="brand-logo" src="/images/fnos-logo.png" :alt="title"/>
@@ -1272,18 +1274,35 @@ a {
   }
 
   .mobile-sider {
-    position: fixed;
+    position: fixed !important;
     top: 0;
     left: 0;
+    width: min(86vw, 260px) !important;
+    max-width: min(86vw, 260px);
     height: 100vh;
     height: 100dvh;
-    z-index: 1001;
-    transition: transform 0.3s ease;
-    background-color: var(--n-color);
+    z-index: 2147481001 !important;
+    overflow: hidden;
+    background: var(--fn-sidebar) !important;
+    box-shadow: 12px 0 34px rgba(15, 23, 42, 0.2);
+    transform: translateX(0);
+    transition: transform 0.22s ease;
+    will-change: transform;
   }
 
-  .mobile-sider.n-layout-sider--collapsed {
-    transform: translateX(-100%);
+  .mobile-sider.n-layout-sider--collapsed:not(.mobile-sider-open-state) {
+    transform: translateX(-104%) !important;
+  }
+
+  .mobile-sider.mobile-sider-open-state {
+    transform: translateX(0) !important;
+  }
+
+  .mobile-sider .n-layout-sider-scroll-container {
+    height: 100% !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .mobile-sider::before {
@@ -1729,11 +1748,12 @@ body {
 .mobile-sider-mask {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 2147481000;
   background: rgba(15, 23, 42, 0.38);
   cursor: pointer;
   touch-action: none;
   backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 
 .mobile-sider-close {
@@ -1971,10 +1991,32 @@ body {
   .mobile-sider {
     position: fixed !important;
     top: 0;
+    left: 0;
+    width: min(86vw, 260px) !important;
+    max-width: min(86vw, 260px);
     height: 100vh;
     height: 100dvh;
-    z-index: 1001 !important;
-    box-shadow: 12px 0 32px rgba(15, 23, 42, 0.18);
+    z-index: 2147481001 !important;
+    overflow: hidden;
+    background: var(--fn-sidebar) !important;
+    box-shadow: 12px 0 34px rgba(15, 23, 42, 0.2);
+    transform: translateX(0);
+    transition: transform 0.22s ease;
+  }
+
+  .mobile-sider.n-layout-sider--collapsed:not(.mobile-sider-open-state) {
+    transform: translateX(-104%) !important;
+  }
+
+  .mobile-sider.mobile-sider-open-state {
+    transform: translateX(0) !important;
+  }
+
+  .mobile-sider .n-layout-sider-scroll-container {
+    height: 100% !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .mobile-sider-close {
