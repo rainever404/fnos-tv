@@ -210,14 +210,21 @@ systemThemeQuery.addEventListener('change', event => {
 
 // 添加移动端检测
 const isMobile = ref(window.innerWidth <= 768);
+const mobileSiderOpen = computed(() => isMobile.value && !collapsed.value);
 
-// 监听窗口大小变化
-window.addEventListener('resize', () => {
-  isMobile.value = window.innerWidth <= 768;
-  if (isMobile.value) {
+function handleWindowResize() {
+  const nextIsMobile = window.innerWidth <= 768;
+  isMobile.value = nextIsMobile;
+  if (nextIsMobile) {
     collapsed.value = true;
   }
-});
+}
+
+function handleGlobalKeydown(event) {
+  if (event.key === 'Escape' && mobileSiderOpen.value) {
+    closeMobileSider()
+  }
+}
 
 // 获取用户信息
 async function GetUserInfo() {
@@ -340,10 +347,8 @@ const reF = async () => {
 // 修改 toggDrawer 函数
 function toggDrawer() {
   if (isMobile.value) {
-    // 在移动端时，点击菜单按钮显示/隐藏侧边栏
     collapsed.value = !collapsed.value;
   } else {
-    // 在桌面端时，保持原有的折叠/展开行为
     collapsed.value = !collapsed.value;
     VueCookies.set("collapsed", collapsed.value);
   }
@@ -702,12 +707,17 @@ async function onMountedFun() {
 }
 
 onMounted(async () => {
+  window.addEventListener('resize', handleWindowResize)
+  window.addEventListener('keydown', handleGlobalKeydown)
   window.addEventListener('fnos-tv:favorites-updated', handleFavoriteUpdated)
   await onMountedFun();
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', handleWindowResize)
+  window.removeEventListener('keydown', handleGlobalKeydown)
   window.removeEventListener('fnos-tv:favorites-updated', handleFavoriteUpdated)
+  document.body.classList.remove('mobile-sider-open')
   if (searchTimer) {
     window.clearTimeout(searchTimer)
     searchTimer = null
@@ -718,6 +728,7 @@ onUnmounted(() => {
 watch(
     () => route.fullPath,
     async (newPath, oldPath) => {
+      closeMobileSider();
       if (newPath === "/" || (oldPath?.startsWith('/player') && route.path !== '/player')) {
         await onMountedFun();
       } else if (newPath === "/favorite" || newPath?.startsWith('/favorite?')) {
@@ -729,6 +740,14 @@ watch(
 watch(
     searchKeyword,
     (value) => queueSearch(value)
+)
+
+watch(
+    mobileSiderOpen,
+    (value) => {
+      document.body.classList.toggle('mobile-sider-open', value);
+    },
+    {immediate: true}
 )
 
 watch(
@@ -759,7 +778,7 @@ watch(
           <router-view v-if="route.path === '/player'"/>
           <n-layout
               v-else-if="route.path !== '/login'"
-              :class='[dark ? "dark" : "light", "home", { "detail-page": isDetailPage, "sidebar-collapsed": collapsed || isMobile }]'
+              :class='[dark ? "dark" : "light", "home", { "detail-page": isDetailPage, "sidebar-collapsed": collapsed || isMobile, "mobile-sider-open": mobileSiderOpen }]'
           >
             <n-layout-header bordered>
               <div class="header-content">
@@ -996,7 +1015,12 @@ watch(
                   </div>
                 </div>
               </n-layout-sider>
-              <n-layout :native-scrollbar="false" :class="{ 'mobile-content': isMobile }">
+              <n-layout
+                  :native-scrollbar="false"
+                  :class="{ 'mobile-content': isMobile }"
+                  @click.capture="mobileSiderOpen && closeMobileSider()"
+                  @touchstart.capture="mobileSiderOpen && closeMobileSider()"
+              >
                 <router-view/>
               </n-layout>
             </n-layout>
@@ -1018,6 +1042,11 @@ body {
   overflow: auto;
   overflow-x: hidden;
   background-position: top left;
+}
+
+body.mobile-sider-open {
+  overflow: hidden;
+  touch-action: none;
 }
 
 p {
@@ -1201,10 +1230,11 @@ a {
 
   .mobile-sider {
     position: fixed;
-    top: 50px;
+    top: 0;
     left: 0;
-    height: calc(100vh - 50px);
-    z-index: 1000;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 1001;
     transition: transform 0.3s ease;
     background-color: var(--n-color);
   }
@@ -1213,24 +1243,13 @@ a {
     transform: translateX(-100%);
   }
 
-  /* 修改遮罩层样式 */
   .mobile-sider::before {
-    content: '';
-    position: fixed;
-    top: 50px;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: transparent; /* 移除背景色 */
-    z-index: -1;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
+    display: none;
+    content: none;
   }
 
   .mobile-sider:not(.n-layout-sider--collapsed)::before {
-    opacity: 1;
-    pointer-events: auto; /* 保持点击阻止功能 */
+    display: none;
   }
 
   .mobile-content {
@@ -1661,9 +1680,11 @@ body {
 .mobile-sider-mask {
   position: fixed;
   inset: 0;
-  z-index: 38;
-  background: rgba(15, 23, 42, 0.32);
-  backdrop-filter: blur(1px);
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.38);
+  cursor: pointer;
+  touch-action: none;
+  backdrop-filter: blur(2px);
 }
 
 .mobile-sider-close {
@@ -1878,7 +1899,8 @@ body {
     position: fixed !important;
     top: 0;
     height: 100vh;
-    z-index: 39 !important;
+    height: 100dvh;
+    z-index: 1001 !important;
     box-shadow: 12px 0 32px rgba(15, 23, 42, 0.18);
   }
 
