@@ -108,6 +108,43 @@ function formatRating(item) {
   return rating.toFixed(1)
 }
 
+function resolutionTags(item) {
+  const raw = item?.media_stream?.resolutions || item?.media_stream?.resolution || item?.resolution || []
+  const values = Array.isArray(raw) ? raw : [raw]
+  const seen = new Set()
+  const tags = []
+  for (const value of values) {
+    const label = normalizeResolutionLabel(value)
+    if (!label || seen.has(label)) {
+      continue
+    }
+    seen.add(label)
+    tags.push(label)
+    if (tags.length >= 2) {
+      break
+    }
+  }
+  return tags
+}
+
+function normalizeResolutionLabel(value) {
+  if (value === undefined || value === null) {
+    return ''
+  }
+  const text = String(value).trim()
+  if (!text || text.toLowerCase() === 'others') {
+    return ''
+  }
+  if (/^4k$/i.test(text)) {
+    return '4K'
+  }
+  const match = text.match(/(\d{3,4})\s*p/i)
+  if (match) {
+    return `${match[1]}P`
+  }
+  return text.toUpperCase()
+}
+
 function patchItemsByGuid(list, guid, patch) {
   if (!Array.isArray(list)) {
     return
@@ -389,8 +426,17 @@ onUnmounted(() => {
                           {{ item.ChildCount }}
                       </div> -->
                       <!--                  <p>{{ item }}</p>-->
-                      <div v-if="item.played" class="view-item-tag count">
-                        <i class='bx bx-check'></i>
+                      <div class="view-item-tag-right">
+                        <div
+                            v-for="tag in resolutionTags(item)"
+                            :key="`${item.guid}-resolution-${tag}`"
+                            class="view-item-tag resolution"
+                        >
+                          {{ tag }}
+                        </div>
+                        <div v-if="isWatched(item)" class="view-item-tag count">
+                          <i class='bx bx-check'></i>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1183,6 +1229,13 @@ img.carousel-img,
   padding: 7px;
 }
 
+.view-item-tag-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
 .view-item-tag {
   display: inline-flex;
   align-items: center;
@@ -1197,6 +1250,17 @@ img.carousel-img,
   font-weight: 800;
 }
 
+.view-item-tag.resolution {
+  min-width: auto;
+  height: 21px;
+  padding: 0 6px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 21px;
+  letter-spacing: 0;
+}
+
 .view-item-tag-list .count {
   min-width: 22px;
   width: 22px;
@@ -1204,6 +1268,10 @@ img.carousel-img,
   padding: 0;
   color: #fff;
   background: var(--fn-blue) !important;
+}
+
+.view-item-tag-right .count {
+  margin-left: 0;
 }
 
 .play-icon {
@@ -1277,11 +1345,14 @@ img.carousel-img,
   }
 
   .card-action-row {
+    top: auto;
+    right: 8px;
     bottom: 10px;
+    left: auto;
     gap: 7px;
     opacity: 1;
     pointer-events: auto;
-    transform: translate(-50%, 0);
+    transform: none;
   }
 
   .card-action-button {
