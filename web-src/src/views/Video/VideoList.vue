@@ -28,6 +28,8 @@ const MediaDbInfo = ref(null);
 const layoutMode = ref('official');
 const category = ref(null);
 const favoriteType = ref('all');
+const currentPage = ref(1);
+const loadingMore = ref(false);
 let listRequestId = 0;
 const filterOptionsLoaded = ref(false);
 const officialGenreOptions = ref([]);
@@ -81,6 +83,23 @@ const pageSortModes = computed(() => modes.map(item => {
 
 const activeFilterCount = computed(() => {
   return Object.values(filters.value).filter(Boolean).length
+})
+
+const loadedCount = computed(() => Array.isArray(MediaDbInfo.value) ? MediaDbInfo.value.length : 0)
+
+const hasMoreMedia = computed(() => {
+  const total = Number(totalCount.value || 0)
+  return total > 0 && loadedCount.value > 0 && loadedCount.value < total
+})
+
+const loadMoreText = computed(() => {
+  if (loadingMore.value) {
+    return '加载中'
+  }
+  if (!totalCount.value) {
+    return '加载更多'
+  }
+  return `加载更多（${loadedCount.value}/${totalCount.value}）`
 })
 
 const filterLabel = computed(() => {
@@ -248,6 +267,7 @@ function applyRouteState(targetRoute = route, {resetList = true} = {}) {
   if (resetList) {
     MediaDbInfo.value = null
     totalCount.value = 0
+    currentPage.value = 1
   }
 }
 
@@ -681,8 +701,19 @@ async function GetLibraryOfficialBootstrap() {
   ])
 }
 
-async function GetMediaDbInfos(requestId = listRequestId) {
+function currentListPageSize() {
+  if (isFavoritePage.value) {
+    return FAVORITE_PAGE_SIZE
+  }
+  if (hasActiveFilters()) {
+    return DEFAULT_PAGE_SIZE
+  }
+  return size.value || DEFAULT_PAGE_SIZE
+}
+
+async function GetMediaDbInfos(requestId = listRequestId, {page = currentPage.value, append = false} = {}) {
   let api = isFavoritePage.value ? '/api/v1/favorite/list' : '/api/v1/item/list'
+  const pageSize = currentListPageSize()
 
   let _data
   if (isFavoritePage.value) {
@@ -690,8 +721,8 @@ async function GetMediaDbInfos(requestId = listRequestId) {
       "tags": {},
       "sort_type": MediaDbData.sort_type,
       "sort_column": MediaDbData.sort_column,
-      "page": 1,
-      "page_size": FAVORITE_PAGE_SIZE
+      "page": page,
+      "page_size": pageSize
     }
     const types = favoriteTypes(favoriteType.value)
     if (types.length) {
@@ -705,8 +736,8 @@ async function GetMediaDbInfos(requestId = listRequestId) {
       },
       "sort_type": MediaDbData.sort_type,
       "sort_column": MediaDbData.sort_column,
-      "page": 1,
-      "page_size": size.value
+      "page": page,
+      "page_size": pageSize
     }
     if (shouldExcludeGroupedVideo(category.value)) {
       _data.exclude_grouped_video = 1
@@ -726,7 +757,8 @@ async function GetMediaDbInfos(requestId = listRequestId) {
       "exclude_grouped_video": 1,
       "sort_type": MediaDbData.sort_type,
       "sort_column": MediaDbData.sort_column,
-      "page_size": size.value
+      "page": page,
+      "page_size": pageSize
     }
     applyActiveFilters(_data.tags)
   }
@@ -734,7 +766,9 @@ async function GetMediaDbInfos(requestId = listRequestId) {
   if (requestId !== listRequestId) {
     return
   }
-  MediaDbInfo.value = Array.isArray(res?.list) ? res.list : []
+  const nextList = Array.isArray(res?.list) ? res.list : []
+  MediaDbInfo.value = append ? [...(MediaDbInfo.value || []), ...nextList] : nextList
+  currentPage.value = page
   totalCount.value = Number(res.total || totalCount.value || MediaDbInfo.value.length || 0)
 
 }
@@ -746,6 +780,7 @@ async function GetMediaDbCount(requestId = listRequestId) {
   }
   if (hasActiveFilters()) {
     totalCount.value = 0
+    size.value = DEFAULT_PAGE_SIZE
     return
   }
   let api = '/api/v1/mediadb/sum'
@@ -768,6 +803,8 @@ async function GetMediaDbCount(requestId = listRequestId) {
 
 async function reloadMediaList({resetRouteState = false} = {}) {
   const requestId = ++listRequestId
+  currentPage.value = 1
+  loadingMore.value = false
   if (resetRouteState) {
     applyRouteState(route)
   }
@@ -782,6 +819,22 @@ async function reloadMediaList({resetRouteState = false} = {}) {
     return
   }
   await GetMediaDbInfos(requestId);
+}
+
+async function loadMoreMedia() {
+  if (!hasMoreMedia.value || loadingMore.value) {
+    return
+  }
+  const requestId = listRequestId
+  loadingMore.value = true
+  try {
+    await GetMediaDbInfos(requestId, {
+      page: currentPage.value + 1,
+      append: true
+    })
+  } finally {
+    loadingMore.value = false
+  }
 }
 
 async function handleChange() {
@@ -1020,6 +1073,17 @@ watch(
           <div class="view-item-year">{{ releaseYear(item) }}</div>
         </router-link>
       </div>
+    </div>
+    <div v-if="hasMoreMedia" class="load-more-row">
+      <button
+          type="button"
+          class="load-more-button"
+          :disabled="loadingMore"
+          @click="loadMoreMedia"
+      >
+        <span>{{ loadMoreText }}</span>
+        <i class='bx bx-chevron-down'></i>
+      </button>
     </div>
   </div>
 </template>
@@ -1390,6 +1454,48 @@ watch(
   justify-content: start;
   grid-gap: 29px 21px;
   padding: 0;
+}
+
+.load-more-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 28px 0 6px;
+}
+
+.load-more-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 148px;
+  height: 36px;
+  padding: 0 18px;
+  color: var(--fn-text);
+  background: var(--fn-top-control);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.load-more-button:hover {
+  background: var(--fn-top-control-hover);
+}
+
+.load-more-button:disabled {
+  color: var(--fn-soft);
+  cursor: default;
+  opacity: 0.72;
+}
+
+.load-more-button i {
+  color: var(--fn-muted);
+  font-size: 17px;
+  line-height: 1;
 }
 
 .favorite-content .view-card-list {
