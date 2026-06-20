@@ -2839,6 +2839,24 @@ h1 {
   }
 }
 
+@media (max-width: 820px) and (orientation: portrait), (pointer: coarse) and (orientation: portrait) {
+  .player:not(.is-forced-landscape) .mobile-danmu-controls.is-player-inline {
+    position: absolute;
+    right: max(96px, calc(env(safe-area-inset-right, 0px) + 96px));
+    bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
+    z-index: 2147483000;
+    display: flex !important;
+    gap: 7px;
+    padding: 0;
+  }
+
+  .player:not(.is-forced-landscape) .mobile-danmu-controls.is-player-inline .mobile-danmu-button {
+    width: 36px;
+    height: 36px;
+    background: rgba(0, 0, 0, 0.66);
+  }
+}
+
 .mobile-danmu-button {
   position: relative;
   display: inline-flex;
