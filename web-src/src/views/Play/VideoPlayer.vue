@@ -1126,7 +1126,7 @@ async function exitMobileLandscapeFullscreen() {
 }
 
 async function toggleMobileLandscapeFullscreen() {
-  if (mobileLandscapeActive || fullscreenElement() || playerFrame.value?.classList.contains('is-forced-landscape')) {
+  if (mobileLandscapeActive || mobileLandscapeModeActive.value || playerFrame.value?.classList.contains('is-forced-landscape')) {
     await exitMobileLandscapeFullscreen()
   } else {
     await enterMobileLandscapeFullscreen()
@@ -2686,6 +2686,34 @@ h1 {
 .player.is-mobile-player :deep(.art-video) {
   touch-action: none;
   overscroll-behavior: contain;
+}
+
+.player.is-mobile-player.is-forced-landscape {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  z-index: 99999;
+  width: 100vh !important;
+  width: 100dvh !important;
+  height: 100vw !important;
+  height: 100dvw !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  background: #000;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center center;
+}
+
+.player.is-mobile-player.is-forced-landscape .art-player,
+.player.is-mobile-player.is-forced-landscape :deep(.art-video-player) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+:global(body.player-forced-landscape-active .player-topbar) {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .gesture-feedback-title {
