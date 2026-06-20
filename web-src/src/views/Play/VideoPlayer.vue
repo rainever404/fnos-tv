@@ -365,26 +365,6 @@ const setting = ref({
   settings: [],
   controls: [
     {
-      name: 'mobile-danmu-toggle',
-      index: 96,
-      position: 'right',
-      html: '<span class="mobile-art-danmu-label">弹</span>',
-      tooltip: '弹幕开关',
-      click: function () {
-        toggleMobileDanmuVisible()
-      }
-    },
-    {
-      name: 'mobile-danmu-settings-trigger',
-      index: 97,
-      position: 'right',
-      html: '<span class="mobile-art-danmu-label">弹</span><i class="bx bx-slider-alt"></i>',
-      tooltip: '弹幕设置',
-      click: function () {
-        toggleMobileDanmuSettings()
-      }
-    },
-    {
       name: 'mobile-landscape-fullscreen',
       index: 99,
       position: 'right',
@@ -687,7 +667,11 @@ function handleMobileDanmuPanelClick(event) {
   const shouldOpen = !panelTrigger.classList.contains('is-panel-open')
   closeMobileDanmuPanels()
   if (shouldOpen) {
-    panelTrigger.classList.add('is-panel-open')
+    if (isMobileUiActive()) {
+      showMobileDanmuSettings.value = true
+    } else {
+      panelTrigger.classList.add('is-panel-open')
+    }
   }
   event.preventDefault()
   event.stopPropagation()
@@ -2334,85 +2318,7 @@ onMounted(async () => {
           <span :style="{ width: `${gestureFeedback.progress}%` }"></span>
         </div>
       </div>
-      <div
-          class="mobile-danmu-controls is-player-inline"
-          :class="{ 'is-visible': shouldShowMobileDanmuInlineControls }"
-          aria-label="弹幕控制"
-      >
-        <button
-            type="button"
-            class="mobile-danmu-button mobile-danmu-toggle"
-            :class="{ 'is-muted': !mobileDanmuVisible }"
-            :aria-pressed="mobileDanmuVisible"
-            aria-label="弹幕开关"
-            @click.stop.prevent="toggleMobileDanmuVisible"
-        >
-          弹
-        </button>
-        <button
-            type="button"
-            class="mobile-danmu-button"
-            :class="{ 'is-active': showMobileDanmuSettings }"
-            aria-label="弹幕设置"
-            @click.stop.prevent="toggleMobileDanmuSettings"
-        >
-          <span>弹</span>
-          <i class='bx bx-slider-alt'></i>
-        </button>
-      </div>
-      <div
-          class="mobile-danmu-controls mobile-danmu-portrait-dock"
-          :class="{ 'is-visible': shouldShowMobilePortraitDockControls }"
-          aria-label="弹幕控制"
-      >
-        <button
-            type="button"
-            class="mobile-danmu-button mobile-danmu-toggle"
-            :class="{ 'is-muted': !mobileDanmuVisible }"
-            :aria-pressed="mobileDanmuVisible"
-            aria-label="弹幕开关"
-            @click.stop.prevent="toggleMobileDanmuVisible"
-        >
-          弹
-        </button>
-        <button
-            type="button"
-            class="mobile-danmu-button"
-            :class="{ 'is-active': showMobileDanmuSettings }"
-            aria-label="弹幕设置"
-            @click.stop.prevent="toggleMobileDanmuSettings"
-        >
-          <span>弹</span>
-          <i class='bx bx-slider-alt'></i>
-        </button>
-      </div>
       <Teleport to="body">
-        <div
-            class="mobile-danmu-controls is-mobile-portal"
-            :class="{ 'is-visible': shouldShowMobileDanmuPortalControls, 'is-forced-landscape-portal': mobileDanmuPortalLandscapeActive, 'is-portrait-portal': mobileDanmuPortalPortraitActive }"
-            aria-label="弹幕控制"
-        >
-          <button
-              type="button"
-              class="mobile-danmu-button mobile-danmu-toggle"
-              :class="{ 'is-muted': !mobileDanmuVisible }"
-              :aria-pressed="mobileDanmuVisible"
-              aria-label="弹幕开关"
-              @click.stop.prevent="toggleMobileDanmuVisible"
-          >
-            弹
-          </button>
-          <button
-              type="button"
-              class="mobile-danmu-button"
-              :class="{ 'is-active': showMobileDanmuSettings }"
-              aria-label="弹幕设置"
-              @click.stop.prevent="toggleMobileDanmuSettings"
-          >
-            <span>弹</span>
-            <i class='bx bx-slider-alt'></i>
-          </button>
-        </div>
         <div
             class="mobile-danmu-settings is-mobile-portal"
             :class="{ 'is-visible': showMobileDanmuSettings, 'is-forced-landscape-portal': mobileDanmuPortalLandscapeActive, 'is-portrait-portal': mobileDanmuPortalPortraitActive }"
@@ -3709,14 +3615,17 @@ img.play-icon {
   }
 
   :deep(.art-video-player .art-controls-center) {
-    display: none !important;
-    flex: 0 0 0;
-    width: 0;
-    min-width: 0;
+    display: flex !important;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 72px;
   }
 
   :deep(.art-video-player .art-controls-center .artplayer-plugin-danmuku) {
-    display: none !important;
+    display: flex !important;
+    gap: 8px;
   }
 
   :deep(.art-video-player .art-controls-center .apd-config-panel) {
