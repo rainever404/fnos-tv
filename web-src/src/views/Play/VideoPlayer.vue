@@ -140,6 +140,20 @@ episode_guid.value = proxy.$route.query.episode_guid || proxy.$route.query.seaso
 gallery_type.value = proxy.$route.query.gallery_type
 requestedMediaGuid.value = proxy.$route.query.media_guid || null
 
+const DANMU_OUTLINE_SHADOW = 'rgb(0, 0, 0) 1px 0 1px, rgb(0, 0, 0) 0 1px 1px, rgb(0, 0, 0) 0 -1px 1px, rgb(0, 0, 0) -1px 0 1px'
+
+function applyDanmuVisibleStyle(danmu) {
+  if (!danmu) {
+    return true
+  }
+  danmu.border = false
+  danmu.style = {
+    ...(danmu.style || {}),
+    textShadow: danmu_setting.outline === false ? 'none' : DANMU_OUTLINE_SHADOW
+  }
+  return true
+}
+
 function defaultDanmuSetting() {
   return {
     speed: 8.5,
@@ -150,8 +164,10 @@ function defaultDanmuSetting() {
     modes: [0, 1, 2],
     margin: window.innerWidth <= 768 ? [5, '85%'] : [10, '75%'],
     antiOverlap: true,
+    outline: true,
     useWorker: true,
     synchronousPlayback: true,
+    beforeVisible: applyDanmuVisibleStyle,
     theme: 'dark',
     heatmap: false,
     width: 0,
@@ -177,6 +193,8 @@ function normalizeDanmuSetting(value = {}) {
     ...value,
     color: value.color || base.color,
     modes: Array.isArray(value.modes) ? value.modes : base.modes,
+    outline: value.outline !== false,
+    beforeVisible: applyDanmuVisibleStyle,
     theme: 'dark',
     emitter: false,
     width: 0,
@@ -219,21 +237,24 @@ const mobileDanmuSetting = ref({
   area: Array.isArray(danmu_setting.margin) ? Number.parseFloat(danmu_setting.margin[1]) || 85 : 85,
   modes: Array.isArray(danmu_setting.modes) ? [...danmu_setting.modes] : [0, 1, 2],
   antiOverlap: danmu_setting.antiOverlap !== false,
+  outline: danmu_setting.outline !== false,
   synchronousPlayback: danmu_setting.synchronousPlayback !== false
 });
 const shouldShowMobileDanmuControls = computed(() => {
   if (!isMobileUiActive()) {
     return false
   }
-  return showMobileDanmuFallbackControls.value ||
+  return !isForcedLandscapeActive() ||
+      showMobileDanmuFallbackControls.value ||
       mobilePortraitDanmuControlsActive.value ||
       shouldShowPortraitFloatingDanmuControls() ||
       isForcedLandscapeActive()
 })
 const shouldShowMobileDanmuPortalControls = computed(() => {
-  return shouldShowMobileDanmuControls.value
+  return isMobileUiActive() && shouldShowMobileDanmuControls.value
 })
 const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.value || isForcedLandscapeActive())
+const mobileDanmuPortalPortraitActive = computed(() => shouldShowMobileDanmuPortalControls.value && !mobileDanmuPortalLandscapeActive.value)
 
 const setting = ref({
   url: "",
@@ -494,7 +515,7 @@ function isPlayerInteractiveTarget(target) {
 function refreshMobileUiState() {
   const active = isMobileRuntime() || isCompactPlayerViewport()
   mobileUiActive.value = active
-  const shouldShowPortraitControls = active && shouldShowPortraitFloatingDanmuControls()
+  const shouldShowPortraitControls = active && !isForcedLandscapeActive()
   mobilePortraitDanmuControlsActive.value = active && (isForcedLandscapeActive() || shouldShowPortraitControls)
   if (shouldShowPortraitControls) {
     showMobileDanmuFallbackControls.value = true
@@ -576,8 +597,7 @@ function syncMobileDanmuFallbackControls() {
     const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
         isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
     // 竖屏非全屏用固定浮层，避免 Artplayer 右侧控制条空间不足时吞掉弹幕入口。
-    const shouldForcePortraitControls = shouldShowPortraitFloatingDanmuControls() ||
-        (shouldForceMobileDanmuFallbackControls() && !hasArtControls)
+    const shouldForcePortraitControls = isMobileUiActive() && !isForcedLandscapeActive()
     const shouldForceLandscapeControls = isForcedLandscapeActive()
     mobilePortraitDanmuControlsActive.value = shouldForcePortraitControls || shouldForceLandscapeControls
     showMobileDanmuFallbackControls.value = shouldForcePortraitControls || shouldForceLandscapeControls || !hasArtControls
@@ -668,11 +688,13 @@ function syncMobileDanmuSettingFromOption(option = danmu_setting) {
     area: Array.isArray(option.margin) ? Number.parseFloat(option.margin[1]) || mobileDanmuSetting.value.area : mobileDanmuSetting.value.area,
     modes: Array.isArray(option.modes) && option.modes.length ? [...option.modes] : mobileDanmuSetting.value.modes,
     antiOverlap: option.antiOverlap !== false,
+    outline: option.outline !== false,
     synchronousPlayback: option.synchronousPlayback !== false
   }
 }
 
 function applyMobileDanmuSetting(partial = {}) {
+  const outlineChanged = danmu_setting.outline !== (mobileDanmuSetting.value.outline !== false)
   const nextValue = {
     opacity: clamp(mobileDanmuSetting.value.opacity, 20, 100) / 100,
     fontSize: `${clamp(mobileDanmuSetting.value.fontSize, 16, 42)}px`,
@@ -680,11 +702,16 @@ function applyMobileDanmuSetting(partial = {}) {
     margin: [5, `${clamp(mobileDanmuSetting.value.area, 25, 100)}%`],
     modes: mobileDanmuSetting.value.modes.length ? [...mobileDanmuSetting.value.modes] : [0],
     antiOverlap: mobileDanmuSetting.value.antiOverlap,
+    outline: mobileDanmuSetting.value.outline !== false,
     synchronousPlayback: mobileDanmuSetting.value.synchronousPlayback,
     ...partial
   }
   persistMobileDanmuSetting(nextValue)
-  getDanmuPlugin()?.config(nextValue)
+  const danmu = getDanmuPlugin()
+  danmu?.config(nextValue)
+  if (outlineChanged) {
+    danmu?.reset()
+  }
 }
 
 function toggleMobileDanmuVisible() {
@@ -2253,7 +2280,7 @@ onMounted(async () => {
       <Teleport to="body">
         <div
             class="mobile-danmu-controls is-mobile-portal"
-            :class="{ 'is-visible': shouldShowMobileDanmuPortalControls, 'is-forced-landscape-portal': mobileDanmuPortalLandscapeActive }"
+            :class="{ 'is-visible': shouldShowMobileDanmuPortalControls, 'is-forced-landscape-portal': mobileDanmuPortalLandscapeActive, 'is-portrait-portal': mobileDanmuPortalPortraitActive }"
             aria-label="弹幕控制"
         >
           <button
@@ -2279,7 +2306,7 @@ onMounted(async () => {
         </div>
         <div
             class="mobile-danmu-settings is-mobile-portal"
-            :class="{ 'is-visible': showMobileDanmuSettings, 'is-forced-landscape-portal': mobileDanmuPortalLandscapeActive }"
+            :class="{ 'is-visible': showMobileDanmuSettings, 'is-forced-landscape-portal': mobileDanmuPortalLandscapeActive, 'is-portrait-portal': mobileDanmuPortalPortraitActive }"
             @click.stop
             @touchstart.stop
             @touchmove.stop
@@ -2341,6 +2368,13 @@ onMounted(async () => {
                 @click.stop.prevent="mobileDanmuSetting.antiOverlap = !mobileDanmuSetting.antiOverlap; applyMobileDanmuSetting()"
             >
               防重叠
+            </button>
+            <button
+                type="button"
+                :class="{ 'is-active': mobileDanmuSetting.outline }"
+                @click.stop.prevent="mobileDanmuSetting.outline = !mobileDanmuSetting.outline; applyMobileDanmuSetting()"
+            >
+              描边
             </button>
             <button
                 type="button"
@@ -2673,6 +2707,24 @@ h1 {
   display: flex !important;
 }
 
+.mobile-danmu-controls.is-mobile-portal.is-portrait-portal.is-visible {
+  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+  bottom: max(86px, calc(env(safe-area-inset-bottom, 0px) + 86px));
+  gap: 10px;
+  padding: 5px;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.36);
+  backdrop-filter: saturate(180%) blur(14px);
+}
+
+.mobile-danmu-controls.is-mobile-portal.is-portrait-portal .mobile-danmu-button {
+  width: 40px;
+  height: 40px;
+  background: rgba(18, 21, 28, 0.82);
+}
+
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
   position: fixed;
   right: max(112px, calc(env(safe-area-inset-right, 0px) + 112px));
@@ -2686,6 +2738,13 @@ h1 {
   right: max(12px, env(safe-area-inset-right, 0px));
   bottom: max(66px, calc(env(safe-area-inset-bottom, 0px) + 66px));
   z-index: 2147482999;
+}
+
+.mobile-danmu-settings.is-mobile-portal.is-portrait-portal {
+  right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
+  bottom: max(144px, calc(env(safe-area-inset-bottom, 0px) + 144px));
+  width: min(342px, calc(100vw - 20px));
+  max-height: min(430px, calc(100svh - 184px));
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
