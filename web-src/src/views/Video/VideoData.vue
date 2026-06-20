@@ -179,8 +179,6 @@ const remainingTimeText = computed(() => {
 
 const overviewText = computed(() => String(VideoDataInfo.value?.overview || '').trim())
 
-const hasOverviewMore = computed(() => overviewText.value.length > 42)
-
 const resumeProgressPercent = computed(() => {
   const duration = selectedDuration.value
   const watched = watchedSeconds.value
@@ -752,14 +750,6 @@ onMounted(async () => {
         </div>
         <div v-if="overviewText" class="overview-text detail-overview">
           <span class="detail-overview-text">{{ overviewText }}</span>
-          <button
-              v-if="hasOverviewMore"
-              class="overview-more"
-              type="button"
-              @click="showOverviewDialog = true"
-          >
-            更多
-          </button>
         </div>
         <div v-if="gallery_type === 'TV'" class="showContainer">
           <div class="show-header">
@@ -983,7 +973,7 @@ onMounted(async () => {
 
 .main-content {
   position: relative;
-  --detail-hero-height: 346px;
+  --detail-hero-height: 386px;
   min-height: 100vh;
   overflow: hidden;
   background: var(--fn-bg);
@@ -1634,7 +1624,7 @@ span.button-text {
   justify-content: flex-start;
   gap: 8px;
   min-height: 54px;
-  margin-top: 8px;
+  margin-top: 39px;
   padding: 0 46px;
   color: var(--fn-text);
   background: var(--fn-bg);
@@ -1805,9 +1795,7 @@ span.button-text {
 
 .detail-overview {
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: block;
   width: auto;
   max-width: none;
   margin: 0 46px 28px;
@@ -1819,25 +1807,9 @@ span.button-text {
 }
 
 .detail-overview-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.overview-more {
-  flex: 0 0 auto;
-  padding: 0;
-  color: var(--fn-blue);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  font-size: 15px;
-  line-height: 23px;
-}
-
-.overview-more:hover {
-  text-decoration: underline;
+  display: block;
+  overflow: visible;
+  white-space: normal;
 }
 
 .showContainer {
