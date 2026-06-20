@@ -28,11 +28,25 @@ const qrData = ref(null)
 const isQr = ref(false)
 const qrCode = ref(null)  // 存储二维码code
 const qrCheckTimer = ref(null)  // 存储定时器
+const rememberAccount = ref(localStorage.getItem('login_remember_account') === 'true')
+const showPassword = ref(false)
+
+const rememberedUsername = localStorage.getItem('login_username')
+if (rememberAccount.value && rememberedUsername) {
+  user.value.username = rememberedUsername
+}
 
 
 async function LoginUser() {
   let api = "/api/v1/login"
   let res = await COMMON.requests("POST", api, false, user.value)
+  if (rememberAccount.value) {
+    localStorage.setItem('login_remember_account', 'true')
+    localStorage.setItem('login_username', user.value.username)
+  } else {
+    localStorage.removeItem('login_remember_account')
+    localStorage.removeItem('login_username')
+  }
   VueCookies.set('authorization', res.token, -1)
   VueCookies.set('Trim-MC-token', res.token, -1)
   COMMON.ShowMsg('登录成功！')
@@ -152,6 +166,13 @@ async function OpenNasLogin() {
   window.open(`${fnUrl}/signin?client_id=${ConfigData.value.nas_oauth.app_id}&redirect_uri=${window.location.href}`, '_blank', 'width=600,height=400')
 }
 
+function toggleQrMode() {
+  isQr.value = !isQr.value
+  if (isQr.value) {
+    getQr()
+  }
+}
+
 onMounted(async () => {
   await getConfig();
   if (route.query.code !== undefined) {
@@ -168,28 +189,40 @@ watch(() => route.query.code, (code) => {
 <template>
   <n-layout-content class="login-page">
     <div class="container">
-      <div class="top">
-        <div class="header"><span class="title">{{ title }}</span></div>
-        <div class="desc">{{ content }}</div>
-      </div>
       <div class="main">
         <div class="md-card login-card">
-          <div class="card-header">
-            <h2 class="card-title">{{ isQr ? '扫码登录' : '账号登录' }}</h2>
+          <div class="brand-block">
+            <div class="brand-line">
+              <img class="brand-logo" src="/images/fnos-logo.png" alt="飞牛影视">
+            </div>
+            <div class="server-title">{{ ConfigData?.server_name || 'FnTv' }}</div>
           </div>
+          <h2 class="card-title">{{ isQr ? '扫码登录' : '账号登录' }}</h2>
           <div class="create-post-from" v-if="!isQr">
             <div class="form-control">
               <div class="icon">
                 <i class='bx bx-user'></i>
               </div>
-              <input v-model="user.username" type="text" name="账号" placeholder="请输入账号" required="">
+              <input v-model="user.username" type="text" name="账号" placeholder="用户名" autocomplete="username" required="">
             </div>
-            <div class="form-control">
+            <div class="form-control password-control">
               <div class="icon">
                 <i class='bx bx-lock-alt'></i>
               </div>
-              <input v-model="user.password" type="password" name="密码" placeholder="请输入密码" required=""
+              <input v-model="user.password" :type="showPassword ? 'text' : 'password'" name="密码" placeholder="密码" required=""
                      autocomplete="off" @keyup.enter="LoginUser">
+              <button class="password-toggle" type="button" aria-label="切换密码显示" @click="showPassword = !showPassword">
+                <i class='bx' :class="showPassword ? 'bx-show' : 'bx-hide'"></i>
+              </button>
+            </div>
+            <div class="form-row">
+              <label class="remember-row">
+                <input v-model="rememberAccount" type="checkbox">
+                <span>记住账号</span>
+              </label>
+              <button class="inline-action" type="button" @click="toggleQrMode">
+                扫码登录
+              </button>
             </div>
             <div class="form-control">
               <button class="btn login-btn" @click="LoginUser">登录</button>
@@ -210,15 +243,14 @@ watch(() => route.query.code, (code) => {
             <div v-if="!qrData" class="qr-wrapper loading">
               <span class="loading-text">二维码加载中...</span>
             </div>
+            <button class="inline-action qr-account-action" type="button" @click="toggleQrMode">
+              账号登录
+            </button>
           </div>
           <div class="login-options">
             <button class="btn option-btn" @click="OpenNasLogin">
               <i class='bx bx-server'></i>
-              NAS登录
-            </button>
-            <button class="btn option-btn" @click="isQr = !isQr;isQr?getQr():null;">
-              <i class='bx' :class="isQr ? 'bx-user' : 'bx-qr-scan'"></i>
-              {{ isQr ? '账号登录' : '扫码登录' }}
+              使用 NAS 登录
             </button>
           </div>
         </div>
@@ -229,16 +261,42 @@ watch(() => route.query.code, (code) => {
 
 <style scoped>
 .login-page {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(https://wework.qpic.cn/wwpic/893131_WTVcr3SmScqHmY2_1675911425/0);
+  position: relative;
+  isolation: isolate;
   background-size: cover;
   background-position: center;
   min-height: 100vh;
-  min-height: 100dvh; /* 适配移动端动态视口高度 */
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); /* 适配刘海屏 */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background-color: #050607;
+  background-image:
+      radial-gradient(circle at 50% 48%, rgba(48, 58, 74, 0.16), rgba(0, 0, 0, 0) 34%),
+      linear-gradient(rgba(0, 0, 0, 0.56), rgba(0, 0, 0, 0.74)),
+      url(https://wework.qpic.cn/wwpic/893131_WTVcr3SmScqHmY2_1675911425/0);
+}
+
+.login-page::before,
+.login-page::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  pointer-events: none;
+}
+
+.login-page::before {
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: saturate(82%) brightness(0.72);
+}
+
+.login-page::after {
+  background:
+      linear-gradient(90deg, rgba(0, 0, 0, 0.5), transparent 22%, transparent 78%, rgba(0, 0, 0, 0.54)),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 28%, rgba(0, 0, 0, 0.52));
 }
 
 .container {
@@ -253,50 +311,69 @@ watch(() => route.query.code, (code) => {
   box-sizing: border-box;
 }
 
-.top {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.header .title {
-  color: white;
-  font-size: 32px;
-  font-weight: 600;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  margin: 0;
-}
-
-.desc {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 14px;
-  margin-top: 8px;
+.main {
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 
 .md-card.login-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  width: 100%;
-  max-width: 360px;
-  margin: 0 auto;
-  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  width: 472px;
+  max-width: calc(100vw - 32px);
+  min-height: 560px;
+  margin: 0 auto;
+  padding: 56px 61px 58px;
+  box-sizing: border-box;
+  color: #fff;
+  background:
+      linear-gradient(146deg, rgba(55, 45, 37, 0.42), rgba(16, 17, 20, 0.88) 38%, rgba(20, 20, 22, 0.94));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  box-shadow: 0 26px 72px rgba(0, 0, 0, 0.46);
+  backdrop-filter: saturate(142%) blur(22px);
 }
 
-.card-header {
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 38px;
+}
+
+.brand-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+}
+
+.brand-logo {
+  display: block;
+  width: 232px;
+  height: auto;
+  object-fit: contain;
+}
+
+.server-title {
+  margin-top: 28px;
+  color: rgba(255, 255, 255, 0.93);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
   text-align: center;
-  margin-bottom: 20px;
-  flex-shrink: 0;
 }
 
 .card-title {
-  color: #333;
-  font-size: 22px;
+  display: none;
+  margin: 0 0 20px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 18px;
   font-weight: 600;
-  margin: 0;
+  line-height: 26px;
 }
 
 .create-post-from {
@@ -312,30 +389,100 @@ watch(() => route.query.code, (code) => {
 
 .form-control .icon {
   position: absolute;
-  left: 12px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: #666;
+  color: rgba(255, 255, 255, 0.62);
   z-index: 1;
+  font-size: 18px;
 }
 
 .form-control input {
   width: 100%;
-  padding: 14px 12px 14px 40px; /* 增加输入框高度，提升触摸体验 */
-  border: 1px solid #ddd;
+  height: 48px;
+  padding: 0 44px 0 42px;
+  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
-  font-size: 16px; /* 确保字体大小不小于16px，避免iOS自动缩放 */
-  transition: all 0.3s;
-  background: white;
+  outline: none;
+  font-size: 16px;
+  line-height: 48px;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  background: rgba(255, 255, 255, 0.12);
   box-sizing: border-box;
-  -webkit-appearance: none; /* 移除iOS默认样式 */
+  -webkit-appearance: none;
 }
 
-.login-btn {
+.form-control input::placeholder {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.form-control input:focus {
+  border-color: rgba(10, 132, 255, 0.84);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.16);
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.62);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
-  max-width: 320px;
-  margin: 0 auto;
-  display: block;
+  margin: 2px 0 28px;
+}
+
+.remember-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: #0a84ff;
+}
+
+.inline-action {
+  padding: 0;
+  color: rgba(255, 255, 255, 0.72);
+  background: transparent;
+  border: 0;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.inline-action:hover {
+  color: #fff;
 }
 
 .qr-section {
@@ -356,108 +503,129 @@ watch(() => route.query.code, (code) => {
 }
 
 .qr-code {
-  width: 240px !important;
-  height: 240px !important;
+  width: 238px !important;
+  height: 238px !important;
   background: white;
-  padding: 10px;
+  padding: 12px;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
   flex-shrink: 0;
 }
 
 .qr-code canvas {
-  width: 240px !important;
-  height: 240px !important;
+  width: 238px !important;
+  height: 238px !important;
 }
 
 .qr-wrapper.loading {
-  width: 240px;
-  height: 240px;
+  width: 238px;
+  height: 238px;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: white;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 12px;
   flex-shrink: 0;
 }
 
 .loading-text {
-  color: #666;
+  color: rgba(255, 255, 255, 0.72);
   font-size: 16px;
 }
 
 .qr-tip {
-  color: #666;
+  color: rgba(255, 255, 255, 0.72);
   font-size: 14px;
   text-align: center;
-  margin-top: 8px;
+  margin-top: 10px;
   flex-shrink: 0;
+}
+
+.qr-account-action {
+  margin-top: 14px;
 }
 
 .login-options {
   width: 100%;
-  margin-top: 20px;
+  margin-top: 18px;
   display: flex;
-  gap: 8px;
   flex-shrink: 0;
 }
 
 .btn {
-  padding: 12px 20px; /* 增加按钮高度 */
+  width: 100%;
+  height: 48px;
+  padding: 0 20px;
   font-size: 16px;
-  height: 48px; /* 增加按钮高度，提升触摸体验 */
+  font-weight: 600;
+  line-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .login-btn {
   width: 100%;
-  background: #1890ff;
+  margin: 0 auto;
+  display: block;
   color: white;
-  font-weight: 500;
+  background: #0a84ff;
+  border: 1px solid #0a84ff;
+  box-shadow: 0 8px 20px rgba(10, 132, 255, 0.26);
 }
 
 .login-btn:hover {
-  background: #40a9ff;
+  background: #2d95ff;
+  border-color: #2d95ff;
 }
 
 .option-btn {
-  flex: 1;
-  min-width: 0;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.92);
   white-space: nowrap;
-  min-width: 100px; /* 确保按钮有最小宽度 */
-  padding: 12px 16px; /* 调整内边距，使文字显示更合理 */
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .option-btn:hover {
-  background: #e8e8e8;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.24);
 }
 
 .option-btn i {
-  font-size: 20px;
+  font-size: 19px;
 }
 
 @media (max-width: 768px) {
   .container {
-    padding: 12px;
+    padding: 18px;
   }
 
   .md-card.login-card {
     width: 100%;
-    max-width: 320px;
-    padding: 16px;
-    margin: 0 12px;
+    max-width: 360px;
+    min-height: auto;
+    padding: 34px 24px 30px;
+    margin: 0;
+    border-radius: 22px;
   }
 
-  .header .title {
-    font-size: 24px;
+  .brand-block {
+    margin-bottom: 28px;
   }
 
-  .card-title {
-    font-size: 20px;
+  .brand-logo {
+    width: 204px;
+  }
+
+  .server-title {
+    margin-top: 20px;
+    font-size: 18px;
+    line-height: 25px;
   }
 
   .qr-code {
@@ -477,14 +645,7 @@ watch(() => route.query.code, (code) => {
   }
 
   .login-options {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .option-btn {
-    width: 100%;
-    min-width: 120px; /* 在移动端增加最小宽度 */
-    justify-content: center;
+    margin-top: 16px;
   }
 
   .form-control {
@@ -493,27 +654,24 @@ watch(() => route.query.code, (code) => {
 
   .form-control input {
     font-size: 16px;
-    padding: 12px 12px 12px 40px;
+    height: 46px;
+    line-height: 46px;
   }
 
   .btn {
-    height: 44px;
+    height: 46px;
     font-size: 15px;
+    line-height: 46px;
   }
 }
 
-/* 针对超小屏幕的优化 */
 @media (max-width: 360px) {
   .md-card.login-card {
-    padding: 12px;
+    padding: 28px 18px 24px;
   }
 
-  .header .title {
-    font-size: 22px;
-  }
-
-  .card-title {
-    font-size: 18px;
+  .brand-logo {
+    width: 188px;
   }
 
   .qr-code {
