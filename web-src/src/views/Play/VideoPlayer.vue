@@ -127,6 +127,7 @@ const touchState = {
   moved: false
 };
 let playerTouchFrame = null;
+let mobileDanmuFallbackSyncTimer = null;
 
 const qualitySelector = ref([]);
 const currentQuality = ref(null);
@@ -254,7 +255,9 @@ const shouldShowMobileDanmuControls = computed(() => {
 })
 const shouldShowMobilePortraitDockControls = computed(() => false)
 const shouldUsePortraitDanmuPortalControls = computed(() => {
-  return isMobileUiActive() && isPortraitMobilePlayer()
+  return isMobileUiActive() &&
+      isPortraitMobilePlayer() &&
+      (!mobileArtDanmuControlsVisible.value || showMobileDanmuFallbackControls.value)
 })
 const shouldShowMobileDanmuInlineControls = computed(() => {
   return isMobileUiActive() &&
@@ -269,6 +272,9 @@ const shouldShowMobileDanmuPortalControls = computed(() => {
   }
   if (shouldShowMobilePortraitDockControls.value) {
     return false
+  }
+  if (isPortraitMobilePlayer()) {
+    return shouldUsePortraitDanmuPortalControls.value
   }
   if (shouldUsePortraitDanmuPortalControls.value) {
     return true
@@ -539,7 +545,7 @@ function refreshMobileUiState() {
   mobileUiActive.value = active
   const shouldShowPortraitControls = active && !isForcedLandscapeActive()
   mobilePortraitDanmuControlsActive.value = active && (isForcedLandscapeActive() || shouldShowPortraitControls)
-  if (shouldShowPortraitControls) {
+  if (shouldShowPortraitControls && !mobileArtDanmuControlsVisible.value) {
     showMobileDanmuFallbackControls.value = true
   }
   if (!active) {
@@ -595,8 +601,8 @@ function closeMobileDanmuPanels() {
 
 function isMobileArtControlVisible(selector) {
   const root = playerFrame.value
-  const el = root?.querySelector?.(selector)
-  if (!root || !el) {
+  const el = root?.querySelector?.(selector) || document.querySelector?.(selector)
+  if (!el) {
     return false
   }
   const style = window.getComputedStyle(el)
@@ -627,7 +633,7 @@ function syncMobileDanmuFallbackControls() {
     const shouldForcePortraitControls = isPortraitMobilePlayer()
     const shouldForceLandscapeControls = isForcedLandscapeActive()
     mobilePortraitDanmuControlsActive.value = shouldForcePortraitControls || shouldForceLandscapeControls
-    showMobileDanmuFallbackControls.value = shouldForcePortraitControls || shouldForceLandscapeControls || !hasArtControls
+    showMobileDanmuFallbackControls.value = shouldForceLandscapeControls || !hasArtControls
   })
 }
 
@@ -638,6 +644,23 @@ function scheduleMobileDanmuFallbackSync() {
   syncMobileDanmuFallbackControls()
   window.setTimeout(syncMobileDanmuFallbackControls, 160)
   window.setTimeout(syncMobileDanmuFallbackControls, 640)
+  window.setTimeout(syncMobileDanmuFallbackControls, 1600)
+  window.setTimeout(syncMobileDanmuFallbackControls, 3000)
+}
+
+function startMobileDanmuFallbackSyncLoop() {
+  if (mobileDanmuFallbackSyncTimer || !isMobileUiActive()) {
+    return
+  }
+  mobileDanmuFallbackSyncTimer = window.setInterval(syncMobileDanmuFallbackControls, 1000)
+}
+
+function stopMobileDanmuFallbackSyncLoop() {
+  if (!mobileDanmuFallbackSyncTimer) {
+    return
+  }
+  clearInterval(mobileDanmuFallbackSyncTimer)
+  mobileDanmuFallbackSyncTimer = null
 }
 
 function handleMobileDanmuPanelClick(event) {
@@ -888,6 +911,9 @@ function handlePlayerKeydown(event) {
 }
 
 function handleTouchStart(event) {
+  if (isMobileUiActive()) {
+    window.setTimeout(syncMobileDanmuFallbackControls, 220)
+  }
   if (!art || showModal.value || showSetUp.value || event.touches.length !== 1 || isPlayerInteractiveTarget(event.target)) {
     touchState.active = false
     return
@@ -2247,6 +2273,7 @@ onBeforeRouteLeave((to, from) => {
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
+  stopMobileDanmuFallbackSyncLoop()
   cleanupMobileLandscape()
 });
 
@@ -2263,10 +2290,12 @@ onBeforeUnmount(async () => {
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
+  stopMobileDanmuFallbackSyncLoop()
   cleanupMobileLandscape()
 })
 onMounted(async () => {
   refreshMobileUiState()
+  startMobileDanmuFallbackSyncLoop()
   window.addEventListener('keydown', handlePlayerKeydown)
   document.addEventListener('click', handleMobileDanmuPanelClick, true)
   document.addEventListener('click', handleMobileFullscreenControlClick, true)
@@ -2857,8 +2886,8 @@ h1 {
 }
 
 .mobile-danmu-controls.is-mobile-portal.is-portrait-portal.is-visible {
-  right: max(98px, calc(env(safe-area-inset-right, 0px) + 98px));
-  bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
+  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+  bottom: max(76px, calc(env(safe-area-inset-bottom, 0px) + 76px));
   gap: 10px;
   padding: 5px;
   background: rgba(0, 0, 0, 0.42);
@@ -2891,9 +2920,9 @@ h1 {
 
 .mobile-danmu-settings.is-mobile-portal.is-portrait-portal {
   right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
-  bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 72px));
+  bottom: max(130px, calc(env(safe-area-inset-bottom, 0px) + 130px));
   width: min(342px, calc(100vw - 20px));
-  max-height: min(430px, calc(100svh - 104px));
+  max-height: min(430px, calc(100svh - 162px));
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
@@ -2905,7 +2934,9 @@ h1 {
 @media (max-width: 768px) and (orientation: portrait) {
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    display: none !important;
+    display: flex !important;
+    width: 34px;
+    min-width: 34px;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-portrait-dock.is-visible {
@@ -2920,8 +2951,8 @@ h1 {
   .player:not(.is-forced-landscape) .mobile-danmu-controls:not(.is-player-inline).is-visible {
     position: fixed;
     display: flex !important;
-    right: max(98px, calc(env(safe-area-inset-right, 0px) + 98px));
-    bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
+    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+    bottom: max(76px, calc(env(safe-area-inset-bottom, 0px) + 76px));
     z-index: 2147483000;
   }
 
@@ -2930,8 +2961,8 @@ h1 {
     position: fixed;
     display: block;
     right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
-    bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 72px));
-    max-height: min(430px, calc(100svh - 104px));
+    bottom: max(130px, calc(env(safe-area-inset-bottom, 0px) + 130px));
+    max-height: min(430px, calc(100svh - 162px));
     z-index: 2147482999;
   }
 }
@@ -2939,7 +2970,9 @@ h1 {
 @media (max-width: 820px) and (orientation: portrait), (pointer: coarse) and (orientation: portrait) {
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    display: none !important;
+    display: flex !important;
+    width: 34px;
+    min-width: 34px;
   }
 
   .player:not(.is-forced-landscape) .mobile-danmu-controls.is-player-inline.is-visible {
@@ -3670,7 +3703,9 @@ img.play-icon {
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    display: none !important;
+    display: flex !important;
+    width: 34px;
+    min-width: 34px;
   }
 
   :deep(.art-video-player .art-controls-center) {
