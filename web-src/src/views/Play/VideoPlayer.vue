@@ -422,8 +422,14 @@ function isEditableTarget(target) {
 }
 
 function isPlayerInteractiveTarget(target) {
-  return !!target?.closest?.(
-      '.art-bottom, .art-setting, .art-contextmenus, .art-volume-panel, .art-control, .artplayer-plugin-danmuku, .apd-config-panel, .apd-style-panel, .mobile-danmu-controls, .mobile-danmu-settings, .player-back-button, button, a, input, textarea, select, [contenteditable="true"]'
+  if (!target?.closest) {
+    return false
+  }
+  if (target.closest('.art-control-progress, .art-progress, .art-control-progress-inner, .art-progress-played, .art-progress-loaded, .art-progress-hover')) {
+    return false
+  }
+  return !!target.closest(
+      '.art-setting, .art-contextmenus, .art-volume-panel, .art-control, .artplayer-plugin-danmuku, .apd-config-panel, .apd-style-panel, .mobile-danmu-controls, .mobile-danmu-settings, .player-back-button, button, a, input, textarea, select, [contenteditable="true"]'
   )
 }
 
@@ -480,7 +486,9 @@ function syncMobileDanmuFallbackControls() {
   window.requestAnimationFrame(() => {
     const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
         isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
-    showMobileDanmuFallbackControls.value = !hasArtControls
+    // 竖屏控制条空间不足时 Artplayer 会挤掉自定义弹幕按钮，固定显示浮动兜底入口。
+    const shouldForcePortraitControls = !isForcedLandscapeActive() && isPortraitViewport()
+    showMobileDanmuFallbackControls.value = shouldForcePortraitControls || !hasArtControls
   })
 }
 
@@ -3132,6 +3140,11 @@ img.play-icon {
     right: -70px;
     left: auto;
     width: min(324px, calc(100vw - 24px));
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+    display: none !important;
   }
 
   .player.is-forced-landscape {
