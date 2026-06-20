@@ -2874,6 +2874,40 @@ h1 {
 }
 
 @media (max-width: 820px) and (orientation: portrait), (pointer: coarse) and (orientation: portrait) {
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center) {
+    flex: 0 0 92px !important;
+    width: 92px !important;
+    min-width: 92px !important;
+    overflow: visible !important;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center .artplayer-plugin-danmuku) {
+    width: 84px !important;
+    min-width: 84px !important;
+    flex: 0 0 84px !important;
+    justify-content: center;
+    gap: 10px !important;
+    overflow: visible !important;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .artplayer-plugin-danmuku .apd-toggle),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .artplayer-plugin-danmuku .apd-config) {
+    display: inline-flex !important;
+    flex: 0 0 34px !important;
+    align-items: center;
+    justify-content: center;
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    overflow: visible !important;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .artplayer-plugin-danmuku .apd-icon) {
+    width: 28px !important;
+    max-width: none !important;
+    height: 28px !important;
+  }
+
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
     display: flex !important;
@@ -3478,6 +3512,13 @@ img.play-icon {
 :deep(.art-video-player .apd-style.is-panel-open .apd-style-panel) {
   opacity: 1;
   pointer-events: all;
+}
+
+.player.is-mobile-player :deep(.art-video-player .apd-config-panel),
+.player.is-mobile-player :deep(.art-video-player .apd-style-panel) {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 :deep(.art-video-player .apd-config-mode),
