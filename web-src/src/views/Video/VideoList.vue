@@ -1218,6 +1218,7 @@ watch(
   --poster-card-width: 165px;
   grid-template-columns: repeat(auto-fill, var(--poster-card-width));
   justify-content: start;
+  padding-top: 10px;
 }
 
 .view-card-list.layout-compact {
@@ -1390,18 +1391,26 @@ watch(
 }
 
 .view-item-tag-list {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
+  position: relative;
+  width: 100%;
+  height: 100%;
   min-height: 24px;
+  text-align: left;
 }
 
 .view-item-tag-right {
+  position: absolute;
+  right: 0;
+  bottom: 0;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-left: auto;
+}
+
+.view-item-tag-list > .rating {
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .view-item-tag {
@@ -1432,7 +1441,6 @@ watch(
 }
 
 .view-item-tag-list .count {
-  margin-left: auto;
   background-color: var(--fn-blue) !important;
   border-radius: 50%;
   width: 22px;

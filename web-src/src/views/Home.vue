@@ -660,15 +660,18 @@ img.carousel-img {
 
 .view-item-header {
   position: absolute;
-  width: 95%;
-  padding-left: 4px;
+  inset: 0;
+  z-index: 2;
+  padding: 0;
   pointer-events: none;
+  box-sizing: border-box;
 }
 
 .view-item-tag-list {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: left;
 }
 
 .view-item-tag-list .count {
@@ -1233,15 +1236,27 @@ img.carousel-img,
 }
 
 .view-item-tag-list {
-  justify-content: space-between;
+  position: relative;
+  width: 100%;
+  height: 100%;
   padding: 7px;
+  box-sizing: border-box;
+  text-align: left;
 }
 
 .view-item-tag-right {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-left: auto;
+}
+
+.view-item-tag-list > .rating {
+  position: absolute;
+  top: 7px;
+  left: 7px;
 }
 
 .view-item-tag {
