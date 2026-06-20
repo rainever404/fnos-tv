@@ -17,6 +17,7 @@ const showDropdown = ref(false)
 const dropdownX = ref(0)
 const dropdownY = ref(0)
 const currentContextItem = ref(null)
+let resizeTimer = null
 
 // 渲染图标的函数
 const renderIcon = (icon) => {
@@ -45,6 +46,16 @@ function updateCarouselDensity() {
 }
 
 updateCarouselDensity();
+
+function handleViewportResize() {
+  if (resizeTimer) {
+    window.clearTimeout(resizeTimer)
+  }
+  resizeTimer = window.setTimeout(() => {
+    updateCarouselDensity()
+    resizeTimer = null
+  }, 80)
+}
 
 const visibleLibraries = computed(() => {
   return (MediaDbData.list || []).filter(item => item.category !== 'Others')
@@ -291,11 +302,6 @@ const handleClickOutside = () => {
   showDropdown.value = false
 }
 
-// 监听窗口大小变化
-window.addEventListener('resize', () => {
-  updateCarouselDensity();
-});
-
 async function GetPlayList() {
   let api = "/api/v1/play/list"
   playList.value = await COMMON.requests("GET", api, true);
@@ -314,6 +320,8 @@ const goPrev = () => {
 };
 
 onMounted(async () => {
+  window.addEventListener('resize', handleViewportResize)
+  window.visualViewport?.addEventListener?.('resize', handleViewportResize)
   await GetPlayList();
   // 添加全局点击事件监听
   document.addEventListener('click', handleClickOutside)
@@ -321,6 +329,12 @@ onMounted(async () => {
 
 // 组件卸载时移除事件监听
 onUnmounted(() => {
+  window.removeEventListener('resize', handleViewportResize)
+  window.visualViewport?.removeEventListener?.('resize', handleViewportResize)
+  if (resizeTimer) {
+    window.clearTimeout(resizeTimer)
+    resizeTimer = null
+  }
   document.removeEventListener('click', handleClickOutside)
 })
 </script>
