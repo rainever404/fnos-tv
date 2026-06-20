@@ -24,6 +24,7 @@ const GenreMap = ref({})
 const CountryMap = ref({})
 const LanguageMap = ref({})
 const showTechInfoDialog = ref(false)
+const showOverviewDialog = ref(false)
 const EpisodeCarouselRef = ref(null);
 const play_item_guid = ref(null);
 const play_guid = ref(null)
@@ -175,6 +176,10 @@ const remainingTimeText = computed(() => {
   }
   return `剩余 ${formatDuration(duration - watched, true)}`
 })
+
+const overviewText = computed(() => String(VideoDataInfo.value?.overview || '').trim())
+
+const hasOverviewMore = computed(() => overviewText.value.length > 42)
 
 const resumeProgressPercent = computed(() => {
   const duration = selectedDuration.value
@@ -649,6 +654,8 @@ const goToSlide = (index) => {
 onBeforeRouteUpdate(async (to, from) => {
   guid.value = routeGuid(to);
   gallery_type.value = routeGalleryType(to)
+  showTechInfoDialog.value = false
+  showOverviewDialog.value = false
   await onMountedFun();
 });
 
@@ -736,8 +743,16 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        <div v-if="VideoDataInfo.overview" class="overview-text detail-overview">
-          {{ VideoDataInfo.overview }}
+        <div v-if="overviewText" class="overview-text detail-overview">
+          <span class="detail-overview-text">{{ overviewText }}</span>
+          <button
+              v-if="hasOverviewMore"
+              class="overview-more"
+              type="button"
+              @click="showOverviewDialog = true"
+          >
+            更多
+          </button>
         </div>
         <div v-if="gallery_type === 'TV'" class="showContainer">
           <div class="show-header">
@@ -906,6 +921,24 @@ onMounted(async () => {
             <div class="tech-info-dialog-title">{{ item.title }}</div>
             <div v-if="item.desc" class="tech-info-dialog-desc">{{ item.desc }}</div>
           </div>
+        </div>
+      </div>
+    </div>
+    <div
+        v-if="showOverviewDialog"
+        class="tech-info-dialog-mask"
+        role="presentation"
+        @click.self="showOverviewDialog = false"
+    >
+      <div class="tech-info-dialog overview-dialog" role="dialog" aria-modal="true" aria-label="简介">
+        <div class="tech-info-dialog-header">
+          <h3>简介</h3>
+          <button type="button" class="tech-info-dialog-close" aria-label="关闭" @click="showOverviewDialog = false">
+            <i class='bx bx-x'></i>
+          </button>
+        </div>
+        <div class="overview-dialog-body">
+          {{ overviewText }}
         </div>
       </div>
     </div>
@@ -1757,6 +1790,9 @@ span.button-text {
 
 .detail-overview {
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: auto;
   max-width: none;
   margin: 0 46px 28px;
@@ -1765,6 +1801,28 @@ span.button-text {
   font-size: 15px;
   line-height: 23px;
   text-align: left;
+}
+
+.detail-overview-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-more {
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--fn-blue);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 23px;
+}
+
+.overview-more:hover {
+  text-decoration: underline;
 }
 
 .showContainer {
@@ -1990,6 +2048,10 @@ span.button-text {
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
 }
 
+.overview-dialog {
+  width: min(720px, 100%);
+}
+
 .tech-info-dialog-header {
   display: flex;
   align-items: center;
@@ -2065,6 +2127,17 @@ span.button-text {
   color: var(--fn-muted);
   font-size: 13px;
   line-height: 20px;
+}
+
+.overview-dialog-body {
+  max-height: calc(min(720px, 100vh - 48px) - 56px);
+  overflow: auto;
+  padding: 18px 20px 22px;
+  box-sizing: border-box;
+  color: var(--fn-text);
+  font-size: 15px;
+  line-height: 28px;
+  white-space: pre-wrap;
 }
 
 .external-link-row {
