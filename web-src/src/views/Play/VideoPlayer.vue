@@ -254,16 +254,38 @@ const setting = ref({
   },
   settings: [],
   controls: [
-    ...(MOBILE_UA ? [{
-      name: 'mobile-landscape-fullscreen',
-      index: 99,
-      position: 'right',
-      html: '<i class="bx bx-fullscreen"></i>',
-      tooltip: '横屏全屏',
-      click: async function () {
-        await toggleMobileLandscapeFullscreen()
+    ...(MOBILE_UA ? [
+      {
+        name: 'mobile-danmu-toggle',
+        index: 96,
+        position: 'right',
+        html: '<span class="mobile-art-danmu-label">弹</span>',
+        tooltip: '弹幕开关',
+        click: function () {
+          toggleMobileDanmuVisible()
+        }
+      },
+      {
+        name: 'mobile-danmu-settings-trigger',
+        index: 97,
+        position: 'right',
+        html: '<span class="mobile-art-danmu-label">弹</span><i class="bx bx-slider-alt"></i>',
+        tooltip: '弹幕设置',
+        click: function () {
+          toggleMobileDanmuSettings()
+        }
+      },
+      {
+        name: 'mobile-landscape-fullscreen',
+        index: 99,
+        position: 'right',
+        html: '<i class="bx bx-fullscreen"></i>',
+        tooltip: '横屏全屏',
+        click: async function () {
+          await toggleMobileLandscapeFullscreen()
+        }
       }
-    }] : []),
+    ] : []),
     // {
     //     position: 'right',
     //     index: 15,
@@ -380,6 +402,13 @@ function formatTime(seconds) {
   if (h > 0) {
     return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   }
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function formatTimeDelta(seconds) {
+  const total = Math.max(0, Math.floor(Math.abs(seconds || 0)))
+  const m = Math.floor(total / 60)
+  const s = total % 60
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
@@ -696,8 +725,9 @@ function handleTouchMove(event) {
     }
     const seekWindow = Math.min(art.duration, 600)
     const nextTime = clamp(touchState.startTime + (dx / touchState.width) * seekWindow, 0, art.duration)
+    const delta = nextTime - touchState.startTime
     touchState.previewTime = nextTime
-    showGestureFeedback('进度', `${formatTime(nextTime)} / ${formatTime(art.duration)}`)
+    showGestureFeedback(delta >= 0 ? `快进 ${formatTimeDelta(delta)}` : `快退 ${formatTimeDelta(delta)}`, `${formatTime(nextTime)} / ${formatTime(art.duration)}`)
     return
   }
 
@@ -787,6 +817,11 @@ function isPortraitViewport() {
   return window.innerHeight >= window.innerWidth
 }
 
+function shouldUseLandscapeFallback() {
+  const orientationType = String(window.screen?.orientation?.type || '')
+  return isPortraitViewport() || orientationType.startsWith('portrait')
+}
+
 function setForcedLandscape(active) {
   const frame = playerFrame.value
   document.body.classList.toggle('player-forced-landscape-active', active)
@@ -801,7 +836,7 @@ function syncMobileLandscapeFallback() {
     setForcedLandscape(false)
     return
   }
-  setForcedLandscape(isPortraitViewport())
+  setForcedLandscape(shouldUseLandscapeFallback())
 }
 
 async function enterMobileLandscapeFullscreen() {
@@ -809,6 +844,7 @@ async function enterMobileLandscapeFullscreen() {
     return
   }
   mobileLandscapeActive = true
+  setForcedLandscape(shouldUseLandscapeFallback())
   await requestBrowserFullscreen(playerFullscreenTarget())
   await lockLandscapeForMobile()
   syncMobileLandscapeFallback()
@@ -1950,6 +1986,7 @@ onMounted(async () => {
         v-else
         ref="playerFrame"
         class="player"
+        :class="{ 'is-mobile-player': MOBILE_UA }"
         @touchstart="handleTouchStart"
         @touchmove="handleTouchMove"
         @touchend="handleTouchEnd"
@@ -2313,6 +2350,10 @@ h1 {
 .mobile-danmu-controls,
 .mobile-danmu-settings {
   display: none;
+}
+
+.player.is-mobile-player .mobile-danmu-settings {
+  display: block;
 }
 
 .mobile-danmu-controls {
@@ -2804,6 +2845,28 @@ img.play-icon {
   line-height: 1;
 }
 
+:deep(.art-video-player .art-control-mobile-danmu-toggle),
+:deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: var(--art-control-height, 38px);
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+:deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  gap: 2px;
+}
+
+:deep(.art-video-player .art-control-mobile-danmu-settings-trigger i) {
+  font-size: 16px;
+  line-height: 1;
+}
+
 :deep(.art-video-player .artplayer-plugin-danmuku) {
   gap: 12px;
   color: #fff;
@@ -2998,38 +3061,15 @@ img.play-icon {
     --art-selector-max-height: min(220px, calc(100svh - 96px));
   }
 
-  .mobile-danmu-controls {
-    display: flex;
-  }
-
-  .mobile-danmu-settings {
-    display: block;
-  }
-
   :deep(.art-video-player .art-controls-center) {
-    display: flex !important;
-    flex: 0 0 auto;
-    min-width: 72px;
-    justify-content: flex-end;
+    display: none !important;
+    flex: 0 0 0;
+    width: 0;
+    min-width: 0;
   }
 
   :deep(.art-video-player .art-controls-center .artplayer-plugin-danmuku) {
-    display: flex !important;
-    flex: 0 0 auto;
-    width: auto;
-    min-width: 68px;
-    gap: 8px;
-    align-items: center;
-    justify-content: flex-end;
-  }
-
-  :deep(.art-video-player .art-controls-center .apd-toggle),
-  :deep(.art-video-player .art-controls-center .apd-config) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: var(--art-control-height);
+    display: none !important;
   }
 
   :deep(.art-video-player .art-controls-center .apd-config-panel) {
@@ -3071,9 +3111,14 @@ img.play-icon {
     font-size: 22px;
   }
 
-  .player.is-forced-landscape .mobile-danmu-controls,
-  .player.is-forced-landscape .mobile-danmu-settings {
+  .player.is-forced-landscape .mobile-danmu-controls {
     display: none;
+  }
+
+  .player.is-forced-landscape .mobile-danmu-settings {
+    display: block;
+    width: min(342px, calc(100% - 24px));
+    max-height: calc(100% - 96px);
   }
 
   :global(body.player-forced-landscape-active) .player-topbar {
@@ -3087,8 +3132,7 @@ img.play-icon {
   }
 
   @media (orientation: landscape) {
-    .mobile-danmu-controls,
-    .mobile-danmu-settings {
+    .mobile-danmu-controls {
       display: none;
     }
   }
