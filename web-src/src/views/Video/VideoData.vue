@@ -1060,7 +1060,7 @@ onMounted(async () => {
 }
 
 .mediaInfo .icon-star {
-  color: yellow;
+  color: var(--fn-rating);
 }
 
 .mediaInfo .mediaInfoOfficialRating {
@@ -1250,13 +1250,13 @@ span.button-text {
   border-radius: 50%;
   width: 20px;
   height: 20px;
-  color: white;
+  color: var(--fn-on-accent);
   padding: 4px;
   text-align: center;
 }
 
 .rating {
-  color: yellow;
+  color: var(--fn-rating);
 }
 
 .search-list {

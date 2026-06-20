@@ -1554,7 +1554,7 @@ watch(
   min-width: 40px;
   height: 24px;
   padding: 0;
-  color: rgb(255, 150, 0);
+  color: var(--fn-rating);
   background: rgba(0, 0, 0, 0.6);
   border-radius: 6px;
   font-family: "DIN Alternate", "Arial Narrow", Arial, sans-serif;
@@ -1568,7 +1568,7 @@ watch(
   border-radius: 50%;
   width: 22px;
   height: 22px;
-  color: white;
+  color: var(--fn-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1579,7 +1579,7 @@ watch(
 }
 
 .rating {
-  color: rgb(255, 150, 0);
+  color: var(--fn-rating);
 }
 
 /* 移动端适配 */

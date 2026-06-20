@@ -635,17 +635,17 @@ img.carousel-img {
 }
 
 .view-item-tag-list .count {
-  background-color: #2d8cf0 !important;
+  background-color: var(--fn-blue) !important;
   border-radius: 50%;
   width: 20px;
   height: 20px;
-  color: white;
+  color: var(--fn-on-accent);
   padding: 4px;
   text-align: center;
 }
 
 .rating {
-  color: yellow;
+  color: var(--fn-rating);
 }
 
 .project {
@@ -1270,7 +1270,7 @@ img.carousel-img,
   min-width: 32px;
   height: 22px;
   padding: 0 6px;
-  color: #ffd327;
+  color: var(--fn-rating);
   background: rgba(0, 0, 0, 0.68);
   border-radius: 5px;
   font-size: 13px;
@@ -1282,7 +1282,7 @@ img.carousel-img,
   width: 22px;
   height: 22px;
   padding: 0;
-  color: #fff;
+  color: var(--fn-on-accent);
   background: var(--fn-blue) !important;
 }
 

@@ -1368,6 +1368,8 @@ html[data-theme="light"] {
   --fn-nav-active: rgba(0, 102, 255, 0.1);
   --fn-nav-active-text: rgba(15, 23, 42, 0.92);
   --fn-blue: #0066ff;
+  --fn-rating: #ffd327;
+  --fn-on-accent: #ffffff;
 }
 
 html[data-theme="dark"] {
@@ -1384,6 +1386,8 @@ html[data-theme="dark"] {
   --fn-nav-hover: rgba(255, 255, 255, 0.06);
   --fn-nav-active: rgba(255, 255, 255, 0.08);
   --fn-nav-active-text: rgba(255, 255, 255, 0.92);
+  --fn-rating: #ffd327;
+  --fn-on-accent: #ffffff;
 }
 
 body {
