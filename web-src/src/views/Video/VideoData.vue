@@ -26,6 +26,8 @@ const LanguageMap = ref({})
 const EpisodeCarouselRef = ref(null);
 const play_item_guid = ref(null);
 const play_guid = ref(null)
+const MIN_RESUME_SECONDS = 30
+const RESUME_END_BUFFER_SECONDS = 30
 
 guid.value = proxy.$route.query.guid
 gallery_type.value = proxy.$route.query.gallery_type
@@ -69,11 +71,14 @@ const watchedSeconds = computed(() => {
 
 const hasPlaybackRecord = computed(() => {
   const watched = watchedSeconds.value
-  if (watched <= 0) {
+  if (watched < MIN_RESUME_SECONDS) {
     return false
   }
   const duration = selectedDuration.value
-  return !Number.isFinite(duration) || duration <= 0 || watched < duration
+  if (!Number.isFinite(duration) || duration <= 0) {
+    return true
+  }
+  return watched < Math.max(duration - RESUME_END_BUFFER_SECONDS, MIN_RESUME_SECONDS)
 })
 
 const primaryPlayLabel = computed(() => {
