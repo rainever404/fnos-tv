@@ -894,15 +894,15 @@ img.carousel-img {
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
-  flex: 0 0 256px;
-  width: 256px;
+  flex: 0 0 264px;
+  width: 264px;
   height: auto;
-  aspect-ratio: 256 / 184;
+  aspect-ratio: 264 / 191;
   padding: 0;
   color: var(--fn-text);
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid var(--fn-border);
-  border-radius: 8px;
+  border-radius: 10px;
   box-shadow: none;
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
@@ -931,7 +931,7 @@ img.carousel-img {
   margin: 0;
   overflow: hidden;
   background: rgba(198, 202, 207, 0.15);
-  border-radius: 7px;
+  border-radius: 10px;
 }
 
 .library-posters::after {
@@ -983,12 +983,12 @@ img.carousel-img {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 39px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 16px 3px;
   box-sizing: border-box;
   overflow: hidden;
   color: #fff;
-  background: linear-gradient(180deg, rgba(12, 13, 16, 0.16), rgba(12, 13, 16, 0.82));
+  background: linear-gradient(180deg, rgba(12, 13, 16, 0.08), rgba(12, 13, 16, 0.76));
   font-size: 15px;
   font-weight: 700;
   line-height: 21px;
@@ -1299,8 +1299,8 @@ img.carousel-img,
   }
 
   .library-card {
-    flex-basis: min(256px, calc(100vw - 56px));
-    width: min(256px, calc(100vw - 56px));
+    flex-basis: min(264px, calc(100vw - 56px));
+    width: min(264px, calc(100vw - 56px));
   }
 
   .card-shows {
