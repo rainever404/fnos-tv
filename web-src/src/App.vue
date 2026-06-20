@@ -388,11 +388,14 @@ function isLibraryActive(item) {
   if (route.path === '/list') {
     return route.query.gallery_uid === item.guid
   }
+  if (route.path === '/video') {
+    return normalizeGalleryType(route.query.gallery_type) === normalizeGalleryType(item.category)
+  }
   return false
 }
 
 function isHomeActive() {
-  return route.path === '/' || route.path === '/video' || route.path === '/person'
+  return route.path === '/' || route.path === '/person'
 }
 
 function isCategoryActive(item) {

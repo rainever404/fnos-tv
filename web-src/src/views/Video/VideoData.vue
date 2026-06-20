@@ -907,7 +907,7 @@ onMounted(async () => {
 
 .main-content {
   position: relative;
-  --detail-hero-height: 700px;
+  --detail-hero-height: 480px;
   min-height: 100vh;
   overflow: hidden;
   background: var(--fn-bg);
@@ -1493,9 +1493,9 @@ span.button-text {
 .itemName-primary {
   width: 100%;
   max-width: 100%;
-  font-size: clamp(36px, 3.4vw, 60px);
+  font-size: clamp(30px, 3vw, 48px);
   font-weight: 400;
-  line-height: 1.4;
+  line-height: 1.18;
 }
 
 .detail-remaining-row {
@@ -1572,7 +1572,7 @@ span.button-text {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  padding: 42px 46px 40px;
+  padding: 30px 46px 18px;
   background: var(--fn-bg);
 }
 
@@ -1674,7 +1674,7 @@ span.button-text {
   box-sizing: border-box;
   width: auto;
   max-width: none;
-  margin: 0 46px 34px;
+  margin: 0 46px 28px;
   padding: 0;
   color: var(--fn-muted);
   font-size: 15px;
@@ -1687,7 +1687,7 @@ span.button-text {
 }
 
 .people-section {
-  padding: 20px 44px 39px;
+  padding: 18px 44px 28px;
 }
 
 .people-section .show-header {
