@@ -19,7 +19,19 @@ const COMMON = proxy.$COMMON;
 const device = proxy.$device;
 
 const PlayerData = usePlayerData()
-const MOBILE_UA = /Android|webOS|iPhone|iPod|BlackBerry/i.test(navigator.userAgent);
+function isMobileRuntime() {
+  const userAgent = navigator.userAgent || ''
+  const isMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|Mobile/i.test(userAgent)
+  const hasCoarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches || false
+  const hasTouch = Number(navigator.maxTouchPoints || 0) > 0
+  const shortSide = Math.min(
+      window.screen?.width || window.innerWidth || 0,
+      window.screen?.height || window.innerHeight || 0
+  )
+  return isMobileUserAgent || ((hasCoarsePointer || hasTouch) && shortSide > 0 && shortSide <= 900)
+}
+
+const MOBILE_UA = isMobileRuntime();
 let art = null;
 let lastDanmuLoadedUntil = 0;
 let mobileLandscapeActive = false;
@@ -894,7 +906,14 @@ async function exitBrowserFullscreen() {
 }
 
 function isPortraitViewport() {
-  return window.innerHeight >= window.innerWidth
+  const orientationType = String(window.screen?.orientation?.type || '')
+  if (orientationType.startsWith('landscape')) {
+    return false
+  }
+  if (orientationType.startsWith('portrait')) {
+    return true
+  }
+  return window.matchMedia?.('(orientation: portrait)')?.matches ?? window.innerHeight >= window.innerWidth
 }
 
 function shouldUseLandscapeFallback() {
