@@ -1,5 +1,5 @@
 <script setup>
-import {computed, getCurrentInstance, onMounted, ref, watch} from 'vue'
+import {computed, getCurrentInstance, onMounted, onUnmounted, ref, watch} from 'vue'
 import VueCookies from 'vue-cookies';
 import {darkTheme} from "naive-ui";
 
@@ -239,6 +239,10 @@ async function GetFavoriteSummary() {
   } catch {
     favoriteCount.value = 0
   }
+}
+
+function handleFavoriteUpdated() {
+  GetFavoriteSummary()
 }
 
 function isCurrentPath(path) {
@@ -488,7 +492,12 @@ async function onMountedFun() {
 }
 
 onMounted(async () => {
+  window.addEventListener('fnos-tv:favorites-updated', handleFavoriteUpdated)
   await onMountedFun();
+})
+
+onUnmounted(() => {
+  window.removeEventListener('fnos-tv:favorites-updated', handleFavoriteUpdated)
 })
 
 // 监听路由变化

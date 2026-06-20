@@ -220,6 +220,88 @@ function getItemRoute(item) {
   }
 }
 
+function itemActionGuid(item) {
+  return item?.guid || item?.item_guid || ''
+}
+
+function isFavorite(item) {
+  return Boolean(item?.is_favorite || item?.favorite)
+}
+
+function isWatched(item) {
+  return Boolean(item?.played || item?.watched)
+}
+
+function notifyFavoriteUpdated() {
+  window.dispatchEvent(new CustomEvent('fnos-tv:favorites-updated'))
+}
+
+function patchListItem(item, patch) {
+  const guid = itemActionGuid(item)
+  if (!guid) {
+    return
+  }
+  Object.assign(item, patch)
+  if (!Array.isArray(MediaDbInfo.value)) {
+    return
+  }
+  for (const target of MediaDbInfo.value) {
+    if (itemActionGuid(target) === guid) {
+      Object.assign(target, patch)
+    }
+  }
+}
+
+async function toggleFavorite(event, item) {
+  event.preventDefault()
+  event.stopPropagation()
+  const guid = itemActionGuid(item)
+  if (!guid) {
+    return
+  }
+  const next = !isFavorite(item)
+  try {
+    await COMMON.requests(next ? "PUT" : "DELETE", "/api/v1/item/favorite", true, {
+      item_guid: guid
+    })
+    if (isFavoritePage.value && !next) {
+      MediaDbInfo.value = (MediaDbInfo.value || []).filter(target => itemActionGuid(target) !== guid)
+      totalCount.value = Math.max(0, Number(totalCount.value || 0) - 1)
+    } else {
+      patchListItem(item, {
+        is_favorite: next ? 1 : 0,
+        favorite: next ? 1 : 0
+      })
+    }
+    notifyFavoriteUpdated()
+    COMMON.ShowMsg(next ? '已收藏' : '已取消收藏')
+  } catch (error) {
+    COMMON.ShowMsg('收藏操作失败')
+  }
+}
+
+async function toggleWatched(event, item) {
+  event.preventDefault()
+  event.stopPropagation()
+  const guid = itemActionGuid(item)
+  if (!guid) {
+    return
+  }
+  const next = !isWatched(item)
+  try {
+    await COMMON.requests(next ? "POST" : "DELETE", "/api/v1/item/watched", true, {
+      item_guid: guid
+    })
+    patchListItem(item, {
+      played: next ? 1 : 0,
+      watched: next ? 1 : 0
+    })
+    COMMON.ShowMsg(next ? '已标记为已观看' : '已标记为未观看')
+  } catch (error) {
+    COMMON.ShowMsg('观看状态更新失败')
+  }
+}
+
 function favoriteTabRoute(item) {
   if (item.value === 'all') {
     return {
@@ -443,20 +525,44 @@ onMounted(async () => {
     </div>
     <div class="card-show-content view-card-list" :class="layoutClass">
       <div class="view-item" v-for="item in MediaDbInfo" :key="item.guid">
-        <router-link class="view-item-link" :to="getItemRoute(item)">
-          <div class="poster-frame">
+        <div class="poster-frame">
+          <router-link class="poster-cover-link" :to="getItemRoute(item)">
             <div class="poster-inner">
               <img loading="lazy" class="carousel-img" v-lazy='posterUrl(item)'>
             </div>
-            <div class="view-item-header">
-              <div class="view-item-tag-list">
-                <div v-if="formatRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
-                <div v-if="item.played" class="view-item-tag count">
-                  <i class='bx bx-check'></i>
-                </div>
+          </router-link>
+          <div class="view-item-header">
+            <div class="view-item-tag-list">
+              <div v-if="formatRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
+              <div v-if="item.played" class="view-item-tag count">
+                <i class='bx bx-check'></i>
               </div>
             </div>
           </div>
+          <div class="card-action-row">
+            <button
+                type="button"
+                class="card-action-button"
+                :class="{ active: isWatched(item) }"
+                :title="isWatched(item) ? '标记为未观看' : '标记为已观看'"
+                :aria-label="isWatched(item) ? '标记为未观看' : '标记为已观看'"
+                @click="toggleWatched($event, item)"
+            >
+              <i :class="isWatched(item) ? 'bx bxs-check-circle' : 'bx bx-check-circle'"></i>
+            </button>
+            <button
+                type="button"
+                class="card-action-button"
+                :class="{ active: isFavorite(item) }"
+                :title="isFavorite(item) ? '取消收藏' : '收藏'"
+                :aria-label="isFavorite(item) ? '取消收藏' : '收藏'"
+                @click="toggleFavorite($event, item)"
+            >
+              <i :class="isFavorite(item) ? 'bx bxs-heart' : 'bx bx-heart'"></i>
+            </button>
+          </div>
+        </div>
+        <router-link class="view-item-link" :to="getItemRoute(item)">
           <div class="view-item-title">
             {{ displayTitle(item) }}
           </div>
@@ -711,6 +817,15 @@ onMounted(async () => {
   text-decoration: none;
 }
 
+.poster-cover-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
 .poster-frame {
   position: relative;
   width: 100%;
@@ -777,6 +892,62 @@ onMounted(async () => {
   z-index: 2;
   pointer-events: none;
   box-sizing: border-box;
+}
+
+.card-action-row {
+  position: absolute;
+  left: 50%;
+  bottom: 13px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.view-item:hover .card-action-row,
+.view-item:focus-within .card-action-row {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.card-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: #fff;
+  background: rgba(24, 25, 28, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  box-sizing: border-box;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.card-action-button:hover {
+  background: rgba(24, 25, 28, 0.76);
+  transform: translateY(-1px);
+}
+
+.card-action-button.active {
+  color: #fff;
+  background: var(--fn-blue);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.card-action-button i {
+  font-size: 20px;
+  line-height: 1;
 }
 
 .view-item-tag-list {
@@ -867,6 +1038,23 @@ onMounted(async () => {
 
   .view-item-header {
     padding: 6px;
+  }
+
+  .card-action-row {
+    bottom: 10px;
+    gap: 7px;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, 0);
+  }
+
+  .card-action-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .card-action-button i {
+    font-size: 18px;
   }
 
   .view-item-tag {

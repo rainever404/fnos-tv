@@ -80,6 +80,14 @@ const primaryPlayLabel = computed(() => {
   return hasPlaybackRecord.value ? '继续播放' : '播放'
 })
 
+const isDetailFavorite = computed(() => {
+  return Boolean(VideoDataInfo.value?.is_favorite || VideoDataInfo.value?.favorite)
+})
+
+const isDetailWatched = computed(() => {
+  return Boolean(VideoDataInfo.value?.played || VideoDataInfo.value?.watched)
+})
+
 const detailMetaItems = computed(() => {
   const items = []
   if (scoreText.value) {
@@ -447,6 +455,57 @@ async function GetPayInfo() {
   play_guid.value = playInfo.value.item.parent_guid===''?guid.value:playInfo.value.item.parent_guid??guid.value;
 }
 
+function detailActionGuid() {
+  return guid.value || VideoDataInfo.value?.guid || ''
+}
+
+function notifyFavoriteUpdated() {
+  window.dispatchEvent(new CustomEvent('fnos-tv:favorites-updated'))
+}
+
+async function toggleDetailFavorite() {
+  const itemGuid = detailActionGuid()
+  if (!itemGuid) {
+    return
+  }
+  const next = !isDetailFavorite.value
+  try {
+    await COMMON.requests(next ? "PUT" : "DELETE", "/api/v1/item/favorite", true, {
+      item_guid: itemGuid
+    })
+    VideoDataInfo.value = {
+      ...VideoDataInfo.value,
+      is_favorite: next ? 1 : 0,
+      favorite: next ? 1 : 0
+    }
+    notifyFavoriteUpdated()
+    COMMON.ShowMsg(next ? '已收藏' : '已取消收藏')
+  } catch (error) {
+    COMMON.ShowMsg('收藏操作失败')
+  }
+}
+
+async function toggleDetailWatched() {
+  const itemGuid = detailActionGuid()
+  if (!itemGuid) {
+    return
+  }
+  const next = !isDetailWatched.value
+  try {
+    await COMMON.requests(next ? "POST" : "DELETE", "/api/v1/item/watched", true, {
+      item_guid: itemGuid
+    })
+    VideoDataInfo.value = {
+      ...VideoDataInfo.value,
+      played: next ? 1 : 0,
+      watched: next ? 1 : 0
+    }
+    COMMON.ShowMsg(next ? '已标记为已观看' : '已标记为未观看')
+  } catch (error) {
+    COMMON.ShowMsg('观看状态更新失败')
+  }
+}
+
 async function GetPersonList() {
   let api = "/api/v1/person/list/" + guid.value;
   let res = await COMMON.requests("POST", api, true, {
@@ -571,6 +630,30 @@ onMounted(async () => {
               <i class='bx bxs-caret-right-circle'></i>
             </span>
             <span class="button-text">{{ primaryPlayLabel }}</span>
+          </button>
+          <button
+              type="button"
+              class="detailButton circleButton"
+              :class="{ active: isDetailFavorite }"
+              :title="isDetailFavorite ? '取消收藏' : '收藏'"
+              :aria-label="isDetailFavorite ? '取消收藏' : '收藏'"
+              @click="toggleDetailFavorite"
+          >
+            <span class="button-icon">
+              <i :class="isDetailFavorite ? 'bx bxs-heart' : 'bx bx-heart'"></i>
+            </span>
+          </button>
+          <button
+              type="button"
+              class="detailButton circleButton"
+              :class="{ active: isDetailWatched }"
+              :title="isDetailWatched ? '标记为未观看' : '标记为已观看'"
+              :aria-label="isDetailWatched ? '标记为未观看' : '标记为已观看'"
+              @click="toggleDetailWatched"
+          >
+            <span class="button-icon">
+              <i :class="isDetailWatched ? 'bx bxs-check-circle' : 'bx bx-check-circle'"></i>
+            </span>
           </button>
           <div class="detail-action-info">
             <div class="detail-meta-list">
@@ -1370,7 +1453,7 @@ span.button-text {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  gap: 28px;
+  gap: 8px;
   min-height: 54px;
   margin-top: 8px;
   padding: 0 46px;
@@ -1386,7 +1469,7 @@ span.button-text {
   gap: 12px;
   min-width: 0;
   min-height: 54px;
-  margin-left: clamp(36px, 7.75vw, 198px);
+  margin-left: clamp(18px, 4vw, 96px);
 }
 
 .detail-meta-list {
@@ -1475,11 +1558,34 @@ span.button-text {
   transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
+.detailButton.circleButton {
+  flex: 0 0 54px;
+  width: 54px;
+  min-width: 54px;
+  padding: 0;
+  color: var(--fn-text);
+  background: var(--fn-panel);
+  border: 1px solid var(--fn-border);
+  box-shadow: none;
+}
+
 .detailButton:hover {
   color: #fff;
   background: #0066ff;
   box-shadow: 0 10px 26px rgba(10, 132, 255, 0.32);
   transform: translateY(-1px);
+}
+
+.detailButton.circleButton:hover {
+  color: var(--fn-text);
+  background: var(--fn-panel-hover);
+  box-shadow: none;
+}
+
+.detailButton.circleButton.active {
+  color: #fff;
+  background: var(--fn-blue);
+  border-color: var(--fn-blue);
 }
 
 .detailButton:active {
@@ -1721,20 +1827,32 @@ span.button-text {
   }
 
   .detail-action-row {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 14px;
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
     min-height: 0;
     margin-top: 8px;
     padding: 0 16px 10px;
   }
 
   .detailButton {
-    width: 100%;
     height: 48px;
   }
 
+  .detailButton.outlineButton {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .detailButton.circleButton {
+    flex: 0 0 48px;
+    width: 48px;
+    min-width: 48px;
+  }
+
   .detail-action-info {
+    flex: 1 0 100%;
     gap: 8px;
     min-height: 0;
     margin-left: 0;

@@ -80,6 +80,90 @@ function getVideoRoute(item) {
   }
 }
 
+function itemActionGuid(item) {
+  return item?.guid || item?.item_guid || ''
+}
+
+function isFavorite(item) {
+  return Boolean(item?.is_favorite || item?.favorite)
+}
+
+function isWatched(item) {
+  return Boolean(item?.played || item?.watched)
+}
+
+function patchItemsByGuid(list, guid, patch) {
+  if (!Array.isArray(list)) {
+    return
+  }
+  for (const target of list) {
+    if (itemActionGuid(target) === guid) {
+      Object.assign(target, patch)
+    }
+  }
+}
+
+function updateHomeItemState(item, patch) {
+  const guid = itemActionGuid(item)
+  if (!guid) {
+    return
+  }
+  Object.assign(item, patch)
+  patchItemsByGuid(playList.value, guid, patch)
+  for (const info of Object.values(MediaDbData.info || {})) {
+    patchItemsByGuid(info?.list, guid, patch)
+  }
+}
+
+function notifyFavoriteUpdated() {
+  window.dispatchEvent(new CustomEvent('fnos-tv:favorites-updated'))
+}
+
+async function toggleFavorite(event, item) {
+  event.preventDefault()
+  event.stopPropagation()
+  const guid = itemActionGuid(item)
+  if (!guid) {
+    return
+  }
+  const next = !isFavorite(item)
+  try {
+    await COMMON.requests(next ? "PUT" : "DELETE", "/api/v1/item/favorite", true, {
+      item_guid: guid
+    })
+    updateHomeItemState(item, {
+      is_favorite: next ? 1 : 0,
+      favorite: next ? 1 : 0
+    })
+    notifyFavoriteUpdated()
+    message.success(next ? '已收藏' : '已取消收藏')
+  } catch (error) {
+    message.error('收藏操作失败')
+  }
+}
+
+async function toggleWatched(event, item) {
+  event.preventDefault()
+  event.stopPropagation()
+  const guid = itemActionGuid(item)
+  if (!guid) {
+    return
+  }
+  const next = !isWatched(item)
+  try {
+    await COMMON.requests(next ? "POST" : "DELETE", "/api/v1/item/watched", true, {
+      item_guid: guid
+    })
+    updateHomeItemState(item, {
+      played: next ? 1 : 0,
+      watched: next ? 1 : 0
+    })
+    message.success(next ? '已标记为已观看' : '已标记为未观看')
+  } catch (error) {
+    message.error('观看状态更新失败')
+  }
+}
+
 // 处理右键菜单点击
 const handleContextMenu = (e, item) => {
   e.preventDefault()
@@ -228,6 +312,28 @@ onUnmounted(() => {
                     <div v-if="play_item_guid === item.guid" class="play-icon">
                       <i class="bx bx-play"></i>
                     </div>
+                    <div class="card-action-row continue-action-row">
+                      <button
+                          type="button"
+                          class="card-action-button"
+                          :class="{ active: isWatched(item) }"
+                          :title="isWatched(item) ? '标记为未观看' : '标记为已观看'"
+                          :aria-label="isWatched(item) ? '标记为未观看' : '标记为已观看'"
+                          @click="toggleWatched($event, item)"
+                      >
+                        <i :class="isWatched(item) ? 'bx bxs-check-circle' : 'bx bx-check-circle'"></i>
+                      </button>
+                      <button
+                          type="button"
+                          class="card-action-button"
+                          :class="{ active: isFavorite(item) }"
+                          :title="isFavorite(item) ? '取消收藏' : '收藏'"
+                          :aria-label="isFavorite(item) ? '取消收藏' : '收藏'"
+                          @click="toggleFavorite($event, item)"
+                      >
+                        <i :class="isFavorite(item) ? 'bx bxs-heart' : 'bx bx-heart'"></i>
+                      </button>
+                    </div>
                   </div>
                   <div class="view-item-title landscape-title">
                     {{ item.type === 'Episode' ? item.tv_title : item.title }}
@@ -259,28 +365,52 @@ onUnmounted(() => {
             <n-carousel :show-dots="false" show-arrow :slides-per-view="per_card" :space-between="20" :loop="false"
                         draggable>
               <div class="view-item" v-for="item in MediaDbData.info[key].list" :key="item.id">
-                <div class="view-item-header">
-                  <div class="view-item-tag-list">
-                    <div class="view-item-tag rating">
-                      {{
-                        isNaN(Math.floor(item.vote_average * 100) /
-                            100) ? "" : Math.floor(item.vote_average * 100) / 100
-                      }}
-                    </div>
-                    <!-- <div v-if="item.Type != 'Movie' && item.ChildCount != 0" class="view-item-tag count">
-                        {{ item.ChildCount }}
-                    </div> -->
-                    <!--                  <p>{{ item }}</p>-->
-                    <div v-if="item.played" class="view-item-tag count">
-                      <i class='bx bx-check'></i>
+                <div class="poster-frame-shell">
+                  <div class="view-item-header">
+                    <div class="view-item-tag-list">
+                      <div class="view-item-tag rating">
+                        {{
+                          isNaN(Math.floor(item.vote_average * 100) /
+                              100) ? "" : Math.floor(item.vote_average * 100) / 100
+                        }}
+                      </div>
+                      <!-- <div v-if="item.Type != 'Movie' && item.ChildCount != 0" class="view-item-tag count">
+                          {{ item.ChildCount }}
+                      </div> -->
+                      <!--                  <p>{{ item }}</p>-->
+                      <div v-if="item.played" class="view-item-tag count">
+                        <i class='bx bx-check'></i>
+                      </div>
                     </div>
                   </div>
+                  <router-link class="poster-image-link" :to="getVideoRoute(item)">
+                    <img v-if="item.poster !== undefined" loading="lazy" class="carousel-img"
+                         v-lazy='COMMON.imgUrl +  "/92/17/"+item.poster + "?w=200"'>
+                    <img v-else loading="lazy" class='carousel-img' v-lazy="'/images/not_video.jpg'">
+                  </router-link>
+                  <div class="card-action-row">
+                    <button
+                        type="button"
+                        class="card-action-button"
+                        :class="{ active: isWatched(item) }"
+                        :title="isWatched(item) ? '标记为未观看' : '标记为已观看'"
+                        :aria-label="isWatched(item) ? '标记为未观看' : '标记为已观看'"
+                        @click="toggleWatched($event, item)"
+                    >
+                      <i :class="isWatched(item) ? 'bx bxs-check-circle' : 'bx bx-check-circle'"></i>
+                    </button>
+                    <button
+                        type="button"
+                        class="card-action-button"
+                        :class="{ active: isFavorite(item) }"
+                        :title="isFavorite(item) ? '取消收藏' : '收藏'"
+                        :aria-label="isFavorite(item) ? '取消收藏' : '收藏'"
+                        @click="toggleFavorite($event, item)"
+                    >
+                      <i :class="isFavorite(item) ? 'bx bxs-heart' : 'bx bx-heart'"></i>
+                    </button>
+                  </div>
                 </div>
-                <router-link class="poster-image-link" :to="getVideoRoute(item)">
-                  <img v-if="item.poster !== undefined" loading="lazy" class="carousel-img"
-                       v-lazy='COMMON.imgUrl +  "/92/17/"+item.poster + "?w=200"'>
-                  <img v-else loading="lazy" class='carousel-img' v-lazy="'/images/not_video.jpg'">
-                </router-link>
                 <router-link class="poster-title-link" :to="getVideoRoute(item)">
                   <div v-if="item.title != null" class="view-item-title">
                     {{ item.title }}
@@ -911,6 +1041,14 @@ img.carousel-img {
   text-decoration: none;
 }
 
+.poster-frame-shell {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  line-height: 0;
+}
+
 .poster-image-link {
   display: block;
   width: 100%;
@@ -923,6 +1061,66 @@ img.carousel-img {
 
 .poster-title-link {
   display: block;
+}
+
+.card-action-row {
+  position: absolute;
+  left: 50%;
+  bottom: 13px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.continue-action-row {
+  bottom: 12px;
+}
+
+.view-item:hover .card-action-row,
+.view-item:focus-within .card-action-row {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.card-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: #fff;
+  background: rgba(24, 25, 28, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  box-sizing: border-box;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.card-action-button:hover {
+  background: rgba(24, 25, 28, 0.76);
+  transform: translateY(-1px);
+}
+
+.card-action-button.active {
+  color: #fff;
+  background: var(--fn-blue);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.card-action-button i {
+  font-size: 20px;
+  line-height: 1;
 }
 
 .gallery-img,
@@ -1065,6 +1263,23 @@ img.carousel-img,
 
   .view-item-title {
     font-size: 13px;
+  }
+
+  .card-action-row {
+    bottom: 10px;
+    gap: 7px;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, 0);
+  }
+
+  .card-action-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .card-action-button i {
+    font-size: 18px;
   }
 }
 </style>
