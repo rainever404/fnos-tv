@@ -380,23 +380,29 @@ async function loadOfficialFilterOptions() {
   if (filterOptionsLoaded.value) {
     return
   }
-  filterOptionsLoaded.value = true
+  const shouldLoadGenres = officialGenreOptions.value.length === 0
+  const shouldLoadCountries = officialCountryOptions.value.length === 0
+  if (!shouldLoadGenres && !shouldLoadCountries) {
+    filterOptionsLoaded.value = true
+    return
+  }
   const [genresRes, countriesRes] = await Promise.allSettled([
-    COMMON.requests("GET", '/api/v1/tag/genres?lan=zh-CN', true),
-    COMMON.requests("GET", '/api/v1/tag/iso3166?lan=zh-CN', true)
+    shouldLoadGenres ? COMMON.requests("GET", '/api/v1/tag/genres?lan=zh-CN', true) : Promise.resolve(null),
+    shouldLoadCountries ? COMMON.requests("GET", '/api/v1/tag/iso3166?lan=zh-CN', true) : Promise.resolve(null)
   ])
-  if (genresRes.status === 'fulfilled') {
+  if (shouldLoadGenres && genresRes.status === 'fulfilled') {
     const options = normalizeFilterOptions(genresRes.value, ['id', 'value', 'guid', 'key'])
     if (options.length) {
       officialGenreOptions.value = options
     }
   }
-  if (countriesRes.status === 'fulfilled') {
+  if (shouldLoadCountries && countriesRes.status === 'fulfilled') {
     const options = normalizeFilterOptions(countriesRes.value, ['iso_3166_1', 'code', 'value', 'id', 'key'])
     if (options.length) {
       officialCountryOptions.value = options
     }
   }
+  filterOptionsLoaded.value = officialGenreOptions.value.length > 0 && officialCountryOptions.value.length > 0
 }
 
 function hasActiveFilters() {
