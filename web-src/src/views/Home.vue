@@ -119,9 +119,12 @@ function libraryItemCount(item) {
 }
 
 function libraryMetaText(item) {
+  return libraryTypeLabel(item)
+}
+
+function libraryCountText(item) {
   const count = libraryItemCount(item)
-  const type = libraryTypeLabel(item)
-  return count > 0 ? `${type} · ${count} 部` : type
+  return count > 0 ? `${count}` : ''
 }
 
 function getPlaybackParentGuid(item) {
@@ -368,29 +371,30 @@ onUnmounted(() => {
               :key="item.guid"
               :to="`/library/${item.guid}`"
           >
-            <div class="library-posters">
+            <span class="library-type-icon">
+              <i :class="libraryIconClass(item)"></i>
+            </span>
+            <div class="library-card-info">
+              <div class="library-title-row">
+                <div class="library-title">
+                  {{ item.title }}
+                </div>
+                <span v-if="libraryCountText(item)" class="library-count-badge">{{ libraryCountText(item) }}</span>
+              </div>
+              <div class="library-meta">
+                {{ libraryMetaText(item) }}
+              </div>
+            </div>
+            <div class="library-posters" aria-hidden="true">
               <img
-                  v-for="poster in getLibraryPreview(item.guid)"
+                  v-for="poster in getLibraryPreview(item.guid).slice(0, 2)"
                   :key="poster.guid"
                   loading="lazy"
-                  v-lazy='posterImageUrl(poster)'
+                  v-lazy='posterImageUrl(poster, 120)'
                   alt=""
               >
               <div v-if="getLibraryPreview(item.guid).length === 0" class="library-empty">
                 <i class='bx bx-film'></i>
-              </div>
-            </div>
-            <div class="library-card-info">
-              <div class="library-title-row">
-                <span class="library-type-icon">
-                  <i :class="libraryIconClass(item)"></i>
-                </span>
-                <div class="library-title">
-                  {{ item.title }}
-                </div>
-              </div>
-              <div class="library-meta">
-                {{ libraryMetaText(item) }}
               </div>
             </div>
             <i class='bx bx-chevron-right library-arrow'></i>
@@ -982,7 +986,7 @@ img.carousel-img {
 
 .library-grid {
   display: flex;
-  gap: 14px;
+  gap: 12px;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0;
@@ -995,16 +999,14 @@ img.carousel-img {
 
 .library-card {
   position: relative;
-  overflow: hidden;
   box-sizing: border-box;
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) 18px;
+  display: flex;
   align-items: center;
-  gap: 12px;
-  flex: 0 0 286px;
-  width: 286px;
-  min-height: 94px;
-  padding: 11px 12px;
+  gap: 10px;
+  flex: 0 0 238px;
+  width: 238px;
+  min-height: 72px;
+  padding: 12px 12px;
   color: var(--fn-text);
   background: var(--fn-panel);
   border: 1px solid var(--fn-border);
@@ -1016,7 +1018,7 @@ img.carousel-img {
 .library-card:hover {
   background: var(--fn-panel-hover);
   border-color: rgba(0, 102, 255, 0.18);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .dark .library-card {
@@ -1030,22 +1032,22 @@ img.carousel-img {
 
 .library-posters {
   position: relative;
-  z-index: 1;
   display: flex;
-  gap: 1px;
-  width: 96px;
-  height: 70px;
-  margin: 0;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  margin-left: auto;
   overflow: hidden;
-  background: linear-gradient(180deg, #eef0f3 0, #e4e6ea 76%, #d7dbe1 100%);
+  background: rgba(15, 23, 42, 0.05);
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
   box-sizing: border-box;
+  opacity: 0.82;
 }
 
 .dark .library-posters {
   border-color: rgba(255, 255, 255, 0.12);
-  background: linear-gradient(180deg, #1b1b1d 0, #151517 72%, #0d0d0f 100%);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .library-posters::before {
@@ -1095,13 +1097,14 @@ img.carousel-img {
   width: 100%;
   height: 100%;
   color: var(--fn-soft);
-  font-size: 34px;
-  background: linear-gradient(135deg, var(--fn-panel), var(--fn-bg));
+  font-size: 22px;
+  background: transparent;
 }
 
 .library-card-info {
   display: grid;
-  gap: 6px;
+  flex: 1 1 auto;
+  gap: 3px;
   min-width: 0;
   padding: 0;
   text-align: left;
@@ -1111,23 +1114,23 @@ img.carousel-img {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 7px;
+  gap: 6px;
 }
 
 .library-type-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
   color: var(--fn-blue);
   background: var(--fn-nav-active);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .library-type-icon i {
-  font-size: 15px;
+  font-size: 21px;
   line-height: 1;
 }
 
@@ -1135,18 +1138,32 @@ img.carousel-img {
   min-width: 0;
   overflow: hidden;
   color: var(--fn-text);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  line-height: 21px;
+  line-height: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.library-count-badge {
+  flex: 0 0 auto;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  color: var(--fn-blue);
+  background: var(--fn-nav-active);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
 }
 
 .library-meta {
   overflow: hidden;
   color: var(--fn-soft);
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 12px;
+  line-height: 17px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1156,8 +1173,9 @@ img.carousel-img {
 }
 
 .library-arrow {
+  flex: 0 0 auto;
   color: var(--fn-soft);
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1;
 }
 
@@ -1484,8 +1502,8 @@ img.carousel-img,
   }
 
   .library-card {
-    flex-basis: min(286px, calc(100vw - 40px));
-    width: min(286px, calc(100vw - 40px));
+    flex-basis: min(238px, calc(100vw - 40px));
+    width: min(238px, calc(100vw - 40px));
   }
 
   .card-shows {
