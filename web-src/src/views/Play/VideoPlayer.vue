@@ -479,7 +479,7 @@ function isPlayerInteractiveTarget(target) {
 function refreshMobileUiState() {
   const active = isMobileRuntime() || isCompactPlayerViewport()
   mobileUiActive.value = active
-  mobilePortraitDanmuControlsActive.value = active && isForcedLandscapeActive()
+  mobilePortraitDanmuControlsActive.value = active && (isForcedLandscapeActive() || shouldShowPortraitFloatingDanmuControls())
   if (!active) {
     showMobileDanmuSettings.value = false
     showMobileDanmuFallbackControls.value = false
@@ -497,6 +497,10 @@ function isForcedLandscapeActive() {
 
 function shouldForceMobileDanmuFallbackControls() {
   return isMobileUiActive() && !isForcedLandscapeActive() && (isPortraitViewport() || !fullscreenElement())
+}
+
+function shouldShowPortraitFloatingDanmuControls() {
+  return isMobileUiActive() && !isForcedLandscapeActive() && (isPortraitViewport() || !fullscreenElement() || isCompactPlayerViewport())
 }
 
 function touchPointForPlayer(touch) {
@@ -549,8 +553,9 @@ function syncMobileDanmuFallbackControls() {
     refreshMobileUiState()
     const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
         isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
-    // 竖屏优先使用 Artplayer 右侧控制条，只有检测不到弹幕按钮时才显示浮动兜底入口。
-    const shouldForcePortraitControls = shouldForceMobileDanmuFallbackControls() && !hasArtControls
+    // 竖屏非全屏用固定浮层，避免 Artplayer 右侧控制条空间不足时吞掉弹幕入口。
+    const shouldForcePortraitControls = shouldShowPortraitFloatingDanmuControls() ||
+        (shouldForceMobileDanmuFallbackControls() && !hasArtControls)
     const shouldForceLandscapeControls = isForcedLandscapeActive()
     mobilePortraitDanmuControlsActive.value = shouldForcePortraitControls || shouldForceLandscapeControls
     showMobileDanmuFallbackControls.value = shouldForcePortraitControls || shouldForceLandscapeControls || !hasArtControls
@@ -3127,6 +3132,11 @@ img.play-icon {
   display: flex !important;
 }
 
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  display: none !important;
+}
+
 :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
   gap: 2px;
 }
@@ -3355,7 +3365,7 @@ img.play-icon {
 
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    display: flex !important;
+    display: none !important;
   }
 
   .player.is-forced-landscape {
@@ -3405,7 +3415,7 @@ img.play-icon {
     max-height: calc(100% - 96px);
   }
 
-  :global(body.player-forced-landscape-active) .player-topbar {
+  :global(body.player-forced-landscape-active .player-topbar) {
     opacity: 0;
     pointer-events: none;
   }

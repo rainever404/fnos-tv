@@ -1365,7 +1365,8 @@ html[data-theme="light"] {
   --fn-top-control: rgba(15, 23, 42, 0.06);
   --fn-top-control-hover: rgba(15, 23, 42, 0.1);
   --fn-nav-hover: rgba(15, 23, 42, 0.06);
-  --fn-nav-active: #ffffff;
+  --fn-nav-active: rgba(0, 102, 255, 0.1);
+  --fn-nav-active-text: rgba(15, 23, 42, 0.92);
   --fn-blue: #0066ff;
 }
 
@@ -1381,7 +1382,8 @@ html[data-theme="dark"] {
   --fn-top-control: rgba(255, 255, 255, 0.08);
   --fn-top-control-hover: rgba(255, 255, 255, 0.14);
   --fn-nav-hover: rgba(255, 255, 255, 0.06);
-  --fn-nav-active: rgba(255, 255, 255, 0.07);
+  --fn-nav-active: rgba(255, 255, 255, 0.08);
+  --fn-nav-active-text: rgba(255, 255, 255, 0.92);
 }
 
 body {
@@ -1749,6 +1751,7 @@ body {
   border-radius: 8px;
   font-weight: 400;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .navigation ul li a:hover {
@@ -1757,10 +1760,21 @@ body {
 }
 
 .navigation ul li a.is-active {
-  color: var(--fn-blue) !important;
+  color: var(--fn-nav-active-text) !important;
   background: var(--fn-nav-active) !important;
-  font-weight: 400;
+  font-weight: 500;
   box-shadow: none;
+}
+
+.navigation ul li a.is-active::before {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  background: var(--fn-blue);
+  border-radius: 0 999px 999px 0;
+  content: "";
 }
 
 .navigation ul li a .icon i,
@@ -1807,6 +1821,11 @@ body {
 
 .navigation ul li a.is-active .icon,
 .navigation ul li a.is-active .title:not(.nav-count) {
+  color: var(--fn-nav-active-text) !important;
+}
+
+.navigation ul li a.is-active .icon,
+.navigation ul li a.is-active .icon i {
   color: var(--fn-blue) !important;
 }
 
@@ -1841,6 +1860,13 @@ body {
 .home.dark .navigation ul li a.is-active .icon,
 .home.dark .navigation ul li a.is-active .icon i,
 .home.dark .navigation ul li a.is-active .title:not(.nav-count) {
+  color: var(--fn-nav-active-text) !important;
+}
+
+.home.light .navigation ul li a.is-active .icon,
+.home.light .navigation ul li a.is-active .icon i,
+.home.dark .navigation ul li a.is-active .icon,
+.home.dark .navigation ul li a.is-active .icon i {
   color: var(--fn-blue) !important;
 }
 
