@@ -364,7 +364,10 @@ function goBack() {
 }
 
 function normalizeGalleryType(value) {
-  if (value === 'season' || value === 'Episode' || value === 'TV') {
+  if (value === 'season' || value === 'Episode' || value === 'Season') {
+    return 'season'
+  }
+  if (value === 'TV') {
     return 'TV'
   }
   if (value === 'Movie') {
@@ -382,6 +385,9 @@ function mediaDetailCategory(targetRoute = route) {
     return 'Movie'
   }
   const type = normalizeGalleryType(targetRoute.query?.gallery_type)
+  if (type === 'season') {
+    return 'TV'
+  }
   return type === 'TV' || type === 'Movie' ? type : null
 }
 

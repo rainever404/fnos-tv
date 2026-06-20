@@ -184,10 +184,6 @@ onMounted(async () => {
   }
 })
 
-watch(() => route.query.code, (code) => {
-  console.log('code 值变化了:', code)
-})
-
 </script>
 
 <template>
