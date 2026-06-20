@@ -371,33 +371,24 @@ onUnmounted(() => {
               :key="item.guid"
               :to="`/library/${item.guid}`"
           >
-            <span class="library-type-icon">
-              <i :class="libraryIconClass(item)"></i>
-            </span>
-            <div class="library-card-info">
-              <div class="library-title-row">
-                <div class="library-title">
-                  {{ item.title }}
-                </div>
-                <span v-if="libraryCountText(item)" class="library-count-badge">{{ libraryCountText(item) }}</span>
-              </div>
-              <div class="library-meta">
-                {{ libraryMetaText(item) }}
-              </div>
-            </div>
             <div class="library-posters" aria-hidden="true">
               <img
-                  v-for="poster in getLibraryPreview(item.guid).slice(0, 2)"
+                  v-for="poster in getLibraryPreview(item.guid)"
                   :key="poster.guid"
                   loading="lazy"
-                  v-lazy='posterImageUrl(poster, 120)'
+                  v-lazy='posterImageUrl(poster, 180)'
                   alt=""
               >
               <div v-if="getLibraryPreview(item.guid).length === 0" class="library-empty">
-                <i class='bx bx-film'></i>
+                <i :class="libraryIconClass(item)"></i>
               </div>
             </div>
-            <i class='bx bx-chevron-right library-arrow'></i>
+            <div class="library-card-info">
+              <div class="library-title">
+                {{ item.title }}
+              </div>
+            </div>
+            <span v-if="libraryCountText(item)" class="library-count-sr">{{ libraryCountText(item) }} 项</span>
           </router-link>
         </div>
       </div>
@@ -986,7 +977,7 @@ img.carousel-img {
 
 .library-grid {
   display: flex;
-  gap: 12px;
+  gap: 20px;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0;
@@ -1000,54 +991,52 @@ img.carousel-img {
 .library-card {
   position: relative;
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 0 0 238px;
-  width: 238px;
-  min-height: 72px;
-  padding: 12px 12px;
+  display: block;
+  flex: 0 0 252px;
+  width: 252px;
+  aspect-ratio: 252 / 180;
+  overflow: hidden;
+  padding: 0;
   color: var(--fn-text);
-  background: var(--fn-panel);
+  background: rgb(29, 29, 31);
   border: 1px solid var(--fn-border);
   border-radius: 8px;
   box-shadow: none;
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  text-decoration: none;
+  transition: border-color 0.18s ease, filter 0.18s ease, transform 0.18s ease;
 }
 
 .library-card:hover {
-  background: var(--fn-panel-hover);
   border-color: rgba(0, 102, 255, 0.18);
-  transform: translateY(-1px);
+  filter: brightness(1.04);
 }
 
 .dark .library-card {
-  background: var(--fn-panel);
+  background: rgb(29, 29, 31);
 }
 
 .dark .library-card:hover {
-  background: var(--fn-panel-hover);
   border-color: rgba(255, 255, 255, 0.12);
 }
 
 .library-posters {
-  position: relative;
-  display: flex;
-  flex: 0 0 48px;
-  width: 48px;
-  height: 48px;
-  margin-left: auto;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  background: rgba(15, 23, 42, 0.05);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
+  background: rgb(24, 24, 26);
+  border: 0;
+  border-radius: 0;
   box-sizing: border-box;
-  opacity: 0.82;
+  opacity: 1;
 }
 
 .dark .library-posters {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgb(24, 24, 26);
 }
 
 .library-posters::before {
@@ -1065,32 +1054,53 @@ img.carousel-img {
   position: absolute;
   inset: 0;
   z-index: 2;
-  background: rgba(41, 45, 53, 0);
+  background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.74) 100%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0) 16%, rgba(0, 0, 0, 0) 84%, rgba(0, 0, 0, 0.12));
   pointer-events: none;
   transition: background 0.18s ease;
 }
 
 .library-card:hover .library-posters::after {
-  background: rgba(41, 45, 53, 0.16);
+  background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0) 48%, rgba(0, 0, 0, 0.8) 100%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0) 16%, rgba(0, 0, 0, 0) 84%, rgba(0, 0, 0, 0.1));
 }
 
 .dark .library-posters::after {
-  background: rgba(0, 0, 0, 0);
+  background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.74) 100%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0) 16%, rgba(0, 0, 0, 0) 84%, rgba(0, 0, 0, 0.12));
 }
 
 .dark .library-card:hover .library-posters::after {
-  background: rgba(0, 0, 0, 0.18);
+  background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0) 48%, rgba(0, 0, 0, 0.8) 100%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0) 16%, rgba(0, 0, 0, 0) 84%, rgba(0, 0, 0, 0.1));
 }
 
 .library-posters img {
-  flex: 1 1 0;
   min-width: 0;
+  width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
+.library-posters img:only-of-type {
+  grid-column: 1 / -1;
+}
+
+.library-posters img:first-child:nth-last-child(2),
+.library-posters img:first-child:nth-last-child(2) ~ img {
+  grid-column: span 1;
+}
+
+.library-posters img:first-child:nth-last-child(2) {
+  grid-column: span 2;
+}
+
 .library-empty {
-  flex: 1 1 100%;
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1102,89 +1112,41 @@ img.carousel-img {
 }
 
 .library-card-info {
-  display: grid;
-  flex: 1 1 auto;
-  gap: 3px;
-  min-width: 0;
-  padding: 0;
-  text-align: left;
-}
-
-.library-title-row {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
   display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 6px;
-}
-
-.library-type-icon {
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
-  flex: 0 0 38px;
-  width: 38px;
-  height: 38px;
-  color: var(--fn-blue);
-  background: var(--fn-nav-active);
-  border-radius: 8px;
-}
-
-.library-type-icon i {
-  font-size: 21px;
-  line-height: 1;
-}
-
-.library-title {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--fn-text);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.library-count-badge {
-  flex: 0 0 auto;
-  min-width: 22px;
-  height: 18px;
-  padding: 0 6px;
-  color: var(--fn-blue);
-  background: var(--fn-nav-active);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 18px;
+  align-items: center;
+  height: 42px;
+  padding: 0 14px;
   text-align: center;
 }
 
-.library-meta {
+.library-title {
+  max-width: 100%;
   overflow: hidden;
-  color: var(--fn-soft);
-  font-size: 12px;
-  line-height: 17px;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.66);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.library-card:hover .library-title {
-  color: var(--fn-blue);
-}
-
-.library-arrow {
-  flex: 0 0 auto;
-  color: var(--fn-soft);
-  font-size: 17px;
-  line-height: 1;
-}
-
-.library-card:hover .library-arrow {
-  color: var(--fn-blue);
-}
-
-.library-title-overlay {
-  display: none;
+.library-count-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .carousel-container {
