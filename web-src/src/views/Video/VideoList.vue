@@ -1020,9 +1020,10 @@ watch(
 }
 
 .toolbar-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
   gap: 8px;
   height: 36px;
   padding: 0 14px;
@@ -1035,7 +1036,13 @@ watch(
   font-size: 14px;
   font-weight: 400;
   line-height: 20px;
+  white-space: nowrap;
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.toolbar-pill span,
+.toolbar-pill i {
+  flex: 0 0 auto;
 }
 
 .filter-pill {
@@ -1047,7 +1054,7 @@ watch(
 }
 
 .layout-pill {
-  width: 77px;
+  width: 86px;
 }
 
 .toolbar-pill i {
