@@ -252,8 +252,10 @@ const shouldShowMobileDanmuControls = computed(() => {
       shouldShowPortraitFloatingDanmuControls() ||
       isForcedLandscapeActive()
 })
+const shouldShowMobilePortraitDockControls = computed(() => isMobileUiActive() && isPortraitMobilePlayer())
 const shouldUsePortraitDanmuPortalControls = computed(() => {
-  return isMobileUiActive() &&
+  return !shouldShowMobilePortraitDockControls.value &&
+      isMobileUiActive() &&
       isPortraitMobilePlayer() &&
       showMobileDanmuFallbackControls.value &&
       !mobileArtDanmuControlsVisible.value
@@ -261,11 +263,15 @@ const shouldUsePortraitDanmuPortalControls = computed(() => {
 const shouldShowMobileDanmuInlineControls = computed(() => {
   return isMobileUiActive() &&
       isPortraitMobilePlayer() &&
+      !shouldShowMobilePortraitDockControls.value &&
       !shouldUsePortraitDanmuPortalControls.value &&
       !mobileArtDanmuControlsVisible.value
 })
 const shouldShowMobileDanmuPortalControls = computed(() => {
   if (!isMobileUiActive()) {
+    return false
+  }
+  if (shouldShowMobilePortraitDockControls.value) {
     return false
   }
   if (shouldUsePortraitDanmuPortalControls.value) {
@@ -2329,6 +2335,32 @@ onMounted(async () => {
           <i class='bx bx-slider-alt'></i>
         </button>
       </div>
+      <div
+          class="mobile-danmu-controls mobile-danmu-portrait-dock"
+          :class="{ 'is-visible': shouldShowMobilePortraitDockControls }"
+          aria-label="弹幕控制"
+      >
+        <button
+            type="button"
+            class="mobile-danmu-button mobile-danmu-toggle"
+            :class="{ 'is-muted': !mobileDanmuVisible }"
+            :aria-pressed="mobileDanmuVisible"
+            aria-label="弹幕开关"
+            @click.stop.prevent="toggleMobileDanmuVisible"
+        >
+          弹
+        </button>
+        <button
+            type="button"
+            class="mobile-danmu-button"
+            :class="{ 'is-active': showMobileDanmuSettings }"
+            aria-label="弹幕设置"
+            @click.stop.prevent="toggleMobileDanmuSettings"
+        >
+          <span>弹</span>
+          <i class='bx bx-slider-alt'></i>
+        </button>
+      </div>
       <Teleport to="body">
         <div
             class="mobile-danmu-controls is-mobile-portal"
@@ -2806,10 +2838,26 @@ h1 {
   padding: 0;
 }
 
+.player.is-mobile-player .mobile-danmu-portrait-dock.is-visible {
+  position: fixed;
+  right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+  bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+  z-index: 2147483002;
+  display: flex !important;
+  gap: 8px;
+  padding: 0;
+}
+
 .player.is-mobile-player .mobile-danmu-controls.is-player-inline .mobile-danmu-button {
   width: 36px;
   height: 36px;
   background: rgba(0, 0, 0, 0.62);
+}
+
+.player.is-mobile-player .mobile-danmu-portrait-dock .mobile-danmu-button {
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.68);
 }
 
 .mobile-danmu-controls.is-mobile-portal.is-portrait-portal.is-visible {
@@ -2859,6 +2907,19 @@ h1 {
 }
 
 @media (max-width: 768px) and (orientation: portrait) {
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+    display: none !important;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-portrait-dock.is-visible {
+    position: fixed;
+    right: max(104px, calc(env(safe-area-inset-right, 0px) + 104px));
+    bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+    z-index: 2147483002;
+    display: flex !important;
+  }
+
   .mobile-danmu-controls.is-mobile-portal.is-visible,
   .player:not(.is-forced-landscape) .mobile-danmu-controls:not(.is-player-inline).is-visible {
     position: fixed;
@@ -2880,7 +2941,12 @@ h1 {
 }
 
 @media (max-width: 820px) and (orientation: portrait), (pointer: coarse) and (orientation: portrait) {
-  .player:not(.is-forced-landscape) .mobile-danmu-controls.is-player-inline {
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+    display: none !important;
+  }
+
+  .player:not(.is-forced-landscape) .mobile-danmu-controls.is-player-inline.is-visible {
     position: absolute;
     right: max(96px, calc(env(safe-area-inset-right, 0px) + 96px));
     bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
@@ -3604,6 +3670,11 @@ img.play-icon {
   .player :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
     display: flex !important;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+    display: none !important;
   }
 
   :deep(.art-video-player .art-controls-center) {
