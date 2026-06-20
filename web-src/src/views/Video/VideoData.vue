@@ -176,6 +176,26 @@ const remainingTimeText = computed(() => {
   return `剩余 ${formatDuration(duration - watched, true)}`
 })
 
+const resumeProgressPercent = computed(() => {
+  const duration = selectedDuration.value
+  const watched = watchedSeconds.value
+  if (!Number.isFinite(duration) || duration <= 0 || watched <= 0) {
+    return 0
+  }
+  return Math.min(100, Math.max(0, (watched / duration) * 100))
+})
+
+const detailLogoUrl = computed(() => {
+  const logo = VideoDataInfo.value?.logos
+      || VideoDataInfo.value?.logo
+      || VideoDataInfo.value?.clear_logo
+      || VideoDataInfo.value?.clearlogo
+      || VideoDataInfo.value?.title_logo
+      || VideoDataInfo.value?.title_image
+      || ''
+  return logo ? COMMON.mediaImageUrl(logo, 420, '') : ''
+})
+
 const streamFeatureTags = computed(() => {
   const streams = Array.isArray(StreamList.value?.video_streams) ? StreamList.value.video_streams : []
   const source = streams.length ? streams : (selectedVideoStream.value ? [selectedVideoStream.value] : [])
@@ -649,13 +669,22 @@ onMounted(async () => {
           <div class="view-card-detail detailTextContainer">
             <div class="lex-direction-column">
               <div class="itemPrimaryNameContainer">
-                <h1 class="itemName-primary">{{ displayTitle }}</h1>
+                <img
+                    v-if="detailLogoUrl"
+                    class="detail-logo-title"
+                    :src="detailLogoUrl"
+                    :alt="displayTitle"
+                >
+                <h1 v-else class="itemName-primary">{{ displayTitle }}</h1>
               </div>
             </div>
           </div>
         </div>
-        <div v-if="remainingTimeText" class="detail-remaining-row">
-          {{ remainingTimeText }}
+        <div v-if="hasPlaybackRecord" class="detail-progress-row">
+          <div class="detail-progress-track" aria-label="播放进度">
+            <span :style="{ width: `${resumeProgressPercent}%` }"></span>
+          </div>
+          <span v-if="remainingTimeText" class="detail-progress-text">{{ remainingTimeText }}</span>
         </div>
         <div class="detail-action-row">
           <button @click="Play()" class="detailButton outlineButton">
@@ -695,21 +724,17 @@ onMounted(async () => {
                 <span class="mediaInfoItem">{{ item }}</span>
               </template>
             </div>
-            <div v-if="detailTrackLabels.length" class="detail-track-list">
+            <div v-if="detailTrackLabels.length || streamFeatureTags.length" class="detail-track-list">
+              <span
+                  v-for="(tag, index) in streamFeatureTags"
+                  :key="tag + index"
+                  class="detail-inline-tag"
+              >
+                {{ tag }}
+              </span>
               <span v-for="item in detailTrackLabels" :key="item">{{ item }}</span>
             </div>
           </div>
-        </div>
-        <div v-if="streamFeatureTags.length" class="stream-feature-row">
-          <button
-              v-for="(tag, index) in streamFeatureTags"
-              :key="tag + index"
-              class="stream-feature-chip"
-              :class="{ active: index === 0 }"
-              type="button"
-          >
-            {{ tag }}
-          </button>
         </div>
         <div v-if="VideoDataInfo.overview" class="overview-text detail-overview">
           {{ VideoDataInfo.overview }}
@@ -1509,15 +1534,50 @@ span.button-text {
   line-height: 1.18;
 }
 
-.detail-remaining-row {
+.detail-logo-title {
+  display: block;
+  width: auto;
+  max-width: min(360px, 34vw);
+  max-height: 132px;
+  object-fit: contain;
+  object-position: left center;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.42));
+}
+
+.detail-progress-row {
   box-sizing: border-box;
-  height: 16px;
-  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 16px;
+  margin-top: 12px;
   padding: 0 46px;
   color: var(--fn-muted);
   background: var(--fn-bg);
   font-size: 12px;
   line-height: 16px;
+}
+
+.detail-progress-track {
+  position: relative;
+  width: min(240px, 24vw);
+  height: 4px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--fn-muted) 48%, transparent);
+  border-radius: 999px;
+}
+
+.detail-progress-track span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: var(--fn-blue);
+  border-radius: inherit;
+}
+
+.detail-progress-text {
+  color: var(--fn-text);
+  white-space: nowrap;
 }
 
 .detail-action-row {
@@ -1573,10 +1633,24 @@ span.button-text {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 20px;
+  gap: 10px;
   color: var(--fn-muted);
   font-size: 14px;
   line-height: 20px;
+}
+
+.detail-inline-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 5px;
+  color: var(--fn-text);
+  border: 1px solid color-mix(in srgb, var(--fn-muted) 58%, transparent);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
 }
 
 .stream-feature-row {
@@ -2036,12 +2110,20 @@ span.button-text {
     line-height: 1.3;
   }
 
-  .detail-remaining-row {
-    height: auto;
+  .detail-logo-title {
+    max-width: min(280px, 78vw);
+    max-height: 100px;
+  }
+
+  .detail-progress-row {
     margin-top: 10px;
     padding: 0 16px;
     font-size: 12px;
     line-height: 18px;
+  }
+
+  .detail-progress-track {
+    width: min(190px, 48vw);
   }
 
   .detail-action-row {

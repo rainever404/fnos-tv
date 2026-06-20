@@ -905,7 +905,26 @@ async function exitBrowserFullscreen() {
   }
 }
 
+function getViewportSize() {
+  const viewport = window.visualViewport
+  const width = Number(viewport?.width || window.innerWidth || document.documentElement?.clientWidth || 0)
+  const height = Number(viewport?.height || window.innerHeight || document.documentElement?.clientHeight || 0)
+  return {width, height}
+}
+
+function isPortraitLayoutViewport() {
+  const {width, height} = getViewportSize()
+  if (width <= 0 || height <= 0) {
+    return null
+  }
+  return height >= width
+}
+
 function isPortraitViewport() {
+  const layoutPortrait = isPortraitLayoutViewport()
+  if (layoutPortrait !== null) {
+    return layoutPortrait
+  }
   const orientationType = String(window.screen?.orientation?.type || '')
   if (orientationType.startsWith('landscape')) {
     return false
@@ -990,6 +1009,8 @@ function addMobileLandscapeListeners() {
   window.addEventListener('resize', syncMobileLandscapeFallback)
   window.addEventListener('orientationchange', scheduleMobileDanmuFallbackSync)
   window.addEventListener('resize', scheduleMobileDanmuFallbackSync)
+  window.visualViewport?.addEventListener?.('resize', syncMobileLandscapeFallback)
+  window.visualViewport?.addEventListener?.('resize', scheduleMobileDanmuFallbackSync)
 }
 
 function removeMobileLandscapeListeners() {
@@ -1003,6 +1024,8 @@ function removeMobileLandscapeListeners() {
   window.removeEventListener('resize', syncMobileLandscapeFallback)
   window.removeEventListener('orientationchange', scheduleMobileDanmuFallbackSync)
   window.removeEventListener('resize', scheduleMobileDanmuFallbackSync)
+  window.visualViewport?.removeEventListener?.('resize', syncMobileLandscapeFallback)
+  window.visualViewport?.removeEventListener?.('resize', scheduleMobileDanmuFallbackSync)
 }
 
 function cleanupMobileLandscape() {
@@ -2474,10 +2497,27 @@ h1 {
   position: absolute;
   right: max(92px, calc(env(safe-area-inset-right, 0px) + 92px));
   bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 18px));
-  z-index: 100040;
+  z-index: 100080;
   align-items: center;
   gap: 8px;
   pointer-events: auto;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
+  right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+  bottom: max(82px, calc(env(safe-area-inset-bottom, 0px) + 82px));
+}
+
+@media (max-width: 768px) and (orientation: portrait) {
+  .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls {
+    display: flex;
+    right: max(14px, calc(env(safe-area-inset-right, 0px) + 14px));
+    bottom: max(82px, calc(env(safe-area-inset-bottom, 0px) + 82px));
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
+    bottom: max(126px, calc(env(safe-area-inset-bottom, 0px) + 126px));
+  }
 }
 
 .mobile-danmu-button {
