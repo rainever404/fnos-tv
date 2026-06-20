@@ -230,11 +230,8 @@ const shouldShowMobileDanmuControls = computed(() => {
       shouldShowPortraitFloatingDanmuControls() ||
       isForcedLandscapeActive()
 })
-const shouldShowPortraitDanmuDock = computed(() => {
-  return isMobileUiActive() && !mobileLandscapeModeActive.value && !forcedLandscapeActive.value
-})
 const shouldShowMobileDanmuPortalControls = computed(() => {
-  return shouldShowMobileDanmuControls.value && forcedLandscapeActive.value
+  return shouldShowMobileDanmuControls.value
 })
 const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.value || isForcedLandscapeActive())
 
@@ -2253,32 +2250,6 @@ onMounted(async () => {
           <span :style="{ width: `${gestureFeedback.progress}%` }"></span>
         </div>
       </div>
-      <div
-          class="mobile-danmu-controls is-portrait-dock"
-          :class="{ 'is-visible': shouldShowPortraitDanmuDock }"
-          aria-label="弹幕控制"
-      >
-        <button
-            type="button"
-            class="mobile-danmu-button mobile-danmu-toggle"
-            :class="{ 'is-muted': !mobileDanmuVisible }"
-            :aria-pressed="mobileDanmuVisible"
-            aria-label="弹幕开关"
-            @click.stop.prevent="toggleMobileDanmuVisible"
-        >
-          弹
-        </button>
-        <button
-            type="button"
-            class="mobile-danmu-button"
-            :class="{ 'is-active': showMobileDanmuSettings }"
-            aria-label="弹幕设置"
-            @click.stop.prevent="toggleMobileDanmuSettings"
-        >
-          <span>弹</span>
-          <i class='bx bx-slider-alt'></i>
-        </button>
-      </div>
       <Teleport to="body">
         <div
             class="mobile-danmu-controls is-mobile-portal"
@@ -2702,18 +2673,6 @@ h1 {
   display: flex !important;
 }
 
-.player.is-mobile-player .mobile-danmu-controls.is-portrait-dock.is-visible {
-  position: fixed;
-  right: max(112px, calc(env(safe-area-inset-right, 0px) + 112px));
-  bottom: max(17px, calc(env(safe-area-inset-bottom, 0px) + 17px));
-  z-index: 2147483000;
-  display: flex !important;
-}
-
-.player.is-forced-landscape .mobile-danmu-controls.is-portrait-dock {
-  display: none !important;
-}
-
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
   position: fixed;
   right: max(112px, calc(env(safe-area-inset-right, 0px) + 112px));
@@ -2737,7 +2696,6 @@ h1 {
 
 @media (max-width: 768px) and (orientation: portrait) {
   .mobile-danmu-controls.is-mobile-portal.is-visible,
-  .mobile-danmu-controls.is-portrait-dock.is-visible,
   .player:not(.is-forced-landscape) .mobile-danmu-controls.is-visible {
     position: fixed;
     display: flex !important;
