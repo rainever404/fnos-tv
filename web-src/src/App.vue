@@ -197,13 +197,17 @@ systemThemeQuery.addEventListener('change', event => {
 
 // 添加移动端检测
 const isMobile = ref(window.innerWidth <= 768);
-const mobileSiderOpen = computed(() => isMobile.value && !collapsed.value);
+const mobileSiderVisible = ref(false);
+const effectiveSiderCollapsed = computed(() => isMobile.value ? !mobileSiderVisible.value : collapsed.value);
+const mobileSiderOpen = computed(() => isMobile.value && mobileSiderVisible.value);
 
 function handleWindowResize() {
   const nextIsMobile = window.innerWidth <= 768;
   isMobile.value = nextIsMobile;
   if (nextIsMobile) {
-    collapsed.value = true;
+    mobileSiderVisible.value = false;
+  } else {
+    mobileSiderVisible.value = false;
   }
 }
 
@@ -334,7 +338,7 @@ const reF = async () => {
 // 修改 toggDrawer 函数
 function toggDrawer() {
   if (isMobile.value) {
-    collapsed.value = !collapsed.value;
+    mobileSiderVisible.value = !mobileSiderVisible.value;
   } else {
     collapsed.value = !collapsed.value;
     VueCookies.set("collapsed", collapsed.value);
@@ -343,7 +347,7 @@ function toggDrawer() {
 
 function closeMobileSider() {
   if (isMobile.value) {
-    collapsed.value = true;
+    mobileSiderVisible.value = false;
   }
 }
 
@@ -789,7 +793,7 @@ watch(
           <router-view v-if="route.path === '/player'"/>
           <n-layout
               v-else-if="route.path !== '/login'"
-              :class='[dark ? "dark" : "light", "home", { "detail-page": isDetailPage, "sidebar-collapsed": collapsed || isMobile, "mobile-sider-open": mobileSiderOpen }]'
+              :class='[dark ? "dark" : "light", "home", { "detail-page": isDetailPage, "sidebar-collapsed": effectiveSiderCollapsed || isMobile, "mobile-sider-open": mobileSiderOpen }]'
           >
             <n-layout-header bordered>
               <div class="header-content">
@@ -915,13 +919,14 @@ watch(
             </button>
             <n-layout position="absolute" :style="{ top: '0' }" has-sider>
               <div
-                  v-if="isMobile && !collapsed"
+                  v-if="mobileSiderOpen"
                   class="mobile-sider-mask"
                   aria-hidden="true"
                   @click="closeMobileSider"
+                  @touchstart.stop.prevent="closeMobileSider"
               ></div>
               <n-layout-sider
-                :collapsed="collapsed"
+                :collapsed="effectiveSiderCollapsed"
                 collapse-mode="width"
                 :collapsed-width="0"
                 :width="260"
