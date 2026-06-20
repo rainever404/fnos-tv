@@ -107,6 +107,7 @@ function defaultDanmuSetting() {
     synchronousPlayback: true,
     theme: 'dark',
     heatmap: false,
+    width: 0,
     emitter: false,
     OPACITY: {min: 20, max: 100},
     FONT_SIZE: {min: 16, max: 42},
@@ -131,6 +132,7 @@ function normalizeDanmuSetting(value = {}) {
     modes: Array.isArray(value.modes) ? value.modes : base.modes,
     theme: 'dark',
     emitter: false,
+    width: 0,
     OPACITY: {...base.OPACITY, ...(value.OPACITY || {})},
     FONT_SIZE: {...base.FONT_SIZE, ...(value.FONT_SIZE || {})},
     SPEED: {...base.SPEED, ...(value.SPEED || {})}
@@ -2620,6 +2622,38 @@ img.play-icon {
     --art-control-icon-size: 30px;
     --art-settings-max-height: min(220px, calc(100svh - 96px));
     --art-selector-max-height: min(220px, calc(100svh - 96px));
+  }
+
+  :deep(.art-video-player .art-controls-center) {
+    display: flex !important;
+    flex: 0 0 auto;
+    min-width: 72px;
+    justify-content: flex-end;
+  }
+
+  :deep(.art-video-player .art-controls-center .artplayer-plugin-danmuku) {
+    display: flex !important;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 68px;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  :deep(.art-video-player .art-controls-center .apd-toggle),
+  :deep(.art-video-player .art-controls-center .apd-config) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: var(--art-control-height);
+  }
+
+  :deep(.art-video-player .art-controls-center .apd-config-panel) {
+    right: -70px;
+    left: auto;
+    width: min(324px, calc(100vw - 24px));
   }
 
   .player.is-forced-landscape {
