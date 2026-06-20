@@ -139,11 +139,13 @@ async function rawGet(uri, isLogin = false) {
   let params = {}
   let path = uri
   if (uri.indexOf('?') !== -1) {
-    const parts = uri.split('?')
+    const parts = uri.split(/\?(.+)/)
     path = parts[0]
     params = Object.fromEntries(new URLSearchParams(parts[1]).entries());
   }
   const headers = {
+    'x-trim-client': 'web',
+    'x-trim-client-version': '610',
     authx: generateSignature({
       method: 'GET',
       url: "/v" + path,

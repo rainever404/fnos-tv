@@ -309,14 +309,22 @@ async function GetPlayList() {
 
 // 下一张
 const goNext = () => {
-  let _index = EpisodeCarouselRef.value.getCurrentIndex();
-  EpisodeCarouselRef.value?.to(_index + per_view.value);
+  const carousel = EpisodeCarouselRef.value
+  if (!carousel?.getCurrentIndex || !carousel?.to) {
+    return
+  }
+  let _index = carousel.getCurrentIndex();
+  carousel.to(_index + per_view.value);
 };
 
 // 上一张
 const goPrev = () => {
-  let _index = EpisodeCarouselRef.value.getCurrentIndex();
-  EpisodeCarouselRef.value?.to(_index - per_view.value);
+  const carousel = EpisodeCarouselRef.value
+  if (!carousel?.getCurrentIndex || !carousel?.to) {
+    return
+  }
+  let _index = carousel.getCurrentIndex();
+  carousel.to(_index - per_view.value);
 };
 
 onMounted(async () => {
