@@ -39,9 +39,9 @@ const dropdownOptions = [
 
 function updateCarouselDensity() {
   const width = window.innerWidth;
-  const usable = width <= 768 ? Math.max(320, width - 28) : Math.max(720, width - 348);
-  per_view.value = width <= 768 ? 1 : Math.max(2, Math.min(6.8, (usable + 16) / 317));
-  per_card.value = width <= 768 ? 3 : Math.max(5, Math.min(12, (usable + 20) / 185));
+  const usable = width <= 768 ? Math.max(320, width - 28) : Math.max(720, width - 304);
+  per_view.value = width <= 768 ? 1 : Math.max(2, Math.min(6.8, (usable + 16) / 326));
+  per_card.value = width <= 768 ? 3 : Math.max(5, Math.min(12, (usable + 20) / 190));
 }
 
 updateCarouselDensity();
@@ -845,11 +845,15 @@ img.carousel-img {
 }
 
 .card-list {
-  max-width: 100%;
+  width: calc(100% + 88px);
+  max-width: none;
+  margin-left: -44px;
 }
 
 .card-shows {
   margin-bottom: 34px;
+  padding-left: 44px;
+  box-sizing: border-box;
 }
 
 .media-libraries {
@@ -882,7 +886,7 @@ img.carousel-img {
   gap: 20px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 0 0 6px;
+  padding: 0;
   scrollbar-width: none;
 }
 
@@ -1306,6 +1310,12 @@ img.carousel-img,
   .card-shows {
     margin-bottom: 26px;
     padding: 0;
+  }
+
+  .card-list {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
   }
 
   .view-item-title {
