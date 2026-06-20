@@ -1,12 +1,14 @@
 <script setup>
 // 获取 Vue 实例
-import {getCurrentInstance, onMounted, ref, computed} from "vue";
+import {getCurrentInstance, onMounted, ref, computed, watch} from "vue";
 import {useMediaDbData} from '@/store.js'
-import {onBeforeRouteUpdate, useRoute} from "vue-router";
+import {useRoute} from "vue-router";
 
 const MediaDbData = useMediaDbData()
 const route = useRoute()
 
+const DEFAULT_PAGE_SIZE = 240;
+const FAVORITE_PAGE_SIZE = 50;
 const guid = ref(null);
 const mode = computed({
   get: () => MediaDbData.sort_column,
@@ -20,13 +22,19 @@ const order = computed({
     MediaDbData.sort_type = value;
   }
 });
-const size = ref(240);
+const size = ref(DEFAULT_PAGE_SIZE);
 const totalCount = ref(0);
 const MediaDbInfo = ref(null);
 const layoutMode = ref('official');
 const category = ref(null);
 const favoriteType = ref('all');
-const isFavoritePage = computed(() => route.path === '/favorite')
+let listRequestId = 0;
+
+function isRouteFavorite(targetRoute = route) {
+  return targetRoute.path === '/favorite'
+}
+
+const isFavoritePage = computed(() => isRouteFavorite(route))
 const galleryTitle = computed(() => {
   if (isFavoritePage.value) {
     return '收藏'
@@ -58,9 +66,7 @@ const layoutClass = computed(() => {
 const instance = getCurrentInstance();
 const proxy = instance.appContext.config.globalProperties;
 const COMMON = proxy.$COMMON;
-guid.value = route.query.gallery_uid
-category.value = route.query.category || null
-favoriteType.value = route.query.type || 'all'
+applyRouteState(route, {resetList: false})
 
 
 const modes = [
@@ -121,9 +127,19 @@ const favoriteTabs = [
   {value: 'movie', label: '电影'},
   {value: 'tv', label: '电视节目'},
   {value: 'live', label: '电视直播'},
-  {value: 'episode', label: '单集'},
   {value: 'person', label: '人物'}
 ]
+
+function applyRouteState(targetRoute = route, {resetList = true} = {}) {
+  guid.value = targetRoute.query.gallery_uid || null
+  category.value = targetRoute.query.category || null
+  favoriteType.value = targetRoute.query.type || 'all'
+  size.value = isRouteFavorite(targetRoute) ? FAVORITE_PAGE_SIZE : DEFAULT_PAGE_SIZE
+  if (resetList) {
+    MediaDbInfo.value = null
+    totalCount.value = 0
+  }
+}
 
 function categoryTitle(value) {
   return categoryTitleMap[value] || '分类'
@@ -316,7 +332,29 @@ function favoriteTabRoute(item) {
   }
 }
 
-async function GetMediaDbInfos() {
+async function GetFavoriteOfficialBootstrap() {
+  if (!isFavoritePage.value) {
+    return
+  }
+  const types = favoriteTypes(favoriteType.value)
+  const params = new URLSearchParams({
+    is_favorite: '1'
+  })
+  if (types.length === 1) {
+    params.set('type', types[0])
+  }
+  await Promise.allSettled([
+    COMMON.requests("GET", `/api/v1/tag/list?${params.toString()}`, true),
+    COMMON.requests("POST", '/api/v1/user/getData', true, {
+      key: `favorite:list:setting:${favoriteType.value}`
+    }),
+    COMMON.requests("POST", '/api/v1/user/getData', true, {
+      key: 'list:card:setting'
+    })
+  ])
+}
+
+async function GetMediaDbInfos(requestId = listRequestId) {
   let api = isFavoritePage.value ? '/api/v1/favorite/list' : '/api/v1/item/list'
 
   let _data
@@ -326,7 +364,7 @@ async function GetMediaDbInfos() {
       "sort_type": MediaDbData.sort_type,
       "sort_column": MediaDbData.sort_column,
       "page": 1,
-      "page_size": size.value
+      "page_size": FAVORITE_PAGE_SIZE
     }
     const types = favoriteTypes(favoriteType.value)
     if (types.length) {
@@ -363,34 +401,40 @@ async function GetMediaDbInfos() {
     }
   }
   let res = await COMMON.requests("POST", api, true, _data);
+  if (requestId !== listRequestId) {
+    return
+  }
   MediaDbInfo.value = Array.isArray(res?.list) ? res.list : []
   totalCount.value = Number(res.total || totalCount.value || MediaDbInfo.value.length || 0)
 
 }
 
-async function GetMediaDbCount() {
+async function GetMediaDbCount(requestId = listRequestId) {
   if (isFavoritePage.value) {
     const data = {
       tags: {},
       sort_type: MediaDbData.sort_type,
       sort_column: MediaDbData.sort_column,
       page: 1,
-      page_size: 1
+      page_size: FAVORITE_PAGE_SIZE
     }
     const types = favoriteTypes(favoriteType.value)
     if (types.length) {
       data.tags.type = types
     }
     const res = await COMMON.requests("POST", '/api/v1/favorite/list', true, data);
+    if (requestId !== listRequestId) {
+      return
+    }
     const count = Number(res?.total || 0)
     totalCount.value = Number.isFinite(count) ? count : 0
-    if (totalCount.value > 0) {
-      size.value = totalCount.value
-    }
     return
   }
   let api = '/api/v1/mediadb/sum'
   const res = await COMMON.requests("GET", api, true);
+  if (requestId !== listRequestId) {
+    return
+  }
   const countKey = category.value === 'all' ? 'total'
       : category.value === 'movie' ? 'movie'
           : category.value === 'tv' ? 'tv'
@@ -404,39 +448,52 @@ async function GetMediaDbCount() {
   }
 }
 
+async function reloadMediaList({resetRouteState = false} = {}) {
+  const requestId = ++listRequestId
+  if (resetRouteState) {
+    applyRouteState(route)
+  }
+  await GetFavoriteOfficialBootstrap()
+  if (requestId !== listRequestId) {
+    return
+  }
+  await GetMediaDbCount(requestId);
+  if (requestId !== listRequestId) {
+    return
+  }
+  await GetMediaDbInfos(requestId);
+}
+
 async function handleChange() {
-  await GetMediaDbInfos();
+  await reloadMediaList();
 }
 
 async function setSortMode(value) {
   MediaDbData.sort_column = value
-  await GetMediaDbInfos()
+  await reloadMediaList()
 }
 
 async function setSortOrder(value) {
   MediaDbData.sort_type = value
-  await GetMediaDbInfos()
+  await reloadMediaList()
 }
 
 function setLayoutMode(value) {
   layoutMode.value = value
 }
 
-onBeforeRouteUpdate(async (to, from) => {
-  guid.value = to.query.gallery_uid;
-  category.value = to.query.category || null;
-  favoriteType.value = to.query.type || 'all';
-  // gallery_type.value = to.query.gallery_type;
-  await GetMediaDbCount();
-  await GetMediaDbInfos();
-});
-
 onMounted(async () => {
   // 获取每个分类的列表
-  await GetMediaDbCount();
-  await GetMediaDbInfos();
+  await reloadMediaList();
 
 })
+
+watch(
+    () => route.fullPath,
+    async () => {
+      await reloadMediaList({resetRouteState: true})
+    }
+)
 </script>
 
 <template>

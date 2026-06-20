@@ -395,7 +395,8 @@ function handleSettingsSelect(key) {
 
 function getSearchRoute(item) {
   const type = normalizeSearchType(item?.type || item?.gallery_type || item?.ancestor_category)
-  const itemGuid = item?.type === 'Episode' ? (item.parent_guid || item.guid) : item.guid
+  const rawGuid = item?.guid || item?.item_guid
+  const itemGuid = item?.type === 'Episode' ? (item.parent_guid || rawGuid) : rawGuid
   return {
     path: '/video',
     query: {
@@ -403,6 +404,19 @@ function getSearchRoute(item) {
       gallery_type: type
     }
   }
+}
+
+function searchListFromResponse(res) {
+  const candidates = [
+    res,
+    res?.list,
+    res?.items,
+    res?.data,
+    res?.data?.list,
+    res?.result,
+    res?.result?.list
+  ]
+  return candidates.find(item => Array.isArray(item)) || []
 }
 
 function normalizeSearchType(value) {
@@ -418,6 +432,10 @@ function normalizeSearchItem(item) {
     library_title: item?.library_title || item?.ancestor_name || item?.parent_title || '',
     library_category: item?.library_category || item?.ancestor_category || item?.type || ''
   }
+}
+
+function searchItemKey(item, index) {
+  return item?.guid || item?.item_guid || `${searchTitle(item)}-${index}`
 }
 
 function localSearch(keyword) {
@@ -532,7 +550,7 @@ watch(
           if (requestId !== searchRequestId) {
             return
           }
-          const list = Array.isArray(res) ? res : (Array.isArray(res?.list) ? res.list : [])
+          const list = searchListFromResponse(res)
           searchResults.value = list.map(normalizeSearchItem).slice(0, 30)
         } catch {
           if (requestId === searchRequestId) {
@@ -727,8 +745,8 @@ watch(
                 <div class="search-result-list" v-else-if="searchResults.length > 0">
                   <router-link
                       class="search-result-item"
-                      v-for="item in searchResults"
-                      :key="item.guid"
+                      v-for="(item, index) in searchResults"
+                      :key="searchItemKey(item, index)"
                       :to="getSearchRoute(item)"
                       @click="searchOpen = false"
                   >
