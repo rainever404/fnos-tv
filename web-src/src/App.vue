@@ -31,6 +31,11 @@ const theme = computed(() => dark.value ? darkTheme : null);
 const isDetailPage = computed(() => route.path === '/video');
 const searchOpen = ref(false);
 const searchKeyword = ref('');
+const searchResults = ref([]);
+const searchLoading = ref(false);
+const favoriteCount = ref(0);
+let searchTimer = null;
+let searchRequestId = 0;
 const options = ref([
   {
     label: '注销登录',
@@ -166,17 +171,6 @@ const categoryNavItems = computed(() => {
   ]
 })
 
-const searchResults = computed(() => {
-  const keyword = searchKeyword.value.trim().toLowerCase()
-  if (!keyword) {
-    return []
-  }
-  return flattenedMediaItems.value.filter(item => {
-    const title = [item.title, item.name, item.tv_title, item.library_title].filter(Boolean).join(' ').toLowerCase()
-    return title.includes(keyword)
-  }).slice(0, 18)
-})
-
 if (COMMON.isMo) {
   collapsed.value = true;
 }
@@ -226,6 +220,25 @@ async function GetMediaDbList() {
 async function GetMediaDbSum() {
   let api = '/api/v1/mediadb/sum'
   MediaDbSum.value = await COMMON.requests("GET", api, true);
+}
+
+async function GetFavoriteSummary() {
+  if (VueCookies.get('authorization') === null) {
+    favoriteCount.value = 0
+    return
+  }
+  try {
+    const res = await COMMON.requests("POST", '/api/v1/favorite/list', true, {
+      tags: {},
+      sort_type: 'DESC',
+      sort_column: 'create_time',
+      page: 1,
+      page_size: 1
+    })
+    favoriteCount.value = Number(res?.total || 0)
+  } catch {
+    favoriteCount.value = 0
+  }
 }
 
 function isCurrentPath(path) {
@@ -344,6 +357,10 @@ function isCategoryActive(item) {
   return route.path === '/list' && route.query.category === item?.category
 }
 
+function isFavoriteActive() {
+  return route.path === '/favorite'
+}
+
 function sumCount(key, fallback = 0) {
   const value = Number(MediaDbSum.value?.[key])
   if (Number.isFinite(value)) {
@@ -373,13 +390,47 @@ function handleSettingsSelect(key) {
 }
 
 function getSearchRoute(item) {
+  const type = normalizeSearchType(item?.type || item?.gallery_type || item?.ancestor_category)
+  const itemGuid = item?.type === 'Episode' ? (item.parent_guid || item.guid) : item.guid
   return {
     path: '/video',
     query: {
-      guid: item.guid,
-      gallery_type: item.type
+      guid: itemGuid,
+      gallery_type: type
     }
   }
+}
+
+function normalizeSearchType(value) {
+  if (value === 'Episode' || value === 'Season' || value === 'season') {
+    return 'season'
+  }
+  return normalizeGalleryType(value || 'Video')
+}
+
+function normalizeSearchItem(item) {
+  return {
+    ...item,
+    library_title: item?.library_title || item?.ancestor_name || item?.parent_title || '',
+    library_category: item?.library_category || item?.ancestor_category || item?.type || ''
+  }
+}
+
+function localSearch(keyword) {
+  const normalizedKeyword = keyword.toLowerCase()
+  return flattenedMediaItems.value.filter(item => {
+    const title = [item.title, item.name, item.tv_title, item.library_title].filter(Boolean).join(' ').toLowerCase()
+    return title.includes(normalizedKeyword)
+  }).slice(0, 18)
+}
+
+function searchPosterUrl(item, width = 120) {
+  const poster = item?.poster || item?.posters || ''
+  if (!poster) {
+    return '/images/not_video.jpg'
+  }
+  const prefix = poster.startsWith('/') ? '' : '/92/17/'
+  return `${COMMON.imgUrl}${prefix}${poster}?w=${width}`
 }
 
 function searchTitle(item) {
@@ -416,6 +467,7 @@ async function onMountedFun() {
   // 获取每个分类的数量
   // await runFunByPath('/login', GetMediaDbSum)
   await GetMediaDbSum();
+  await GetFavoriteSummary();
 
   // 获取分类列表
   // await runFunByPath('/login', GetMediaDbList)
@@ -443,11 +495,48 @@ onMounted(async () => {
 watch(
     () => route.fullPath,
     async (newPath, oldPath) => {
-      if (newPath === "/" || (oldPath?.startsWith('/player') && route.path !== '/player')) {
+      if (newPath === "/" || newPath === "/favorite" || (oldPath?.startsWith('/player') && route.path !== '/player')) {
         await onMountedFun();
       }
     }
 );
+
+watch(
+    searchKeyword,
+    (value) => {
+      const keyword = value.trim()
+      searchRequestId += 1
+      const requestId = searchRequestId
+      if (searchTimer) {
+        window.clearTimeout(searchTimer)
+        searchTimer = null
+      }
+      if (!keyword) {
+        searchResults.value = []
+        searchLoading.value = false
+        return
+      }
+      searchLoading.value = true
+      searchTimer = window.setTimeout(async () => {
+        try {
+          const res = await COMMON.requests("GET", `/api/v1/search/list?q=${encodeURIComponent(keyword)}`, true)
+          if (requestId !== searchRequestId) {
+            return
+          }
+          const list = Array.isArray(res) ? res : (Array.isArray(res?.list) ? res.list : [])
+          searchResults.value = list.map(normalizeSearchItem).slice(0, 30)
+        } catch {
+          if (requestId === searchRequestId) {
+            searchResults.value = localSearch(keyword)
+          }
+        } finally {
+          if (requestId === searchRequestId) {
+            searchLoading.value = false
+          }
+        }
+      }, 280)
+    }
+)
 
 watch(
     dark,
@@ -548,13 +637,13 @@ watch(
                       <!--                        </router-link>-->
                       <!--                      </li>-->
                       <li>
-                        <span class="nav-link is-muted">
+                        <router-link to="/favorite" :class="{ 'is-active': isFavoriteActive() }">
                           <span class="icon">
                             <i class='bx bx-heart'></i>
                           </span>
                           <span class="title">收藏</span>
-                          <span class="title nav-count">0</span>
-                        </span>
+                          <span class="title nav-count">{{ favoriteCount }}</span>
+                        </router-link>
                       </li>
                     </ul>
                   </div>
@@ -623,7 +712,10 @@ watch(
                     <i class='bx bx-search'></i>
                   </template>
                 </n-input>
-                <div class="search-result-list" v-if="searchResults.length > 0">
+                <div v-if="searchLoading" class="search-empty">
+                  搜索中...
+                </div>
+                <div class="search-result-list" v-else-if="searchResults.length > 0">
                   <router-link
                       class="search-result-item"
                       v-for="item in searchResults"
@@ -631,9 +723,7 @@ watch(
                       :to="getSearchRoute(item)"
                       @click="searchOpen = false"
                   >
-                    <img v-if="item.poster" loading="lazy"
-                         v-lazy='COMMON.imgUrl + "/92/17/" + item.poster + "?w=120"' alt="">
-                    <img v-else loading="lazy" v-lazy="'/images/not_video.jpg'" alt="">
+                    <img loading="lazy" v-lazy='searchPosterUrl(item)' alt="">
                     <div class="search-result-meta">
                       <div class="search-result-title">{{ searchTitle(item) }}</div>
                       <div class="search-result-subtitle">{{ searchYear(item) }} · {{ item.library_title }}</div>

@@ -2,9 +2,10 @@
 // 获取 Vue 实例
 import {getCurrentInstance, onMounted, ref, computed} from "vue";
 import {useMediaDbData} from '@/store.js'
-import {onBeforeRouteUpdate} from "vue-router";
+import {onBeforeRouteUpdate, useRoute} from "vue-router";
 
 const MediaDbData = useMediaDbData()
+const route = useRoute()
 
 const guid = ref(null);
 const mode = computed({
@@ -24,7 +25,12 @@ const totalCount = ref(0);
 const MediaDbInfo = ref(null);
 const layoutMode = ref('official');
 const category = ref(null);
+const favoriteType = ref('all');
+const isFavoritePage = computed(() => route.path === '/favorite')
 const galleryTitle = computed(() => {
+  if (isFavoritePage.value) {
+    return '收藏'
+  }
   if (category.value) {
     return categoryTitle(category.value)
   }
@@ -32,9 +38,12 @@ const galleryTitle = computed(() => {
 })
 
 const listCountText = computed(() => {
-  const loaded = MediaDbInfo.value?.length || 0
+  if (MediaDbInfo.value === null) {
+    return '加载中'
+  }
+  const loaded = MediaDbInfo.value.length || 0
   const total = totalCount.value || loaded
-  return total ? `共 ${total} 项` : '加载中'
+  return `共 ${total} 项`
 })
 
 const sortModeLabel = computed(() => {
@@ -49,8 +58,9 @@ const layoutClass = computed(() => {
 const instance = getCurrentInstance();
 const proxy = instance.appContext.config.globalProperties;
 const COMMON = proxy.$COMMON;
-guid.value = proxy.$route.query.gallery_uid
-category.value = proxy.$route.query.category || null
+guid.value = route.query.gallery_uid
+category.value = route.query.category || null
+favoriteType.value = route.query.type || 'all'
 
 
 const modes = [
@@ -106,6 +116,15 @@ const categoryTitleMap = {
   other: '其他'
 }
 
+const favoriteTabs = [
+  {value: 'all', label: '全部'},
+  {value: 'movie', label: '电影'},
+  {value: 'tv', label: '电视节目'},
+  {value: 'live', label: '电视直播'},
+  {value: 'episode', label: '单集'},
+  {value: 'person', label: '人物'}
+]
+
 function categoryTitle(value) {
   return categoryTitleMap[value] || '分类'
 }
@@ -126,6 +145,25 @@ function categoryTypes(value) {
   return ['Movie', 'TV', 'Directory', 'Video', 'LiveChannel']
 }
 
+function favoriteTypes(value) {
+  if (value === 'movie') {
+    return ['Movie']
+  }
+  if (value === 'tv') {
+    return ['TV']
+  }
+  if (value === 'live') {
+    return ['LiveChannel']
+  }
+  if (value === 'episode') {
+    return ['Episode']
+  }
+  if (value === 'person') {
+    return ['Person']
+  }
+  return []
+}
+
 function shouldExcludeGroupedVideo(value) {
   return ['all', 'other'].includes(value)
 }
@@ -139,20 +177,80 @@ function formatRating(item) {
 }
 
 function releaseYear(item) {
-  const source = item?.release_date || item?.year || item?.premiere_date || item?.create_time || ''
+  const source = item?.release_date || item?.air_date || item?.year || item?.premiere_date || item?.create_time || ''
   const match = String(source).match(/\d{4}/)
   return match ? match[0] : ''
 }
 
 function displayTitle(item) {
-  return item?.title || item?.name || ''
+  return item?.title || item?.name || item?.tv_title || item?.parent_title || ''
+}
+
+function posterUrl(item, width = 200) {
+  const poster = item?.poster || item?.posters || ''
+  if (!poster) {
+    return '/images/not_video.jpg'
+  }
+  const prefix = poster.startsWith('/') ? '' : '/92/17/'
+  return `${COMMON.imgUrl}${prefix}${poster}?w=${width}`
+}
+
+function normalizeGalleryType(value) {
+  if (value === 'Episode' || value === 'Season' || value === 'season') {
+    return 'season'
+  }
+  if (value === 'Movie') {
+    return 'Movie'
+  }
+  if (value === 'TV') {
+    return 'TV'
+  }
+  return value || 'Video'
+}
+
+function getItemRoute(item) {
+  const type = item?.type || item?.gallery_type || item?.ancestor_category || 'Video'
+  const itemGuid = type === 'Episode' ? (item?.parent_guid || item?.guid) : item?.guid
+  return {
+    path: '/video',
+    query: {
+      guid: itemGuid,
+      gallery_type: normalizeGalleryType(type)
+    }
+  }
+}
+
+function favoriteTabRoute(item) {
+  if (item.value === 'all') {
+    return {
+      path: '/favorite'
+    }
+  }
+  return {
+    path: '/favorite',
+    query: {
+      type: item.value
+    }
+  }
 }
 
 async function GetMediaDbInfos() {
-  let api = '/api/v1/item/list'
+  let api = isFavoritePage.value ? '/api/v1/favorite/list' : '/api/v1/item/list'
 
   let _data
-  if (category.value) {
+  if (isFavoritePage.value) {
+    _data = {
+      "tags": {},
+      "sort_type": MediaDbData.sort_type,
+      "sort_column": MediaDbData.sort_column,
+      "page": 1,
+      "page_size": size.value
+    }
+    const types = favoriteTypes(favoriteType.value)
+    if (types.length) {
+      _data.tags.type = types
+    }
+  } else if (category.value) {
     _data = {
       "tags": {
         "type": categoryTypes(category.value)
@@ -183,12 +281,32 @@ async function GetMediaDbInfos() {
     }
   }
   let res = await COMMON.requests("POST", api, true, _data);
-  MediaDbInfo.value = res.list || []
+  MediaDbInfo.value = Array.isArray(res?.list) ? res.list : []
   totalCount.value = Number(res.total || totalCount.value || MediaDbInfo.value.length || 0)
 
 }
 
 async function GetMediaDbCount() {
+  if (isFavoritePage.value) {
+    const data = {
+      tags: {},
+      sort_type: MediaDbData.sort_type,
+      sort_column: MediaDbData.sort_column,
+      page: 1,
+      page_size: 1
+    }
+    const types = favoriteTypes(favoriteType.value)
+    if (types.length) {
+      data.tags.type = types
+    }
+    const res = await COMMON.requests("POST", '/api/v1/favorite/list', true, data);
+    const count = Number(res?.total || 0)
+    totalCount.value = Number.isFinite(count) ? count : 0
+    if (totalCount.value > 0) {
+      size.value = totalCount.value
+    }
+    return
+  }
   let api = '/api/v1/mediadb/sum'
   const res = await COMMON.requests("GET", api, true);
   const countKey = category.value === 'all' ? 'total'
@@ -225,6 +343,7 @@ function setLayoutMode(value) {
 onBeforeRouteUpdate(async (to, from) => {
   guid.value = to.query.gallery_uid;
   category.value = to.query.category || null;
+  favoriteType.value = to.query.type || 'all';
   // gallery_type.value = to.query.gallery_type;
   await GetMediaDbCount();
   await GetMediaDbInfos();
@@ -242,6 +361,17 @@ onMounted(async () => {
 
   <div class="content">
     <div class="list-title">{{ galleryTitle }}</div>
+    <div v-if="isFavoritePage" class="favorite-tabs" role="tablist" aria-label="收藏分类">
+      <router-link
+          v-for="item in favoriteTabs"
+          :key="item.value"
+          class="favorite-tab"
+          :class="{ active: favoriteType === item.value }"
+          :to="favoriteTabRoute(item)"
+      >
+        {{ item.label }}
+      </router-link>
+    </div>
     <div class="list-toolbar">
       <div class="seriesTab-list">
         <div class="seriesTab-item">
@@ -313,17 +443,10 @@ onMounted(async () => {
     </div>
     <div class="card-show-content view-card-list" :class="layoutClass">
       <div class="view-item" v-for="item in MediaDbInfo" :key="item.guid">
-        <router-link class="view-item-link" :to="{
-                    path: '/video', query: {
-                        guid: item.guid,
-                        gallery_type: item.type
-                    }
-                }">
+        <router-link class="view-item-link" :to="getItemRoute(item)">
           <div class="poster-frame">
             <div class="poster-inner">
-              <img v-if="item.poster !== undefined" loading="lazy" class="carousel-img"
-                   v-lazy=' COMMON.imgUrl + "/92/17/" + item.poster + "?w=200"'>
-              <img v-else loading="lazy" class='carousel-img' v-lazy="'/images/not_video.jpg'">
+              <img loading="lazy" class="carousel-img" v-lazy='posterUrl(item)'>
             </div>
             <div class="view-item-header">
               <div class="view-item-tag-list">
@@ -363,6 +486,43 @@ onMounted(async () => {
   font-size: 20px;
   font-weight: 500;
   line-height: 28px;
+}
+
+.favorite-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin: -8px 0 22px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.favorite-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 36px;
+  padding: 0 16px;
+  color: var(--fn-muted);
+  background: transparent;
+  border-radius: 999px;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.favorite-tab:hover {
+  color: var(--fn-text);
+  background: var(--fn-top-control);
+}
+
+.favorite-tab.active {
+  color: var(--fn-blue);
+  background: var(--fn-nav-active);
+  font-weight: 500;
 }
 
 .list-total {
@@ -674,6 +834,11 @@ onMounted(async () => {
   .list-title {
     margin-bottom: 16px;
     font-size: 20px;
+  }
+
+  .favorite-tabs {
+    margin-top: -4px;
+    margin-bottom: 16px;
   }
 
   .list-total {

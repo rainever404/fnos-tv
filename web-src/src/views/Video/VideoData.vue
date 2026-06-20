@@ -62,8 +62,22 @@ const scoreText = computed(() => {
   return score.toFixed(1)
 })
 
+const watchedSeconds = computed(() => {
+  const value = Number(playInfo.value?.ts ?? playInfo.value?.item?.watched_ts ?? VideoDataInfo.value?.watched_ts ?? 0)
+  return Number.isFinite(value) ? value : 0
+})
+
+const hasPlaybackRecord = computed(() => {
+  const watched = watchedSeconds.value
+  if (watched <= 0) {
+    return false
+  }
+  const duration = selectedDuration.value
+  return !Number.isFinite(duration) || duration <= 0 || watched < duration
+})
+
 const primaryPlayLabel = computed(() => {
-  return '继续播放'
+  return hasPlaybackRecord.value ? '继续播放' : '播放'
 })
 
 const detailMetaItems = computed(() => {
@@ -130,8 +144,8 @@ const selectedDuration = computed(() => {
 
 const remainingTimeText = computed(() => {
   const duration = selectedDuration.value
-  const watched = Number(playInfo.value?.ts ?? playInfo.value?.item?.watched_ts ?? VideoDataInfo.value?.watched_ts ?? 0)
-  if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(watched) || watched <= 0 || watched >= duration) {
+  const watched = watchedSeconds.value
+  if (!hasPlaybackRecord.value || !Number.isFinite(duration) || duration <= 0 || watched >= duration) {
     return ''
   }
   return `剩余 ${formatDuration(duration - watched, true)}`
