@@ -28,8 +28,10 @@ const legacyDark = VueCookies.get("dark");
 const themeMode = ref(VueCookies.get("theme_mode") || (legacyDark === "true" ? "dark" : legacyDark === "false" ? "light" : "dark"));
 const dark = computed(() => themeMode.value === "dark" || (themeMode.value === "system" && systemDark.value));
 const theme = computed(() => dark.value ? darkTheme : null);
-const isDetailPage = computed(() => route.path === '/video');
-const hasDetailBackButton = computed(() => route.path === '/video' || route.path === '/person');
+const detailRouteNames = new Set(['VideoData', 'MovieData', 'PersonData'])
+const mediaDetailRouteNames = new Set(['VideoData', 'MovieData'])
+const isDetailPage = computed(() => mediaDetailRouteNames.has(route.name));
+const hasDetailBackButton = computed(() => detailRouteNames.has(route.name));
 const searchOpen = ref(false);
 const searchKeyword = ref('');
 const searchResults = ref([]);
@@ -381,24 +383,44 @@ function normalizeGalleryType(value) {
   return value
 }
 
+function isMediaDetailRoute(targetRoute = route) {
+  return mediaDetailRouteNames.has(targetRoute.name)
+}
+
+function getMediaDetailRoute(itemGuid, type) {
+  const normalizedType = normalizeGalleryType(type)
+  if (normalizedType === 'Movie' && itemGuid) {
+    return {
+      path: `/movie/${itemGuid}`
+    }
+  }
+  return {
+    path: '/video',
+    query: {
+      guid: itemGuid,
+      gallery_type: normalizedType
+    }
+  }
+}
+
 function isLibraryActive(item) {
   if (!item) {
     return false
   }
-  if (route.params.guid) {
+  if (isMediaDetailRoute()) {
+    return false
+  }
+  if (route.name === 'LibraryList' && route.params.guid) {
     return route.params.guid === item.guid
   }
   if (route.path === '/list') {
     return route.query.gallery_uid === item.guid
   }
-  if (route.path === '/video') {
-    return normalizeGalleryType(route.query.gallery_type) === normalizeGalleryType(item.category)
-  }
   return false
 }
 
 function isHomeActive() {
-  return route.path === '/' || route.path === '/person'
+  return route.path === '/' || detailRouteNames.has(route.name)
 }
 
 function isCategoryActive(item) {
@@ -449,13 +471,7 @@ function getSearchRoute(item) {
     }
   }
   const itemGuid = item?.type === 'Episode' ? (item.parent_guid || rawGuid) : rawGuid
-  return {
-    path: '/video',
-    query: {
-      guid: itemGuid,
-      gallery_type: type
-    }
-  }
+  return getMediaDetailRoute(itemGuid, type)
 }
 
 function searchListFromResponse(res) {

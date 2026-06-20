@@ -110,6 +110,11 @@ function getPlaybackRoute(item) {
 }
 
 function getVideoRoute(item) {
+  if (item?.type === 'Movie' && item?.guid) {
+    return {
+      path: `/movie/${item.guid}`
+    }
+  }
   return {
     path: '/video',
     query: {

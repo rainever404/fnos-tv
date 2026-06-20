@@ -30,8 +30,19 @@ const play_guid = ref(null)
 const MIN_RESUME_SECONDS = 30
 const RESUME_END_BUFFER_SECONDS = 30
 
-guid.value = proxy.$route.query.guid
-gallery_type.value = proxy.$route.query.gallery_type
+function routeGuid(targetRoute = proxy.$route) {
+  return targetRoute.params?.guid || targetRoute.query?.guid || null
+}
+
+function routeGalleryType(targetRoute = proxy.$route) {
+  if (targetRoute.name === 'MovieData' || targetRoute.path?.startsWith('/movie/')) {
+    return 'Movie'
+  }
+  return targetRoute.query?.gallery_type || null
+}
+
+guid.value = routeGuid()
+gallery_type.value = routeGalleryType()
 
 const displayTitle = computed(() => {
   const info = VideoDataInfo.value || {}
@@ -616,8 +627,8 @@ const goToSlide = (index) => {
 };
 
 onBeforeRouteUpdate(async (to, from) => {
-  guid.value = to.query.guid;
-  gallery_type.value = to.query.gallery_type
+  guid.value = routeGuid(to);
+  gallery_type.value = routeGalleryType(to)
   await onMountedFun();
 });
 

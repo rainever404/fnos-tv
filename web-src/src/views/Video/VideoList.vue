@@ -451,11 +451,17 @@ function getItemRoute(item) {
     }
   }
   const itemGuid = type === 'Episode' ? (item?.parent_guid || item?.guid) : item?.guid
+  const normalizedType = normalizeGalleryType(type)
+  if (normalizedType === 'Movie' && itemGuid) {
+    return {
+      path: `/movie/${itemGuid}`
+    }
+  }
   return {
     path: '/video',
     query: {
       guid: itemGuid,
-      gallery_type: normalizeGalleryType(type)
+      gallery_type: normalizedType
     }
   }
 }

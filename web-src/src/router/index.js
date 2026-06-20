@@ -27,6 +27,11 @@ const routes = [
         component: () => import('../views/Video/VideoList.vue')
     },
     {
+        path: '/movie/:guid',
+        name: 'MovieData',
+        component: () => import('../views/Video/VideoData.vue')
+    },
+    {
         path: '/video',
         name: 'VideoData',
         component: () => import('../views/Video/VideoData.vue')
