@@ -135,7 +135,7 @@ let lastMobileDanmuSettingsToggleAt = 0;
 let lastMobileDanmuSettingsTouchAt = 0;
 let lastMobileDanmuSettingsPointerUpAt = 0;
 let lastMobileDanmuSettingsTouchEndAt = 0;
-const MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR = '.art-control-mobile-danmu-settings-trigger';
+const MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR = '.art-control-mobile-danmu-settings-trigger, .artplayer-plugin-danmuku .apd-config';
 const MOBILE_CORE_CONTROL_SELECTOR = [
   '.art-control-mobile-danmu-toggle',
   '.art-control-mobile-danmu-settings-trigger',
@@ -708,7 +708,7 @@ function markMobileDanmuTriggerEvent(event) {
 function shouldSkipMobileDanmuSettingsActivator(event, now) {
   const type = event?.type || ''
   if (!event) {
-    return now - lastMobileDanmuSettingsToggleAt < 320
+    return now - lastMobileDanmuSettingsToggleAt < 520
   }
   if (markMobileDanmuTriggerEvent(event)) {
     return true
@@ -717,10 +717,13 @@ function shouldSkipMobileDanmuSettingsActivator(event, now) {
     return now - lastMobileDanmuSettingsPointerUpAt < 700
   }
   if (type === 'click') {
-    return now - Math.max(lastMobileDanmuSettingsTouchEndAt, lastMobileDanmuSettingsPointerUpAt, lastMobileDanmuSettingsTouchAt) < 900
+    return now - Math.max(lastMobileDanmuSettingsToggleAt, lastMobileDanmuSettingsTouchEndAt, lastMobileDanmuSettingsPointerUpAt, lastMobileDanmuSettingsTouchAt) < 900
   }
   if (type === 'pointerup' && event.pointerType === 'mouse') {
-    return now - lastMobileDanmuSettingsToggleAt < 180
+    return now - lastMobileDanmuSettingsToggleAt < 520
+  }
+  if (type === 'mouseup') {
+    return now - lastMobileDanmuSettingsToggleAt < 520
   }
   return false
 }
@@ -776,6 +779,8 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
   }
   noteMobileDanmuSettingsActivator(event, now)
   preventMobileDanmuTriggerEvent(event)
+  keepMobileControlsVisible()
+  closeArtSettingPanel()
   const shouldOpen = !showMobileDanmuSettings.value
   closeMobileDanmuPanels()
   if (shouldOpen) {
@@ -1043,7 +1048,7 @@ function syncMobileDanmuControlButtons() {
     root.querySelectorAll('.art-control-mobile-danmu-toggle').forEach(button => {
       button.classList.toggle('is-muted', !mobileDanmuVisible.value)
     })
-    root.querySelectorAll('.art-control-mobile-danmu-settings-trigger').forEach(button => {
+    root.querySelectorAll('.art-control-mobile-danmu-settings-trigger, .artplayer-plugin-danmuku .apd-config').forEach(button => {
       button.classList.toggle('is-active', showMobileDanmuSettings.value)
     })
   })
@@ -4344,9 +4349,11 @@ img.play-icon {
 
 :deep(.art-video-player .art-control-mobile-danmu-settings-trigger.is-active),
 :deep(.art-video-player .art-control-mobile-danmu-settings-trigger.is-active .mobile-art-danmu-symbol),
-:deep(.art-video-player .art-control-mobile-danmu-settings-trigger.is-active i) {
+:deep(.art-video-player .art-control-mobile-danmu-settings-trigger.is-active i),
+:deep(.art-video-player .artplayer-plugin-danmuku .apd-config.is-active .apd-icon) {
   color: #00aeec;
   border-color: rgba(0, 174, 236, 0.9);
+  fill: #00aeec;
 }
 
 :deep(.art-video-player .artplayer-plugin-danmuku) {
@@ -5392,14 +5399,16 @@ img.play-icon {
 .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
 .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速),
 .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕) {
-  color: transparent !important;
-  pointer-events: none !important;
+  color: rgba(255, 255, 255, 0.94) !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质 *),
 .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速 *),
 .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕 *) {
-  color: transparent !important;
+  color: inherit !important;
 }
 
 .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting) {
