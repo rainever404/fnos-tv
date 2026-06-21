@@ -1460,8 +1460,7 @@ img.carousel-img,
 
 @media (max-width: 768px) {
   .home-page-title {
-    margin-bottom: 18px;
-    font-size: 20px;
+    display: none;
   }
 
   .library-grid {

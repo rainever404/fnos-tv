@@ -281,6 +281,31 @@ const categoryNavItems = computed(() => {
   ]
 })
 
+const mobileHeaderTitle = computed(() => {
+  if (route.path === '/') {
+    return '首页'
+  }
+  if (route.path === '/favorite') {
+    return '收藏'
+  }
+  if (route.name === 'LibraryList') {
+    const library = allLibraryItems.value.find(item => item.guid === route.params.guid)
+    return library?.title || '媒体库'
+  }
+  if (route.name === 'CategoryList' || route.name === 'VideoList') {
+    const category = route.params.category || 'all'
+    const item = categoryNavItems.value.find(option => option.category === category)
+    return item?.label || '全部'
+  }
+  if (route.name === 'PersonData') {
+    return '人物'
+  }
+  if (route.name === 'MovieData' || route.name === 'VideoData') {
+    return '详情'
+  }
+  return title
+})
+
 function libraryNavIconKey(item) {
   switch (item?.category) {
     case 'Movie':
@@ -1046,7 +1071,7 @@ watch(
                     </n-button>
                   </div>
                   <div @click="Home" class="title">
-                    {{ title }}
+                    {{ isMobile ? mobileHeaderTitle : title }}
                   </div>
                 </div>
                 <div class="header-right">
@@ -2265,10 +2290,50 @@ body {
 
   .header-left {
     display: flex !important;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 18px;
   }
 
   .header-left .title {
-    display: none;
+    display: block;
+    max-width: min(46vw, 220px);
+    overflow: hidden;
+    color: var(--fn-text);
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 40px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .menu-button {
+    display: flex;
+    flex: 0 0 40px;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+  }
+
+  .menu-button .topbar-control.n-button {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    color: var(--fn-text) !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .menu-button .topbar-control.n-button .n-button__border,
+  .menu-button .topbar-control.n-button .n-button__state-border {
+    display: none !important;
+  }
+
+  .menu-button .topbar-control.n-button i {
+    font-size: 32px;
+    line-height: 1;
   }
 
   .header-right {
