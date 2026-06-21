@@ -89,6 +89,15 @@ function libraryIconClass(item) {
 }
 
 function libraryPreviewItems(item) {
+  const officialPosters = Array.isArray(item?.posters)
+      ? item.posters.filter(Boolean).slice(0, 3)
+      : []
+  if (officialPosters.length > 0) {
+    return officialPosters.map((poster, index) => ({
+      guid: `${item?.guid || item?.title || 'library'}-poster-${index}`,
+      poster
+    }))
+  }
   const list = MediaDbData.info?.[item?.guid]?.list
   if (!Array.isArray(list)) {
     return []
@@ -347,8 +356,8 @@ onUnmounted(() => {
                     v-for="preview in libraryPreviewItems(item)"
                     :key="preview.guid || preview.id || preview.title"
                 >
-                  <img class="library-poster-main" :src="posterImageUrl(preview, 180)" alt="">
-                  <img class="library-poster-reflection" :src="posterImageUrl(preview, 180)" alt="" aria-hidden="true">
+                  <img class="library-poster-main" :src="posterImageUrl(preview, 400)" alt="">
+                  <img class="library-poster-reflection" :src="posterImageUrl(preview, 400)" alt="" aria-hidden="true">
                 </div>
               </template>
               <div v-else class="library-icon-wrap">
