@@ -2173,7 +2173,7 @@ body {
 }
 
 .navigation ul li a.is-active .nav-count {
-  color: var(--fn-nav-active-text) !important;
+  color: var(--fn-nav-text) !important;
 }
 
 .home.light .navigation ul li a.is-active,
@@ -2221,7 +2221,7 @@ body {
 
 .home.light .navigation ul li a.is-active .nav-count,
 .home.dark .navigation ul li a.is-active .nav-count {
-  color: var(--fn-nav-active-text) !important;
+  color: var(--fn-nav-text) !important;
 }
 
 .content {
