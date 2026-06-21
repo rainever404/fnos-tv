@@ -51,13 +51,16 @@ function normalizeData(res, fallback) {
 async function loadSettingsData() {
   loading.value = true
   try {
-    const [versionRes, listRes, sumRes] = await Promise.allSettled([
+    const [versionRes, mdbListRes, legacyListRes, sumRes] = await Promise.allSettled([
       COMMON.requests('GET', '/api/v1/sys/version', true),
+      COMMON.requests('GET', '/api/v1/mdb/list', true),
       COMMON.requests('GET', '/api/v1/mediadb/list', true),
       COMMON.requests('GET', '/api/v1/mediadb/sum', true)
     ])
+    const officialList = normalizeLibraryList(normalizeData(mdbListRes.value, []))
+    const fallbackList = normalizeLibraryList(normalizeData(legacyListRes.value, MediaDbData.list || []))
     versionInfo.value = normalizeData(versionRes.value, {})
-    mediaDbList.value = normalizeData(listRes.value, MediaDbData.list || [])
+    mediaDbList.value = officialList.length ? officialList : fallbackList
     mediaDbSum.value = normalizeData(sumRes.value, MediaDbData.sum || {})
     MediaDbData.list = mediaDbList.value
     MediaDbData.sum = mediaDbSum.value
@@ -67,6 +70,16 @@ async function loadSettingsData() {
   } finally {
     loading.value = false
   }
+}
+
+function normalizeLibraryList(list) {
+  if (!Array.isArray(list)) {
+    return []
+  }
+  return list.map(item => ({
+    ...item,
+    title: item?.title || item?.name || '媒体库'
+  }))
 }
 
 function setThemeMode(mode) {
@@ -127,6 +140,8 @@ function firstTextValue(item, keys) {
 
 function libraryFolder(item) {
   const direct = firstTextValue(item, [
+    'dir_list',
+    'dirList',
     'media_folder',
     'media_folders',
     'folders',
@@ -140,9 +155,21 @@ function libraryFolder(item) {
     'dir'
   ])
   if (direct) {
-    return direct
+    return normalizeLibraryPath(direct)
   }
   return `远程挂载/影音/${item?.title || '媒体库'}/`
+}
+
+function normalizeLibraryPath(value) {
+  const text = String(value || '').trim()
+  if (!text) {
+    return ''
+  }
+  const mounted = text.replace(/^\/vol\d+\/[^/]+/i, '')
+  if (mounted && mounted !== text) {
+    return `远程挂载${mounted}`
+  }
+  return text
 }
 
 function formatDateValue(value) {
@@ -169,6 +196,7 @@ function libraryUpdatedAt(item) {
     'latest_file_update',
     'latest_update_time',
     'update_time',
+    'last_update_time',
     'updated_at',
     'mtime',
     'modified_time'
@@ -384,9 +412,10 @@ onMounted(() => {
   --settings-subtext: rgba(255, 255, 255, 0.62);
   --settings-muted: rgba(255, 255, 255, 0.42);
   --settings-primary: #0a84ff;
-  min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
+  overflow: hidden;
   background: var(--settings-bg);
   color: var(--settings-text);
   font-family: -apple-system, BlinkMacSystemFont, Helvetica Neue, PingFang SC, Microsoft YaHei, Source Han Sans SC, Noto Sans CJK SC, sans-serif;
@@ -404,12 +433,14 @@ onMounted(() => {
 }
 
 .settings-sidebar {
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   background: var(--settings-sidebar);
   border-right: 1px solid var(--settings-border);
   display: flex;
   flex-direction: column;
   padding: 32px 20px 24px;
+  overflow: hidden;
 }
 
 .settings-brand {
@@ -536,12 +567,17 @@ onMounted(() => {
 }
 
 .settings-content {
+  height: 100vh;
+  min-height: 0;
   min-width: 0;
-  padding: 0 42px 44px;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0 42px;
+  overflow: hidden;
 }
 
 .settings-content-header {
+  flex: 0 0 auto;
   height: 82px;
   display: flex;
   align-items: center;
@@ -556,6 +592,7 @@ onMounted(() => {
 }
 
 .settings-toolbar {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -604,7 +641,10 @@ onMounted(() => {
 }
 
 .settings-table-wrap {
-  overflow-x: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 44px;
   border-top: 1px solid var(--settings-border);
 }
 
@@ -745,12 +785,17 @@ onMounted(() => {
 
 @media (max-width: 900px) {
   .settings-page {
+    height: auto;
+    min-height: 100vh;
     grid-template-columns: 1fr;
+    overflow: auto;
   }
 
   .settings-sidebar {
+    height: auto;
     min-height: auto;
     padding: 18px 16px;
+    overflow: visible;
     border-right: 0;
     border-bottom: 1px solid var(--settings-border);
   }
@@ -777,7 +822,10 @@ onMounted(() => {
   }
 
   .settings-content {
+    height: auto;
+    min-height: 0;
     padding: 0 16px 28px;
+    overflow: visible;
   }
 
   .settings-content-header {
@@ -788,6 +836,13 @@ onMounted(() => {
     gap: 10px;
     padding: 16px 0 22px;
     overflow-x: auto;
+  }
+
+  .settings-table-wrap {
+    flex: none;
+    min-height: 0;
+    max-height: none;
+    padding-bottom: 0;
   }
 
   .settings-primary-button,
