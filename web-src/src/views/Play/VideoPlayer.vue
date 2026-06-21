@@ -129,6 +129,8 @@ const touchState = {
 let playerTouchFrame = null;
 let mobileDanmuFallbackSyncTimer = null;
 const boundMobileDanmuPanelTriggers = new WeakSet();
+let lastMobileDanmuSettingsTriggerAt = 0;
+let lastMobileDanmuSettingsTouchAt = 0;
 
 const qualitySelector = ref([]);
 const currentQuality = ref(null);
@@ -257,9 +259,10 @@ const shouldUsePortraitDanmuPortalControls = computed(() => {
 const shouldShowMobileDanmuInlineControls = computed(() => {
   return isMobileUiActive() &&
       isPortraitMobilePlayer() &&
+      mobilePlayerControlsVisible.value &&
       !shouldShowMobilePortraitDockControls.value &&
       !shouldUsePortraitDanmuPortalControls.value &&
-      !mobileArtDanmuControlsVisible.value
+      !mobileArtTextControlsVisible.value
 })
 const shouldShowMobileDanmuPortalControls = computed(() => {
   if (!isMobileUiActive()) {
@@ -622,7 +625,8 @@ function handleDirectMobileDanmuPanelTrigger(event) {
   if (!isMobileUiActive()) {
     return
   }
-  if (event?.type !== 'click') {
+  const isSupportedTrigger = event?.type === 'click' || event?.type === 'touchend' || event?.type === 'pointerup'
+  if (!isSupportedTrigger) {
     preventMobileDanmuTriggerEvent(event)
     return
   }
@@ -631,7 +635,7 @@ function handleDirectMobileDanmuPanelTrigger(event) {
   if (!trigger || !playerFrame.value?.contains(trigger)) {
     return
   }
-  toggleMobileDanmuSettingsFromTrigger(event)
+  triggerMobileDanmuSettingsPanel(event)
 }
 
 function toggleMobileDanmuSettingsFromTrigger(...args) {
@@ -653,12 +657,33 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
   preventMobileDanmuTriggerEvent(event)
 }
 
+function triggerMobileDanmuSettingsPanel(event) {
+  const now = window.performance?.now?.() || Date.now()
+  const type = event?.type || ''
+  const isTouchLike = type === 'touchend' || (type === 'pointerup' && event.pointerType !== 'mouse')
+  if (isTouchLike && now - lastMobileDanmuSettingsTriggerAt < 240) {
+    preventMobileDanmuTriggerEvent(event)
+    return
+  }
+  if (type === 'click' && now - lastMobileDanmuSettingsTouchAt < 520) {
+    preventMobileDanmuTriggerEvent(event)
+    return
+  }
+  lastMobileDanmuSettingsTriggerAt = now
+  if (isTouchLike) {
+    lastMobileDanmuSettingsTouchAt = now
+  }
+  toggleMobileDanmuSettingsFromTrigger(event)
+}
+
 function bindMobileDanmuPanelTriggerElement(trigger) {
   if (!trigger || boundMobileDanmuPanelTriggers.has(trigger)) {
     return
   }
   boundMobileDanmuPanelTriggers.add(trigger)
   trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
+  trigger.addEventListener('pointerup', handleDirectMobileDanmuPanelTrigger, {capture: true})
+  trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
 }
 
 function bindMobileDanmuPanelTriggers() {
@@ -775,7 +800,7 @@ function handleMobileDanmuPanelClick(event) {
     closeMobileDanmuPanels()
     return
   }
-  toggleMobileDanmuSettingsFromTrigger(event)
+  triggerMobileDanmuSettingsPanel(event)
 }
 
 function handleMobileFullscreenControlClick(event) {
@@ -2086,7 +2111,13 @@ async function play() {
 }
 
 async function play_next() {
+  if (!Array.isArray(EpisodeList.value) || EpisodeList.value.length === 0 || !playInfo.value) {
+    return
+  }
   let episode_data = EpisodeList.value.find(o => o.episode_number === (playInfo.value.episode_number + 1))
+  if (!episode_data?.guid) {
+    return
+  }
   episode_guid.value = episode_data.guid
   await play()
 }
