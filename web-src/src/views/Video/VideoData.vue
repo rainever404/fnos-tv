@@ -1759,7 +1759,7 @@ span.button-text {
   justify-content: flex-start;
   gap: 8px;
   min-height: 54px;
-  margin-top: 16px;
+  margin-top: 12px;
   padding: 0 46px;
   color: var(--fn-text);
   background: var(--fn-bg);
@@ -1866,7 +1866,7 @@ span.button-text {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 38px;
+  margin-top: 42px;
   padding: 0 46px;
   background: var(--fn-bg);
 }
@@ -1877,16 +1877,16 @@ span.button-text {
   justify-content: center;
   min-width: 112px;
   height: 36px;
-  padding: 0 18px;
-  color: var(--fn-text);
-  background: var(--fn-panel);
-  border: 1px solid var(--fn-border);
-  border-radius: 7px;
+  padding: 0 24px;
+  color: color-mix(in srgb, var(--fn-text) 80%, transparent);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--fn-text) 10%, transparent);
+  border-radius: 8px;
   box-sizing: border-box;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   font-family: inherit;
-  line-height: 18px;
+  line-height: 20px;
   white-space: nowrap;
   cursor: pointer;
   transition: color 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
@@ -1899,6 +1899,7 @@ span.button-text {
 .detail-feature-tag.active {
   color: var(--fn-blue);
   border-color: var(--fn-blue);
+  background: transparent;
 }
 
 .detail-feature-tag:focus-visible {
@@ -1915,7 +1916,8 @@ span.button-text {
   padding: 0 16px;
   color: #fff;
   background: var(--fn-blue);
-  border: 0;
+  border: 0 solid transparent;
+  border-color: transparent;
   border-radius: 999px;
   box-shadow: 0 8px 22px rgba(10, 132, 255, 0.25);
   cursor: pointer;
