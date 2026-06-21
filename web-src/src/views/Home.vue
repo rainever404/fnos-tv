@@ -472,7 +472,7 @@ onUnmounted(() => {
                     {{ item.type === 'Episode' ? item.tv_title : item.title }}
                   </div>
                   <div v-if="item.type === 'Episode'" class="continue-subtitle">
-                    第 {{ item.season_number }} 季·第 {{ item.episode_number }} 集
+                    第 {{ item.season_number }} 季 · 第 {{ item.episode_number }} 集
                   </div>
                   <div v-else class="continue-subtitle">
                     电影
