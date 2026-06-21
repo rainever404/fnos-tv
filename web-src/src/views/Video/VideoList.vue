@@ -43,6 +43,9 @@ const filters = ref({
   locate: '',
   decade: '',
   resolution: '',
+  color_range: '',
+  audio_type: '',
+  recognition_status: '',
   watched: ''
 });
 
@@ -489,6 +492,25 @@ const resolutionOptions = [
   {label: '其他', value: 'other'}
 ]
 
+const colorRangeOptions = [
+  {label: '杜比视界', value: 'DolbyVision'},
+  {label: 'SDR', value: 'SDR'}
+]
+
+const audioTypeOptions = [
+  {label: '杜比环绕', value: 'DolbySurround'},
+  {label: '杜比全景声', value: 'DolbyAtmos'},
+  {label: 'DTS', value: 'DTS'},
+  {label: '立体声', value: 'Stereo'},
+  {label: '其他', value: 'Others'}
+]
+
+const recognitionStatusOptions = [
+  {label: '未匹配', value: '1'},
+  {label: '已匹配', value: '2'},
+  {label: '读取 NFO', value: '3'}
+]
+
 const watchedOptions = [
   {label: '已观看', value: '1'},
   {label: '未观看', value: '0'}
@@ -497,8 +519,11 @@ const watchedOptions = [
 const filterRows = computed(() => [
   {key: 'genres', label: '类型', options: officialGenreOptions.value.length ? officialGenreOptions.value : fallbackGenreOptions},
   {key: 'resolution', label: '分辨率', options: resolutionOptions},
+  {key: 'color_range', label: '视频动态范围', options: colorRangeOptions},
+  {key: 'audio_type', label: '音频规格', options: audioTypeOptions},
   {key: 'locate', label: '国家/地区', options: officialCountryOptions.value.length ? officialCountryOptions.value : fallbackCountryOptions},
   {key: 'decade', label: '发行年份', options: decadeOptions},
+  {key: 'recognition_status', label: '匹配状态', options: recognitionStatusOptions},
   {key: 'watched', label: '是否已观看', options: watchedOptions}
 ])
 
@@ -700,6 +725,15 @@ function applyActiveFilters(tags) {
   if (filters.value.resolution) {
     tags.resolution = filters.value.resolution
   }
+  if (filters.value.color_range) {
+    tags.color_range = filters.value.color_range
+  }
+  if (filters.value.audio_type) {
+    tags.audio_type = filters.value.audio_type
+  }
+  if (filters.value.recognition_status) {
+    tags.recognition_status = filters.value.recognition_status
+  }
   if (filters.value.watched) {
     tags.watched = filters.value.watched
   }
@@ -724,6 +758,9 @@ async function clearAllFilters() {
     locate: '',
     decade: '',
     resolution: '',
+    color_range: '',
+    audio_type: '',
+    recognition_status: '',
     watched: ''
   }
   await reloadMediaList()
@@ -1205,8 +1242,19 @@ watch(
                   </button>
                 </div>
               </div>
-              <div class="filter-actions" v-if="activeFilterCount > 0">
-                <button type="button" class="filter-reset" @click="clearAllFilters">重置筛选</button>
+              <div class="filter-actions">
+                <button
+                    v-if="activeFilterCount > 0"
+                    type="button"
+                    class="filter-reset"
+                    @click="clearAllFilters"
+                >
+                  重置筛选
+                </button>
+                <button type="button" class="filter-collapse" @click="closeToolbarMenus">
+                  <span>收起</span>
+                  <i class='bx bx-chevron-up'></i>
+                </button>
               </div>
             </div>
           </div>
@@ -1720,10 +1768,13 @@ watch(
 .filter-popover {
   left: 0;
   right: auto;
-  width: min(980px, calc(100vw - 340px));
+  width: min(1046px, calc(100vw - 348px));
   max-height: 360px;
   overflow: auto;
-  padding: 20px 22px;
+  padding: 18px 22px 16px;
+  background: rgb(32, 32, 33);
+  border-color: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
 }
 
 .sort-toggle:not(:checked) ~ .sort-popover {
@@ -1770,7 +1821,7 @@ watch(
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .filter-row:last-child {
@@ -1780,37 +1831,40 @@ watch(
 .filter-row-title {
   flex: 0 0 84px;
   color: var(--fn-soft);
-  font-size: 14px;
-  line-height: 24px;
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .filter-options {
   display: flex;
   flex: 1;
   flex-wrap: wrap;
-  gap: 8px;
+  column-gap: 8px;
+  row-gap: 8px;
   min-width: 0;
 }
 
 .filter-option,
-.filter-reset {
+.filter-reset,
+.filter-collapse {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 24px;
-  padding: 2px 12px;
+  min-height: 18px;
+  padding: 0 10px;
   color: var(--fn-muted);
   background: transparent;
   border: 0;
   border-radius: 999px;
   cursor: pointer;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 13px;
+  line-height: 18px;
   white-space: nowrap;
 }
 
 .filter-option:hover,
-.filter-reset:hover {
+.filter-reset:hover,
+.filter-collapse:hover {
   color: var(--fn-text);
   background: var(--fn-top-control);
 }
@@ -1822,12 +1876,23 @@ watch(
 
 .filter-actions {
   display: flex;
-  justify-content: flex-end;
-  padding-top: 4px;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding-top: 2px;
 }
 
 .filter-reset {
   color: var(--fn-blue);
+}
+
+.filter-collapse {
+  gap: 2px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.filter-collapse i {
+  font-size: 15px;
 }
 
 .list-state {
