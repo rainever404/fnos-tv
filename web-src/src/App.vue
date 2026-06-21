@@ -847,18 +847,16 @@ watch(
                 </div>
                 <div class="header-right">
                   <div ref="searchRootRef" class="top-search" :class="{ open: searchOpen || searchKeyword.trim() }">
-                    <n-button
+                    <button
                         v-if="!searchOpen && !searchKeyword.trim()"
-                        class="topbar-control"
-                        quaternary
-                        circle
+                        type="button"
+                        class="topbar-control search-trigger-button"
                         aria-label="搜索"
-                        @click="openSearch"
+                        @click.stop="openSearch"
+                        @touchstart.stop.prevent="openSearch"
                     >
-                      <template #icon>
-                        <i class='bx bx-search'></i>
-                      </template>
-                    </n-button>
+                      <i class='bx bx-search'></i>
+                    </button>
                     <div v-else class="top-search-box">
                       <i class='bx bx-search top-search-icon'></i>
                       <input
@@ -1526,6 +1524,7 @@ body {
 }
 
 .topbar-control.n-button,
+.search-trigger-button,
 .topbar-control.n-avatar {
   width: 36px !important;
   height: 36px !important;
@@ -1535,6 +1534,22 @@ body {
   border: 0;
   box-sizing: border-box;
   padding: 0 !important;
+}
+
+.search-trigger-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.search-trigger-button i {
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
 }
 
 .topbar-control.n-avatar {
@@ -1559,7 +1574,8 @@ body {
   transform: translate(-50%, -50%) !important;
 }
 
-.topbar-control.n-button:hover {
+.topbar-control.n-button:hover,
+.search-trigger-button:hover {
   background: var(--fn-top-control-hover) !important;
 }
 
@@ -1575,27 +1591,27 @@ body {
 }
 
 .top-search.open {
-  flex: 0 0 200px;
-  width: 200px;
-  height: 40px;
+  flex: 0 0 475px;
+  width: 475px;
+  height: 42px;
 }
 
 .top-search-box {
   position: relative;
   display: flex;
   align-items: center;
-  width: 200px;
-  height: 40px;
+  width: 475px;
+  height: 42px;
   color: var(--fn-text);
-  background: var(--fn-panel);
+  background: rgba(24, 25, 28, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.86);
   border-radius: 999px;
   box-sizing: border-box;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: none;
 }
 
 .dark .top-search-box {
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.86);
   box-shadow: none;
 }
 
@@ -1652,17 +1668,17 @@ body {
 
 .search-popover {
   position: absolute;
-  top: 48px;
+  top: 51px;
   right: 0;
   z-index: 40;
-  width: 430px;
+  width: 475px;
   max-width: calc(100vw - 32px);
-  padding: 8px;
+  padding: 12px 0;
   color: var(--fn-text);
-  background: var(--fn-panel);
-  border: 1px solid var(--fn-border);
-  border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+  background: rgb(42, 42, 43);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
 }
 
 .dark .search-popover {
@@ -1670,17 +1686,20 @@ body {
 }
 
 .home.detail-page .topbar-control.n-button,
+.home.detail-page .search-trigger-button,
 .home.detail-page .topbar-control.n-avatar {
   color: rgba(255, 255, 255, 0.86) !important;
   background: rgba(255, 255, 255, 0.06) !important;
 }
 
 .home.detail-page .topbar-control.n-button i,
+.home.detail-page .search-trigger-button i,
 .home.detail-page .topbar-control.n-avatar .n-avatar__text {
   color: rgba(255, 255, 255, 0.86) !important;
 }
 
-.home.detail-page .topbar-control.n-button:hover {
+.home.detail-page .topbar-control.n-button:hover,
+.home.detail-page .search-trigger-button:hover {
   background: rgba(255, 255, 255, 0.12) !important;
 }
 

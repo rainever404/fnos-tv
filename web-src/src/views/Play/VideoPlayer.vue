@@ -577,6 +577,13 @@ function isMobileUiActive() {
   return mobileUiActive.value || MOBILE_UA || isCompactPlayerViewport()
 }
 
+function isMobileDanmuControlContext() {
+  return isMobileUiActive() ||
+      isMobileRuntime() ||
+      isCompactPlayerViewport() ||
+      !!playerFrame.value?.querySelector?.(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR)
+}
+
 function isPortraitMobilePlayer() {
   return isMobileUiActive() && !isForcedLandscapeActive() && isPortraitViewport()
 }
@@ -607,7 +614,7 @@ function touchPointForPlayer(touch) {
 }
 
 function closeMobileDanmuPanels() {
-  if (!isMobileUiActive()) {
+  if (!isMobileDanmuControlContext()) {
     return
   }
   showMobileDanmuSettings.value = false
@@ -626,10 +633,10 @@ function preventMobileDanmuTriggerEvent(event) {
 
 function isMobileDanmuTriggerActivator(event) {
   const type = event?.type || ''
-  if (type === 'touchstart' || type === 'touchend' || type === 'click') {
+  if (type === 'touchend' || type === 'click') {
     return true
   }
-  return (type === 'pointerdown' || type === 'pointerup') && event.pointerType !== 'mouse'
+  return type === 'pointerup' && event.pointerType !== 'mouse'
 }
 
 function getMobileDanmuTriggerEvent(args = []) {
@@ -637,10 +644,10 @@ function getMobileDanmuTriggerEvent(args = []) {
 }
 
 function handleDirectMobileDanmuPanelTrigger(event) {
-  if (!isMobileUiActive()) {
+  if (!isMobileDanmuControlContext()) {
     return
   }
-  const isMousePointer = (event?.type === 'pointerdown' || event?.type === 'pointerup') && event.pointerType === 'mouse'
+  const isMousePointer = event?.type === 'pointerup' && event.pointerType === 'mouse'
   if (isMousePointer) {
     return
   }
@@ -656,15 +663,14 @@ function handleDirectMobileDanmuPanelTrigger(event) {
 }
 
 function toggleMobileDanmuSettingsFromTrigger(...args) {
-  if (!isMobileUiActive()) {
+  if (!isMobileDanmuControlContext()) {
     return
   }
   const event = getMobileDanmuTriggerEvent(args)
   const now = window.performance?.now?.() || Date.now()
   const type = event?.type || ''
-  const isTouchLike = type === 'touchstart' ||
-      type === 'touchend' ||
-      ((type === 'pointerdown' || type === 'pointerup') && event.pointerType !== 'mouse')
+  const isTouchLike = type === 'touchend' ||
+      (type === 'pointerup' && event.pointerType !== 'mouse')
   const isSyntheticFollowupClick = type === 'click' && now - lastMobileDanmuSettingsTouchAt < 720
   const isDuplicateArtCallback = !event && now - lastMobileDanmuSettingsToggleAt < 360
   const isDuplicatePointerEvent = !!event && now - lastMobileDanmuSettingsToggleAt < 420
@@ -702,11 +708,9 @@ function bindMobileDanmuPanelTriggerElement(trigger) {
     return
   }
   boundMobileDanmuPanelTriggers.add(trigger)
-  trigger.addEventListener('pointerdown', handleDirectMobileDanmuPanelTrigger, {capture: true})
   trigger.addEventListener('pointerup', handleDirectMobileDanmuPanelTrigger, {capture: true})
-  trigger.addEventListener('touchstart', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
-  trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
   trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
+  trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
 }
 
 function bindMobileDanmuPanelTriggers() {
@@ -3403,9 +3407,9 @@ h1 {
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
     display: flex !important;
-    flex: 1 1 auto;
+    flex: 1 1 0;
     justify-content: flex-start;
-    max-width: calc(100% - 94px);
+    max-width: none;
     overflow-x: visible !important;
     overflow-y: visible !important;
     scrollbar-width: none;
@@ -3427,6 +3431,8 @@ h1 {
     height: 40px !important;
     padding-inline: 0 !important;
     overflow: hidden;
+    visibility: visible !important;
+    opacity: 1 !important;
     font-size: 11px !important;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -3503,6 +3509,36 @@ h1 {
     width: 42px !important;
     min-width: 42px !important;
     max-width: 42px !important;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
+    order: 10;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+    order: 11;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质) {
+    order: 12;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速) {
+    order: 13;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕) {
+    order: 14;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting) {
+    order: 15;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+    order: 16;
   }
 
   .player:not(.is-forced-landscape) .mobile-danmu-controls.is-player-inline.is-visible {
@@ -4047,6 +4083,9 @@ img.play-icon {
 .player.is-mobile-player :deep(.art-video-player .art-control-mobile-danmu-toggle),
 .player.is-mobile-player :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
   display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
