@@ -658,6 +658,11 @@ function preventMobileDanmuTriggerEvent(event) {
   event?.stopImmediatePropagation?.()
 }
 
+function stopMobileDanmuTriggerEvent(event) {
+  event?.stopPropagation?.()
+  event?.stopImmediatePropagation?.()
+}
+
 function keepMobileControlsVisible() {
   if (!isMobileUiActive()) {
     return
@@ -803,7 +808,7 @@ function handleDirectMobileDanmuPanelTrigger(event) {
   }
   if (isMobileDanmuTriggerPress(event)) {
     mobileDanmuSettingsPressStarted = true
-    preventMobileDanmuTriggerEvent(event)
+    stopMobileDanmuTriggerEvent(event)
     keepMobileControlsVisible()
     return
   }
@@ -1034,11 +1039,14 @@ function handleMobileDanmuPanelClick(event) {
   }
   const panelTrigger = findMobileDanmuSettingsTrigger(event)
   if (panelTrigger && root.contains(panelTrigger)) {
+    keepMobileControlsVisible()
+    if (boundMobileDanmuPanelTriggers.has(panelTrigger)) {
+      return
+    }
     if ((event?.type === 'pointerdown' || event?.type === 'pointerup') && event.pointerType === 'mouse' && event.button !== 0) {
       return
     }
     if (isMobileDanmuTriggerPress(event)) {
-      keepMobileControlsVisible()
       return
     }
     if (!isMobileDanmuTriggerActivator(event)) {
@@ -5814,5 +5822,175 @@ img.play-icon {
   border: 0;
   border-radius: 4px;
   white-space: nowrap;
+}
+
+/* Final mobile portrait control contract: keep the same core controls as landscape. */
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) {
+  --mobile-player-right-width-final: 192px;
+  --mobile-player-toggle-width-final: 28px;
+  --mobile-player-danmu-settings-width-final: 38px;
+  --mobile-player-quality-width-final: 31px;
+  --mobile-player-rate-width-final: 24px;
+  --mobile-player-subtitle-width-final: 31px;
+  --mobile-player-icon-width-final: 20px;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding-inline: max(4px, env(safe-area-inset-left, 0px)) max(4px, env(safe-area-inset-right, 0px)) !important;
+  overflow: visible !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
+  flex: 1 1 calc(100% - var(--mobile-player-right-width-final)) !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: calc(100% - var(--mobile-player-right-width-final)) !important;
+  overflow: hidden !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-playAndPause),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-volume) {
+  flex: 0 0 24px !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  max-width: 24px !important;
+  padding-inline: 0 !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-time) {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding-inline: 0 !important;
+  overflow: hidden !important;
+  font-size: 10px !important;
+  line-height: 40px !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center) {
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
+  display: flex !important;
+  flex: 0 0 var(--mobile-player-right-width-final) !important;
+  width: var(--mobile-player-right-width-final) !important;
+  min-width: var(--mobile-player-right-width-final) !important;
+  max-width: var(--mobile-player-right-width-final) !important;
+  justify-content: flex-end !important;
+  gap: 0 !important;
+  overflow: visible !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 40px !important;
+  padding-inline: 0 !important;
+  color: rgba(255, 255, 255, 0.94) !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
+  order: 10;
+  flex: 0 0 var(--mobile-player-toggle-width-final) !important;
+  width: var(--mobile-player-toggle-width-final) !important;
+  min-width: var(--mobile-player-toggle-width-final) !important;
+  max-width: var(--mobile-player-toggle-width-final) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  order: 11;
+  flex: 0 0 var(--mobile-player-danmu-settings-width-final) !important;
+  width: var(--mobile-player-danmu-settings-width-final) !important;
+  min-width: var(--mobile-player-danmu-settings-width-final) !important;
+  max-width: var(--mobile-player-danmu-settings-width-final) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质) {
+  order: 12;
+  flex: 0 0 var(--mobile-player-quality-width-final) !important;
+  width: var(--mobile-player-quality-width-final) !important;
+  min-width: var(--mobile-player-quality-width-final) !important;
+  max-width: var(--mobile-player-quality-width-final) !important;
+  font-size: 11px !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速) {
+  order: 13;
+  flex: 0 0 var(--mobile-player-rate-width-final) !important;
+  width: var(--mobile-player-rate-width-final) !important;
+  min-width: var(--mobile-player-rate-width-final) !important;
+  max-width: var(--mobile-player-rate-width-final) !important;
+  font-size: 11px !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕) {
+  order: 14;
+  flex: 0 0 var(--mobile-player-subtitle-width-final) !important;
+  width: var(--mobile-player-subtitle-width-final) !important;
+  min-width: var(--mobile-player-subtitle-width-final) !important;
+  max-width: var(--mobile-player-subtitle-width-final) !important;
+  font-size: 11px !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting) {
+  order: 15;
+  flex: 0 0 var(--mobile-player-icon-width-final) !important;
+  width: var(--mobile-player-icon-width-final) !important;
+  min-width: var(--mobile-player-icon-width-final) !important;
+  max-width: var(--mobile-player-icon-width-final) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+  order: 16;
+  flex: 0 0 var(--mobile-player-icon-width-final) !important;
+  width: var(--mobile-player-icon-width-final) !important;
+  min-width: var(--mobile-player-icon-width-final) !important;
+  max-width: var(--mobile-player-icon-width-final) !important;
+}
+
+@media (max-width: 360px) and (orientation: portrait) {
+  .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) {
+    --mobile-player-right-width-final: 184px;
+    --mobile-player-toggle-width-final: 26px;
+    --mobile-player-danmu-settings-width-final: 36px;
+    --mobile-player-quality-width-final: 29px;
+    --mobile-player-rate-width-final: 23px;
+    --mobile-player-subtitle-width-final: 29px;
+    --mobile-player-icon-width-final: 20px;
+  }
+}
+
+.player.is-mobile-player.is-forced-landscape .mobile-danmu-settings,
+.mobile-danmu-settings.is-mobile-portal.is-forced-landscape-portal {
+  left: max(60px, calc(env(safe-area-inset-left, 0px) + 60px)) !important;
+  right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px)) !important;
+  width: auto !important;
+  max-width: none !important;
 }
 </style>
