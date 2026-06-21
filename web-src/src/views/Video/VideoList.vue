@@ -159,20 +159,20 @@ const COMMON = proxy.$COMMON;
 
 const modes = [
   {
+    value: 'create_time',
+    label: '添加日期'
+  },
+  {
+    value: 'release_date',
+    label: '发行日期'
+  },
+  {
     value: 'sort_title',
     label: '标题'
   },
   {
     value: 'vote_average',
     label: '评分'
-  },
-  {
-    value: 'release_date',
-    label: '发行年份'
-  },
-  {
-    value: 'create_time',
-    label: '添加日期'
   }
 ]
 
@@ -189,16 +189,12 @@ const orders = [
 
 const layoutOptions = [
   {
-    value: 'compact',
-    label: '紧凑'
-  },
-  {
     value: 'official',
-    label: '默认'
+    label: '竖幅海报'
   },
   {
     value: 'large',
-    label: '大卡片'
+    label: '横幅海报'
   }
 ]
 
@@ -1222,27 +1218,31 @@ watch(
               <span>{{ sortModeLabel }}</span>
               <i class='bx bx-chevron-down'></i>
             </label>
-            <div class="sort-popover" role="dialog" aria-label="排序">
-              <div class="sort-popover-header">排序</div>
-              <div class="sort-title">
-                排序方式
-              </div>
-              <div class="sort-list">
-                <label class="sort-item" v-for="item in pageSortModes" :key="item.value">
-                  <input type="radio" name="sort-mode" :value="item.value" :checked="mode === item.value"
-                         @change="setSortMode(item.value)">
+            <div class="sort-popover official-popover" role="dialog" aria-label="排序">
+              <div class="official-menu-list">
+                <button
+                    v-for="item in pageSortModes"
+                    :key="item.value"
+                    type="button"
+                    class="official-menu-item"
+                    :class="{ active: mode === item.value }"
+                    @click="setSortMode(item.value)"
+                >
                   <span>{{ item.label }}</span>
-                </label>
-              </div>
-              <div class="sort-title">
-                排序顺序
-              </div>
-              <div class="sort-list">
-                <label class="sort-item" v-for="item in orders" :key="item.value">
-                  <input type="radio" name="sort-order" :value="item.value" :checked="order === item.value"
-                         @change="setSortOrder(item.value)">
+                  <i v-if="mode === item.value" class='bx bx-check'></i>
+                </button>
+                <div class="official-menu-divider" aria-hidden="true"></div>
+                <button
+                    v-for="item in orders"
+                    :key="item.value"
+                    type="button"
+                    class="official-menu-item"
+                    :class="{ active: order === item.value }"
+                    @click="setSortOrder(item.value)"
+                >
                   <span>{{ item.label }}</span>
-                </label>
+                  <i v-if="order === item.value" class='bx bx-check'></i>
+                </button>
               </div>
             </div>
           </div>
@@ -1254,14 +1254,19 @@ watch(
               <span>布局</span>
               <i class='bx bx-chevron-down'></i>
             </label>
-            <div class="sort-popover layout-popover" role="dialog" aria-label="布局">
-              <div class="sort-popover-header">布局</div>
-              <div class="sort-list">
-                <label class="sort-item" v-for="item in layoutOptions" :key="item.value">
-                  <input type="radio" name="layout-mode" :value="item.value" :checked="layoutMode === item.value"
-                         @change="setLayoutMode(item.value)">
+            <div class="sort-popover layout-popover official-popover" role="dialog" aria-label="布局">
+              <div class="official-menu-list">
+                <button
+                    v-for="item in layoutOptions"
+                    :key="item.value"
+                    type="button"
+                    class="official-menu-item"
+                    :class="{ active: layoutMode === item.value }"
+                    @click="setLayoutMode(item.value)"
+                >
                   <span>{{ item.label }}</span>
-                </label>
+                  <i v-if="layoutMode === item.value" class='bx bx-check'></i>
+                </button>
               </div>
             </div>
           </div>
@@ -1654,6 +1659,62 @@ watch(
 
 .layout-popover {
   width: 220px;
+}
+
+.sort-popover.official-popover {
+  width: 186px;
+  min-width: 186px;
+  padding: 5px 0;
+  color: var(--fn-text);
+  background: rgb(42, 42, 43);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+.layout-popover.official-popover {
+  width: 186px;
+}
+
+.official-menu-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.official-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  color: rgba(255, 255, 255, 0.82);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.official-menu-item:hover {
+  color: var(--fn-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.official-menu-item.active {
+  color: var(--fn-text);
+}
+
+.official-menu-item i {
+  color: var(--fn-blue);
+  font-size: 18px;
+}
+
+.official-menu-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .filter-popover {
