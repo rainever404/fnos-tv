@@ -217,6 +217,144 @@ const layoutOptions = [
   }
 ]
 
+function parseMaybeJson(value) {
+  if (typeof value !== 'string') {
+    return value
+  }
+  const raw = value.trim()
+  if (!raw || !((raw.startsWith('{') && raw.endsWith('}')) || (raw.startsWith('[') && raw.endsWith(']')))) {
+    return value
+  }
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return value
+  }
+}
+
+function normalizeSortColumn(value, depth = 0) {
+  if (value === undefined || value === null || value === '' || depth > 4) {
+    return ''
+  }
+  const parsed = parseMaybeJson(value)
+  if (parsed !== value) {
+    return normalizeSortColumn(parsed, depth + 1)
+  }
+  if (typeof value === 'object') {
+    const candidateKeys = [
+      'sort_column',
+      'sortColumn',
+      'column',
+      'field',
+      'order_by',
+      'orderBy',
+      'sort',
+      'value',
+      'data',
+      'setting',
+      'settings',
+      'config'
+    ]
+    for (const key of candidateKeys) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        const normalized = normalizeSortColumn(value[key], depth + 1)
+        if (normalized) {
+          return normalized
+        }
+      }
+    }
+    return ''
+  }
+
+  const raw = String(value).trim()
+  if (modes.some(item => item.value === raw)) {
+    return raw
+  }
+  const normalized = raw.toLowerCase().replace(/[-\s]/g, '_')
+  const aliases = {
+    title: 'sort_title',
+    name: 'sort_title',
+    sorttitle: 'sort_title',
+    sort_title: 'sort_title',
+    rating: 'vote_average',
+    score: 'vote_average',
+    vote: 'vote_average',
+    vote_average: 'vote_average',
+    year: 'release_date',
+    date: 'release_date',
+    release: 'release_date',
+    release_date: 'release_date',
+    air_date: 'release_date',
+    create: 'create_time',
+    created: 'create_time',
+    create_time: 'create_time',
+    add_time: 'create_time',
+    added: 'create_time',
+    added_at: 'create_time',
+    favorite_time: 'create_time',
+    collect_time: 'create_time'
+  }
+  return aliases[normalized] || ''
+}
+
+function normalizeSortType(value, depth = 0) {
+  if (value === undefined || value === null || value === '' || depth > 4) {
+    return ''
+  }
+  const parsed = parseMaybeJson(value)
+  if (parsed !== value) {
+    return normalizeSortType(parsed, depth + 1)
+  }
+  if (typeof value === 'object') {
+    const candidateKeys = [
+      'sort_type',
+      'sortType',
+      'direction',
+      'order',
+      'order_type',
+      'orderType',
+      'value',
+      'data',
+      'setting',
+      'settings',
+      'config'
+    ]
+    for (const key of candidateKeys) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        const normalized = normalizeSortType(value[key], depth + 1)
+        if (normalized) {
+          return normalized
+        }
+      }
+    }
+    return ''
+  }
+
+  const normalized = String(value).trim().toUpperCase()
+  if (orders.some(item => item.value === normalized)) {
+    return normalized
+  }
+  if (['ASCENDING', 'UP', '1'].includes(normalized)) {
+    return 'ASC'
+  }
+  if (['DESCENDING', 'DOWN', '-1'].includes(normalized)) {
+    return 'DESC'
+  }
+  return ''
+}
+
+function applyOfficialListSetting(value) {
+  const sortColumn = normalizeSortColumn(value)
+  const sortType = normalizeSortType(value)
+  if (sortColumn) {
+    MediaDbData.sort_column = sortColumn
+  }
+  if (sortType) {
+    MediaDbData.sort_type = sortType
+  }
+  applyListCardSetting(value)
+}
+
 function normalizeLayoutMode(value) {
   if (value === undefined || value === null || value === '') {
     return ''
@@ -816,12 +954,15 @@ async function GetFavoriteOfficialBootstrap() {
   if (types.length === 1) {
     params.set('type', types[0])
   }
-  await Promise.allSettled([
+  const results = await Promise.allSettled([
     COMMON.requests("GET", `/api/v1/tag/list?${params.toString()}`, true),
     COMMON.requests("POST", '/api/v1/user/getData', true, {
       key: `favorite:list:setting:${favoriteType.value}`
     })
   ])
+  if (results[1]?.status === 'fulfilled') {
+    applyOfficialListSetting(results[1].value)
+  }
 }
 
 async function GetListCardSetting() {
@@ -842,7 +983,7 @@ async function GetLibraryOfficialBootstrap() {
     ancestor_guid: guid.value,
     is_favorite: '0'
   })
-  await Promise.allSettled([
+  const results = await Promise.allSettled([
     COMMON.requests("GET", `/api/v1/tag/list?${params.toString()}`, true),
     COMMON.requests("POST", '/api/v1/user/getData', true, {
       key: 'mdb:list:setting',
@@ -850,6 +991,9 @@ async function GetLibraryOfficialBootstrap() {
     }),
     COMMON.requests("GET", `/api/v1/item/${guid.value}`, true)
   ])
+  if (results[1]?.status === 'fulfilled') {
+    applyOfficialListSetting(results[1].value)
+  }
 }
 
 function currentListPageSize() {
