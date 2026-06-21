@@ -174,6 +174,27 @@ const categoryNavItems = computed(() => {
   ]
 })
 
+function libraryNavIconClass(item) {
+  switch (item?.category) {
+    case 'Movie':
+      return 'bx bx-film'
+    case 'TV':
+      return 'bx bx-tv'
+    case 'LiveChannel':
+      return 'bx bx-desktop'
+    case 'Music':
+      return 'bx bx-music'
+    case 'Directory':
+      return 'bx bx-folder'
+    case 'Video':
+      return 'bx bx-video'
+    case 'Mix':
+      return 'bx bx-collection'
+    default:
+      return 'bx bx-collection'
+  }
+}
+
 const searchTabOptions = computed(() => {
   return [
     {key: 'all', label: '全部'},
@@ -1109,12 +1130,9 @@ watch(
                       <li v-for="(item, index) in allLibraryItems" :key="index">
                         <div>
                           <router-link :class="{ 'is-active': isLibraryActive(item) }" :to="`/library/${item.guid}`" @click="closeMobileSider">
-                                                    <span v-if="item.category === 'Movie'" class="icon">
-                                                        <i class='bx bxs-movie'></i>
-                                                    </span>
-                            <span v-else class="icon">
-                                                        <i class='bx bx-desktop'></i>
-                                                    </span>
+                            <span class="icon">
+                              <i :class="libraryNavIconClass(item)"></i>
+                            </span>
                             <span :data-id="item.gallery_uid" class="title">{{ item.title }}</span>
                             <span class="title nav-count">{{
                                 MediaDbSum[item.guid]

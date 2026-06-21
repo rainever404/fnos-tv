@@ -83,6 +83,8 @@ function libraryIconClass(item) {
       return 'bx bx-folder'
     case 'Video':
       return 'bx bx-video'
+    case 'Mix':
+      return 'bx bx-collection'
     default:
       return 'bx bx-collection'
   }
