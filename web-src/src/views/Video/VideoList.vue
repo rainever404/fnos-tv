@@ -809,6 +809,47 @@ function formatRating(item) {
   return rating.toFixed(1)
 }
 
+function formatResolution(item) {
+  const values = []
+  if (Array.isArray(item?.media_stream?.resolutions)) {
+    values.push(...item.media_stream.resolutions)
+  }
+  values.push(
+      item?.media_stream?.resolution,
+      item?.resolution,
+      item?.video_resolution,
+      item?.max_resolution,
+      item?.display_resolution
+  )
+  const labels = values
+      .flat()
+      .filter(Boolean)
+      .map(value => String(value).trim())
+      .filter(value => value && !/^others?$/i.test(value))
+  if (!labels.length) {
+    return ''
+  }
+  const normalized = labels
+      .map(label => {
+        const lower = label.toLowerCase()
+        if (lower.includes('4k') || lower.includes('2160')) {
+          return {label: '4K', rank: 2160}
+        }
+        const match = lower.match(/(\d{3,4})/)
+        if (!match) {
+          return null
+        }
+        const size = Number(match[1])
+        if (!Number.isFinite(size) || size < 300) {
+          return null
+        }
+        return {label: String(size), rank: size}
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.rank - a.rank)
+  return normalized[0]?.label || ''
+}
+
 function releaseYear(item) {
   if (isPerson(item)) {
     const count = item?.known_for_item_count || item?.item_count || item?.work_count
@@ -1429,6 +1470,7 @@ watch(
               </div>
               <div v-if="formatRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
               <div class="view-item-tag-right">
+                <div v-if="formatResolution(item)" class="view-item-tag resolution-badge">{{ formatResolution(item) }}</div>
                 <div v-if="isWatched(item)" class="view-item-tag count">
                   <i class='bx bx-check'></i>
                 </div>
@@ -2330,6 +2372,22 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.view-item-tag.resolution-badge {
+  min-width: 30px;
+  height: 18px;
+  padding: 0 3px;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(28, 28, 29, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .view-item-tag-right .count {
