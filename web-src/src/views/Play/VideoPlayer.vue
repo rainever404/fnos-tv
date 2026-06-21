@@ -300,7 +300,10 @@ const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.va
 const mobileDanmuPortalPortraitActive = computed(() => isMobileUiActive() && isPortraitViewport() && !mobileDanmuPortalLandscapeActive.value)
 const shouldShowMobileExtraControls = computed(() => false)
 const shouldShowMobileInlineTextControls = computed(() => {
-  return false
+  return isMobileUiActive() &&
+      isPortraitMobilePlayer() &&
+      mobilePlayerControlsVisible.value &&
+      !mobileArtTextControlsVisible.value
 })
 const mobileQualityOptions = computed(() => qualitySelector.value.flatMap(group => group.selector || []))
 const mobileSubtitleOptions = computed(() => {
@@ -714,6 +717,37 @@ function markMobileDanmuTriggerEvent(event) {
   return false
 }
 
+function getMobileDanmuTriggerPoint(event) {
+  const touch = event?.changedTouches?.[0] || event?.touches?.[0]
+  if (touch) {
+    return {x: touch.clientX, y: touch.clientY}
+  }
+  if (Number.isFinite(event?.clientX) && Number.isFinite(event?.clientY)) {
+    return {x: event.clientX, y: event.clientY}
+  }
+  return null
+}
+
+function findMobileDanmuSettingsTrigger(event) {
+  const root = playerFrame.value
+  const target = event?.target
+  const directTrigger = target?.closest?.(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR)
+  if (directTrigger && root?.contains(directTrigger)) {
+    return directTrigger
+  }
+  const point = getMobileDanmuTriggerPoint(event)
+  if (!root || !point) {
+    return null
+  }
+  return Array.from(root.querySelectorAll(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR)).find(trigger => {
+    const rect = trigger.getBoundingClientRect()
+    return point.x >= rect.left - 10 &&
+        point.x <= rect.right + 10 &&
+        point.y >= rect.top - 10 &&
+        point.y <= rect.bottom + 10
+  }) || null
+}
+
 function shouldSkipMobileDanmuSettingsActivator(event, now) {
   const type = event?.type || ''
   if (!event) {
@@ -998,7 +1032,7 @@ function handleMobileDanmuPanelClick(event) {
   if (target.closest('.apd-config-panel, .apd-style-panel')) {
     return
   }
-  const panelTrigger = target.closest(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR)
+  const panelTrigger = findMobileDanmuSettingsTrigger(event)
   if (panelTrigger && root.contains(panelTrigger)) {
     if ((event?.type === 'pointerdown' || event?.type === 'pointerup') && event.pointerType === 'mouse' && event.button !== 0) {
       return
@@ -1471,8 +1505,8 @@ async function exitBrowserFullscreen() {
 
 function getViewportSize() {
   const viewport = window.visualViewport
-  const width = Number(viewport?.width || window.innerWidth || document.documentElement?.clientWidth || 0)
-  const height = Number(viewport?.height || window.innerHeight || document.documentElement?.clientHeight || 0)
+  const width = Math.max(1, Math.round(viewport?.width || window.innerWidth || document.documentElement?.clientWidth || 1))
+  const height = Math.max(1, Math.round(viewport?.height || window.innerHeight || document.documentElement?.clientHeight || 1))
   return {width, height}
 }
 
@@ -1504,6 +1538,71 @@ function shouldUseLandscapeFallback() {
   return isPortraitViewport() || orientationType.startsWith('portrait')
 }
 
+function setImportantStyle(element, property, value) {
+  element?.style?.setProperty(property, value, 'important')
+}
+
+function clearInlineStyles(element, properties) {
+  if (!element) {
+    return
+  }
+  properties.forEach(property => element.style.removeProperty(property))
+}
+
+function applyMobileForcedLandscapeLayout(active) {
+  const frame = playerFrame.value
+  if (!frame) {
+    return
+  }
+  const artRoot = frame.querySelector('.art-player')
+  const artVideoPlayer = frame.querySelector('.art-video-player')
+  const frameProps = ['position', 'inset', 'top', 'left', 'z-index', 'width', 'height', 'max-width', 'max-height', 'margin', 'overflow', 'transform', 'transform-origin']
+  const artProps = ['position', 'top', 'left', 'width', 'height', 'max-width', 'max-height', 'margin', 'transform', 'transform-origin', 'overflow']
+  const videoProps = ['width', 'height', 'max-width', 'max-height']
+
+  if (!active) {
+    clearInlineStyles(frame, frameProps)
+    clearInlineStyles(artRoot, artProps)
+    clearInlineStyles(artVideoPlayer, videoProps)
+    return
+  }
+
+  const {width, height} = getViewportSize()
+  const landscapeWidth = Math.max(width, height)
+  const landscapeHeight = Math.min(width, height)
+
+  setImportantStyle(frame, 'position', 'fixed')
+  setImportantStyle(frame, 'inset', '0')
+  setImportantStyle(frame, 'top', '0')
+  setImportantStyle(frame, 'left', '0')
+  setImportantStyle(frame, 'z-index', '99999')
+  setImportantStyle(frame, 'width', `${width}px`)
+  setImportantStyle(frame, 'height', `${height}px`)
+  setImportantStyle(frame, 'max-width', 'none')
+  setImportantStyle(frame, 'max-height', 'none')
+  setImportantStyle(frame, 'margin', '0')
+  setImportantStyle(frame, 'overflow', 'hidden')
+  setImportantStyle(frame, 'transform', 'none')
+  setImportantStyle(frame, 'transform-origin', 'center center')
+
+  setImportantStyle(artRoot, 'position', 'absolute')
+  setImportantStyle(artRoot, 'top', '50%')
+  setImportantStyle(artRoot, 'left', '50%')
+  setImportantStyle(artRoot, 'width', `${landscapeWidth}px`)
+  setImportantStyle(artRoot, 'height', `${landscapeHeight}px`)
+  setImportantStyle(artRoot, 'max-width', 'none')
+  setImportantStyle(artRoot, 'max-height', 'none')
+  setImportantStyle(artRoot, 'margin', '0')
+  setImportantStyle(artRoot, 'transform', 'translate(-50%, -50%) rotate(90deg)')
+  setImportantStyle(artRoot, 'transform-origin', 'center center')
+  setImportantStyle(artRoot, 'overflow', 'hidden')
+
+  setImportantStyle(artVideoPlayer, 'width', '100%')
+  setImportantStyle(artVideoPlayer, 'height', '100%')
+  setImportantStyle(artVideoPlayer, 'max-width', 'none')
+  setImportantStyle(artVideoPlayer, 'max-height', 'none')
+}
+
 function setForcedLandscape(active) {
   forcedLandscapeActive.value = !!active
   mobilePortraitActive.value = isMobileUiActive() && isPortraitViewport() && !active
@@ -1513,6 +1612,7 @@ function setForcedLandscape(active) {
   if (frame) {
     frame.classList.toggle('is-forced-landscape', active)
   }
+  applyMobileForcedLandscapeLayout(active)
   art?.resize?.()
   scheduleMobileDanmuFallbackSync()
 }
@@ -5521,7 +5621,198 @@ img.play-icon {
   text-overflow: clip !important;
 }
 
+.player.is-mobile-player.is-forced-landscape {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  transform: none !important;
+  transform-origin: center center !important;
+}
+
+.player.is-mobile-player.is-forced-landscape .art-player {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.player.is-mobile-player.is-forced-landscape :deep(.art-video-player) {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) {
+  --mobile-player-left-width: clamp(84px, calc(100vw - 236px), 128px);
+  --mobile-player-toggle-width: 26px;
+  --mobile-player-danmu-settings-width: 34px;
+  --mobile-player-quality-width: 30px;
+  --mobile-player-rate-width: 24px;
+  --mobile-player-subtitle-width: 30px;
+  --mobile-player-icon-width: 24px;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding-inline: max(3px, env(safe-area-inset-left, 0px)) max(3px, env(safe-area-inset-right, 0px)) !important;
+  overflow: visible !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
+  flex: 0 1 var(--mobile-player-left-width) !important;
+  width: var(--mobile-player-left-width) !important;
+  min-width: var(--mobile-player-left-width) !important;
+  max-width: var(--mobile-player-left-width) !important;
+  overflow: hidden !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center) {
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
+  display: flex !important;
+  flex: 1 1 0 !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0 !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-playAndPause),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-volume) {
+  flex: 0 0 25px !important;
+  width: 25px !important;
+  min-width: 25px !important;
+  max-width: 25px !important;
+  padding-inline: 0 !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-time) {
+  flex: 1 1 auto !important;
+  min-width: 34px !important;
+  max-width: calc(var(--mobile-player-left-width) - 50px) !important;
+  padding-inline: 0 !important;
+  overflow: hidden !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 40px !important;
+  padding-inline: 0 !important;
+  overflow: visible !important;
+  color: rgba(255, 255, 255, 0.94) !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  white-space: nowrap !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
+  order: 10;
+  flex: 0 0 var(--mobile-player-toggle-width) !important;
+  width: var(--mobile-player-toggle-width) !important;
+  min-width: var(--mobile-player-toggle-width) !important;
+  max-width: var(--mobile-player-toggle-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  order: 11;
+  flex: 0 0 var(--mobile-player-danmu-settings-width) !important;
+  width: var(--mobile-player-danmu-settings-width) !important;
+  min-width: var(--mobile-player-danmu-settings-width) !important;
+  max-width: var(--mobile-player-danmu-settings-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质) {
+  order: 12;
+  flex: 0 0 var(--mobile-player-quality-width) !important;
+  width: var(--mobile-player-quality-width) !important;
+  min-width: var(--mobile-player-quality-width) !important;
+  max-width: var(--mobile-player-quality-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速) {
+  order: 13;
+  flex: 0 0 var(--mobile-player-rate-width) !important;
+  width: var(--mobile-player-rate-width) !important;
+  min-width: var(--mobile-player-rate-width) !important;
+  max-width: var(--mobile-player-rate-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕) {
+  order: 14;
+  flex: 0 0 var(--mobile-player-subtitle-width) !important;
+  width: var(--mobile-player-subtitle-width) !important;
+  min-width: var(--mobile-player-subtitle-width) !important;
+  max-width: var(--mobile-player-subtitle-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting) {
+  order: 15;
+  flex: 0 0 var(--mobile-player-icon-width) !important;
+  width: var(--mobile-player-icon-width) !important;
+  min-width: var(--mobile-player-icon-width) !important;
+  max-width: var(--mobile-player-icon-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+  order: 16;
+  flex: 0 0 var(--mobile-player-icon-width) !important;
+  width: var(--mobile-player-icon-width) !important;
+  min-width: var(--mobile-player-icon-width) !important;
+  max-width: var(--mobile-player-icon-width) !important;
+}
+
 .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) .mobile-inline-text-controls {
-  display: none !important;
+  right: calc(env(safe-area-inset-right, 0px) + 48px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  z-index: 2147483002;
+  display: grid !important;
+  grid-template-columns: 30px 24px 30px;
+  align-items: center;
+  justify-content: end;
+  width: 84px;
+  gap: 0;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) .mobile-inline-text-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+  height: 40px;
+  padding: 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 11px;
+  font-weight: 500;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 </style>
