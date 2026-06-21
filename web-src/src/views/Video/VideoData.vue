@@ -1089,7 +1089,7 @@ onBeforeUnmount(() => {
 
 .main-content {
   position: relative;
-  --detail-hero-height: 480px;
+  --detail-hero-height: 432px;
   min-height: 100vh;
   overflow: hidden;
   background: var(--fn-bg);
