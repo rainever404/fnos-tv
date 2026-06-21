@@ -1931,9 +1931,10 @@ span.button-text {
   min-width: 54px;
   padding: 0;
   color: var(--fn-text);
-  background: var(--fn-panel);
+  background: var(--fn-top-control);
   border: 1px solid var(--fn-border);
   box-shadow: none;
+  backdrop-filter: blur(14px);
 }
 
 .detailButton:hover {
@@ -1945,7 +1946,7 @@ span.button-text {
 
 .detailButton.circleButton:hover {
   color: var(--fn-text);
-  background: var(--fn-panel-hover);
+  background: var(--fn-top-control-hover);
   box-shadow: none;
 }
 
@@ -1991,7 +1992,7 @@ span.button-text {
 
 .detail-more-wrapper .detail-more-button.active {
   color: var(--fn-text);
-  background: var(--fn-top-control);
+  background: var(--fn-top-control-hover);
   border-color: var(--fn-border);
 }
 
