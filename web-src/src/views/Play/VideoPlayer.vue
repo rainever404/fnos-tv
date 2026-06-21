@@ -130,7 +130,7 @@ let playerTouchFrame = null;
 let mobileDanmuFallbackSyncTimer = null;
 let mobileControlRefreshTimers = [];
 const boundMobileDanmuPanelTriggers = new WeakSet();
-let lastMobileDanmuSettingsTriggerAt = 0;
+let lastMobileDanmuSettingsToggleAt = 0;
 let lastMobileDanmuSettingsTouchAt = 0;
 const MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR = '.art-control-mobile-danmu-settings-trigger';
 
@@ -660,6 +660,21 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
     return
   }
   const event = getMobileDanmuTriggerEvent(args)
+  const now = window.performance?.now?.() || Date.now()
+  const type = event?.type || ''
+  const isTouchLike = type === 'touchend' || (type === 'pointerup' && event.pointerType !== 'mouse')
+  const isSyntheticFollowupClick = type === 'click' && now - lastMobileDanmuSettingsTouchAt < 560
+  const isDuplicateArtCallback = !event && now - lastMobileDanmuSettingsToggleAt < 360
+  const isDuplicatePointerEvent = !!event && now - lastMobileDanmuSettingsToggleAt < 260
+  if (isSyntheticFollowupClick || isDuplicateArtCallback || isDuplicatePointerEvent) {
+    preventMobileDanmuTriggerEvent(event)
+    return
+  }
+  if (isTouchLike) {
+    lastMobileDanmuSettingsTouchAt = now
+  }
+  lastMobileDanmuSettingsToggleAt = now
+  preventMobileDanmuTriggerEvent(event)
   const shouldOpen = !showMobileDanmuSettings.value
   closeMobileDanmuPanels()
   if (shouldOpen) {
@@ -671,27 +686,11 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
     }
   }
   syncMobileDanmuControlButtons()
-  preventMobileDanmuTriggerEvent(event)
 }
 
 function triggerMobileDanmuSettingsPanel(event) {
-  const now = window.performance?.now?.() || Date.now()
-  const type = event?.type || ''
   if (!isMobileDanmuTriggerActivator(event)) {
     return
-  }
-  const isTouchLike = type === 'touchend' || (type === 'pointerup' && event.pointerType !== 'mouse')
-  if (isTouchLike && now - lastMobileDanmuSettingsTriggerAt < 240) {
-    preventMobileDanmuTriggerEvent(event)
-    return
-  }
-  if (type === 'click' && now - lastMobileDanmuSettingsTouchAt < 520) {
-    preventMobileDanmuTriggerEvent(event)
-    return
-  }
-  lastMobileDanmuSettingsTriggerAt = now
-  if (isTouchLike) {
-    lastMobileDanmuSettingsTouchAt = now
   }
   toggleMobileDanmuSettingsFromTrigger(event)
 }
@@ -701,10 +700,8 @@ function bindMobileDanmuPanelTriggerElement(trigger) {
     return
   }
   boundMobileDanmuPanelTriggers.add(trigger)
-  trigger.addEventListener('pointerdown', handleDirectMobileDanmuPanelTrigger, {capture: true})
-  trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
   trigger.addEventListener('pointerup', handleDirectMobileDanmuPanelTrigger, {capture: true})
-  trigger.addEventListener('touchstart', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
+  trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
   trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
 }
 
@@ -2507,9 +2504,7 @@ onBeforeRouteLeave((to, from) => {
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
-  document.removeEventListener('pointerdown', handleMobileDanmuPanelClick, true)
   document.removeEventListener('pointerup', handleMobileDanmuPanelClick, true)
-  document.removeEventListener('touchstart', handleMobileDanmuPanelClick, true)
   document.removeEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
@@ -2529,9 +2524,7 @@ onBeforeUnmount(async () => {
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
-  document.removeEventListener('pointerdown', handleMobileDanmuPanelClick, true)
   document.removeEventListener('pointerup', handleMobileDanmuPanelClick, true)
-  document.removeEventListener('touchstart', handleMobileDanmuPanelClick, true)
   document.removeEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
@@ -2544,9 +2537,7 @@ onMounted(async () => {
   startMobileDanmuFallbackSyncLoop()
   window.addEventListener('keydown', handlePlayerKeydown)
   document.addEventListener('click', handleMobileDanmuPanelClick, true)
-  document.addEventListener('pointerdown', handleMobileDanmuPanelClick, true)
   document.addEventListener('pointerup', handleMobileDanmuPanelClick, true)
-  document.addEventListener('touchstart', handleMobileDanmuPanelClick, true)
   document.addEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.addEventListener('click', handleMobileFullscreenControlClick, true)
   addMobileLandscapeListeners()
@@ -3307,15 +3298,15 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-    width: 30px !important;
-    min-width: 30px !important;
-    max-width: 30px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    width: 40px !important;
-    min-width: 40px !important;
-    max-width: 40px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-portrait-dock.is-visible {
@@ -3410,8 +3401,8 @@ h1 {
     display: flex !important;
     flex: 1 1 auto;
     justify-content: flex-start;
-    max-width: calc(100% - 120px);
-    overflow-x: auto !important;
+    max-width: calc(100% - 116px);
+    overflow-x: visible !important;
     overflow-y: visible !important;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
@@ -3496,15 +3487,15 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-    width: 28px !important;
-    min-width: 28px !important;
-    max-width: 28px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    width: 38px !important;
-    min-width: 38px !important;
-    max-width: 38px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
   }
 
   .player:not(.is-forced-landscape) .mobile-danmu-controls.is-player-inline.is-visible {
@@ -4306,15 +4297,15 @@ img.play-icon {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-    width: 28px !important;
-    min-width: 28px !important;
-    max-width: 28px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    width: 38px !important;
-    min-width: 38px !important;
-    max-width: 38px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
   }
 
   :deep(.art-video-player .art-controls-center) {
@@ -4344,15 +4335,15 @@ img.play-icon {
   }
 
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-    width: 28px !important;
-    min-width: 28px !important;
-    max-width: 28px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
   }
 
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    width: 38px !important;
-    min-width: 38px !important;
-    max-width: 38px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
   }
 
   .player.is-forced-landscape {
@@ -4449,5 +4440,35 @@ img.play-icon {
     --art-control-icon-size: 28px;
     --art-bottom-height: 72px;
   }
+}
+
+.player.is-mobile-player :deep(.art-video-player .art-control-mobile-danmu-toggle) {
+  flex: 0 0 34px !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  max-width: 34px !important;
+  padding-inline: 0 !important;
+}
+
+.player.is-mobile-player :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  padding-inline: 0 !important;
+}
+
+.player.is-mobile-player :deep(.art-video-player .art-controls-right .art-control.art-control-mobile-danmu-toggle) {
+  flex: 0 0 34px !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  max-width: 34px !important;
+}
+
+.player.is-mobile-player :deep(.art-video-player .art-controls-right .art-control.art-control-mobile-danmu-settings-trigger) {
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
 }
 </style>
