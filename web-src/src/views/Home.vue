@@ -69,25 +69,6 @@ function galleryImageUrl(item, width = 400) {
   return COMMON.mediaImageUrl(item?.poster || item?.posters || '', width, '/images/not_gellery.png')
 }
 
-function libraryTypeLabel(item) {
-  switch (item?.category) {
-    case 'Movie':
-      return '电影'
-    case 'TV':
-      return '电视节目'
-    case 'LiveChannel':
-      return '电视直播'
-    case 'Music':
-      return '音乐'
-    case 'Directory':
-      return '文件夹'
-    case 'Video':
-      return '视频'
-    default:
-      return '媒体库'
-  }
-}
-
 function libraryIconClass(item) {
   switch (item?.category) {
     case 'Movie':
@@ -105,43 +86,6 @@ function libraryIconClass(item) {
     default:
       return 'bx bx-collection'
   }
-}
-
-function libraryItemCount(item) {
-  const sumCount = Number(MediaDbData.sum?.[item?.guid])
-  if (Number.isFinite(sumCount) && sumCount > 0) {
-    return sumCount
-  }
-  const info = MediaDbData.info?.[item?.guid] || {}
-  const count = Number(info.total ?? info.total_count ?? info.count ?? info.list?.length ?? 0)
-  return Number.isFinite(count) ? count : 0
-}
-
-function libraryMetaText(item) {
-  return libraryTypeLabel(item)
-}
-
-function libraryCountUnit(item) {
-  switch (item?.category) {
-    case 'Movie':
-    case 'TV':
-      return '部'
-    case 'LiveChannel':
-      return '个频道'
-    case 'Music':
-      return '首'
-    case 'Directory':
-      return '个文件夹'
-    case 'Video':
-      return '个视频'
-    default:
-      return '项'
-  }
-}
-
-function libraryCountText(item) {
-  const count = libraryItemCount(item)
-  return count > 0 ? `${count} ${libraryCountUnit(item)}` : ''
 }
 
 function libraryPreviewItems(item) {
@@ -411,18 +355,10 @@ onUnmounted(() => {
               </div>
             </div>
             <div class="library-card-info">
-              <div class="library-title-row">
-                <div class="library-title">
-                  {{ item.title }}
-                </div>
-                <span v-if="libraryCountText(item)" class="library-count-badge">{{ libraryCountText(item) }}</span>
-              </div>
-              <div class="library-meta">
-                <span>{{ libraryMetaText(item) }}</span>
-                <span v-if="libraryPreviewItems(item).length > 0">最近更新</span>
+              <div class="library-title">
+                {{ item.title }}
               </div>
             </div>
-            <i class="bx bx-chevron-right library-arrow" aria-hidden="true"></i>
           </router-link>
         </div>
       </div>
@@ -1011,7 +947,7 @@ img.carousel-img {
 
 .library-grid {
   display: flex;
-  gap: 14px;
+  gap: 20px;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0;
@@ -1024,18 +960,18 @@ img.carousel-img {
 
 .library-card {
   box-sizing: border-box;
-  display: flex;
-  flex: 0 0 302px;
-  align-items: center;
-  gap: 14px;
-  width: 302px;
-  min-height: 82px;
-  padding: 12px 14px 12px 12px;
+  position: relative;
+  display: block;
+  flex: 0 0 256px;
+  width: 256px;
+  aspect-ratio: 256 / 185;
+  padding: 0;
   color: var(--fn-text);
   background: var(--fn-panel);
   border: 1px solid var(--fn-border);
-  border-radius: 8px;
+  border-radius: 10px;
   box-shadow: none;
+  overflow: hidden;
   text-decoration: none;
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
@@ -1050,37 +986,27 @@ img.carousel-img {
 }
 
 .library-preview {
-  position: relative;
-  flex: 0 0 72px;
-  width: 72px;
-  height: 54px;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  bottom: 38px;
+  left: 4px;
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 1px;
+  overflow: hidden;
+  background: var(--fn-top-control);
+  border-radius: 6px 6px 0 0;
 }
 
 .library-preview-poster {
-  position: absolute;
-  top: 0;
-  width: 36px;
-  height: 54px;
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: var(--fn-top-control);
-  border: 2px solid var(--fn-panel);
-  border-radius: 5px;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
-}
-
-.library-preview-poster:nth-child(1) {
-  left: 0;
-  z-index: 3;
-}
-
-.library-preview-poster:nth-child(2) {
-  left: 18px;
-  z-index: 2;
-}
-
-.library-preview-poster:nth-child(3) {
-  left: 36px;
-  z-index: 1;
 }
 
 .library-preview-poster img {
@@ -1094,85 +1020,40 @@ img.carousel-img {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 54px;
-  height: 54px;
+  width: 100%;
+  height: 100%;
   color: var(--fn-blue);
   background: rgba(0, 102, 255, 0.1);
-  border-radius: 8px;
-  font-size: 24px;
+  font-size: 36px;
 }
 
 .library-card-info {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 4px;
-  text-align: left;
-}
-
-.library-title-row {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   align-items: center;
-  min-width: 0;
-  gap: 8px;
+  justify-content: center;
+  min-height: 46px;
+  padding: 16px 14px 10px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(25, 25, 26, 0) 0%, rgba(25, 25, 26, 0.76) 34%, rgba(25, 25, 26, 0.98) 100%);
+  pointer-events: none;
 }
 
 .library-title {
-  flex: 1 1 auto;
+  display: block;
   max-width: 100%;
   overflow: hidden;
-  color: var(--fn-text);
+  color: #fff;
   font-size: 15px;
   font-weight: 600;
   line-height: 20px;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.42);
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.library-count-badge {
-  flex: 0 0 auto;
-  max-width: 92px;
-  overflow: hidden;
-  padding: 2px 7px;
-  color: var(--fn-soft);
-  background: var(--fn-top-control);
-  border-radius: 999px;
-  font-size: 11px;
-  line-height: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.library-meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--fn-soft);
-  font-size: 12px;
-  line-height: 16px;
-}
-
-.library-meta span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.library-meta span + span::before {
-  margin-right: 8px;
-  color: var(--fn-soft);
-  content: "·";
-}
-
-.library-arrow {
-  flex: 0 0 auto;
-  color: var(--fn-soft);
-  font-size: 20px;
-  line-height: 1;
 }
 
 .carousel-container {
@@ -1490,34 +1371,8 @@ img.carousel-img,
   }
 
   .library-card {
-    flex-basis: min(302px, calc(100vw - 40px));
-    width: min(302px, calc(100vw - 40px));
-    min-height: 78px;
-    padding: 12px;
-  }
-
-  .library-preview {
-    flex-basis: 64px;
-    width: 64px;
-    height: 50px;
-  }
-
-  .library-preview-poster {
-    width: 34px;
-    height: 50px;
-  }
-
-  .library-preview-poster:nth-child(2) {
-    left: 15px;
-  }
-
-  .library-preview-poster:nth-child(3) {
-    left: 30px;
-  }
-
-  .library-icon-wrap {
-    width: 50px;
-    height: 50px;
+    flex-basis: min(256px, calc(100vw - 40px));
+    width: min(256px, calc(100vw - 40px));
   }
 
   .card-shows {
