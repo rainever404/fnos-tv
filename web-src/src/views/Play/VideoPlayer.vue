@@ -235,6 +235,7 @@ const mobileDanmuVisible = ref(true);
 const showMobileDanmuSettings = ref(false);
 const showMobileDanmuFallbackControls = ref(mobileUiActive.value);
 const mobileArtDanmuControlsVisible = ref(false);
+const mobilePlayerControlsVisible = ref(true);
 const mobileControlMenu = ref('');
 const mobilePlaybackRate = ref(Number(localStorage.playbackRate || 1) || 1);
 const mobileDanmuSetting = ref({
@@ -279,6 +280,11 @@ const shouldShowMobileDanmuPortalControls = computed(() => {
 const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.value || isForcedLandscapeActive())
 const mobileDanmuPortalPortraitActive = computed(() => isMobileUiActive() && isPortraitMobilePlayer() && !mobileDanmuPortalLandscapeActive.value)
 const shouldShowMobileExtraControls = computed(() => false)
+const shouldShowMobileInlineTextControls = computed(() => {
+  return isMobileUiActive() &&
+      isPortraitMobilePlayer() &&
+      mobilePlayerControlsVisible.value
+})
 const mobileQualityOptions = computed(() => qualitySelector.value.flatMap(group => group.selector || []))
 const mobileSubtitleOptions = computed(() => {
   const streams = StreamList.value?.subtitle_streams || []
@@ -615,22 +621,8 @@ function toggleMobileDanmuSettingsFromTrigger(event) {
 }
 
 function bindMobileDanmuPanelTriggers() {
-  if (!isMobileUiActive()) {
-    return
-  }
-  const root = playerFrame.value
-  if (!root) {
-    return
-  }
-  root.querySelectorAll('.artplayer-plugin-danmuku .apd-config, .artplayer-plugin-danmuku .apd-style, .art-control-mobile-danmu-settings-trigger').forEach(trigger => {
-    if (boundMobileDanmuPanelTriggers.has(trigger)) {
-      return
-    }
-    boundMobileDanmuPanelTriggers.add(trigger)
-    ;['touchend', 'click'].forEach(type => {
-      trigger.addEventListener(type, toggleMobileDanmuSettingsFromTrigger, {capture: true, passive: false})
-    })
-  })
+  // The document-level capture handler below is the single source for mobile danmu panel toggling.
+  // Binding the same trigger here can make one tap open and close the panel in the same gesture.
 }
 
 function isMobileArtControlVisible(selector) {
@@ -2073,6 +2065,12 @@ const artF = async (data) => {
     localStorage.playbackRate = art.playbackRate;
     mobilePlaybackRate.value = Number(art.playbackRate || 1);
   });
+  art.on('control', (state) => {
+    mobilePlayerControlsVisible.value = !!state;
+    if (!state) {
+      mobileControlMenu.value = '';
+    }
+  });
   let lastSkipIndex = -1;
   art.on("video:timeupdate", () => {
     const currentTime = art.currentTime;
@@ -2428,7 +2426,25 @@ onMounted(async () => {
         </button>
       </div>
       <div
-          v-if="shouldShowMobileExtraControls && mobileControlMenu"
+          v-if="shouldShowMobileInlineTextControls"
+          class="mobile-inline-text-controls"
+          @click.stop
+          @touchstart.stop
+          @touchmove.stop
+          @touchend.stop
+      >
+        <button type="button" @click.stop.prevent="toggleMobileControlMenu('quality')">
+          {{ mobileQualityLabel }}
+        </button>
+        <button type="button" @click.stop.prevent="toggleMobileControlMenu('rate')">
+          {{ mobilePlaybackRate }}X
+        </button>
+        <button type="button" @click.stop.prevent="toggleMobileControlMenu('subtitle')">
+          {{ mobileSubtitleLabel }}
+        </button>
+      </div>
+      <div
+          v-if="(shouldShowMobileExtraControls || shouldShowMobileInlineTextControls) && mobileControlMenu"
           class="mobile-extra-menu"
           @click.stop
           @touchstart.stop
@@ -2976,6 +2992,7 @@ h1 {
 }
 
 .mobile-extra-controls,
+.mobile-inline-text-controls,
 .mobile-extra-menu {
   display: none;
 }
@@ -3053,6 +3070,36 @@ h1 {
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-extra-menu small {
   color: rgba(255, 255, 255, 0.68);
   font-size: 11px;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-inline-text-controls {
+  position: fixed;
+  right: max(86px, calc(env(safe-area-inset-right, 0px) + 86px));
+  bottom: max(13px, calc(env(safe-area-inset-bottom, 0px) + 13px));
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-inline-text-controls button {
+  min-width: 24px;
+  height: 38px;
+  padding: 0 2px;
+  color: rgba(255, 255, 255, 0.94);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) .mobile-inline-text-controls button:active {
+  color: #00aeec;
 }
 
 .mobile-danmu-settings.is-mobile-portal {
@@ -3267,6 +3314,12 @@ h1 {
     width: 36px;
     height: 36px;
     background: rgba(0, 0, 0, 0.66);
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-画质),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-倍速),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-字幕) {
+    display: none !important;
   }
 }
 
