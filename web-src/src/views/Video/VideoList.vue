@@ -2492,22 +2492,7 @@ watch(
   }
 
   .card-action-row {
-    right: 8px;
-    bottom: 10px;
-    left: auto;
-    gap: 7px;
-    opacity: 1;
-    pointer-events: auto;
-    transform: none;
-  }
-
-  .card-action-button {
-    width: 32px;
-    height: 32px;
-  }
-
-  .card-action-button i {
-    font-size: 18px;
+    display: none;
   }
 
   .view-item-tag {
