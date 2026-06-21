@@ -1723,7 +1723,7 @@ span.button-text {
   align-items: center;
   gap: 8px;
   min-height: 16px;
-  margin-top: 12px;
+  margin-top: 16px;
   padding: 0 46px;
   color: var(--fn-muted);
   background: var(--fn-bg);
@@ -1759,7 +1759,7 @@ span.button-text {
   justify-content: flex-start;
   gap: 8px;
   min-height: 54px;
-  margin-top: 12px;
+  margin-top: 8px;
   padding: 0 46px;
   color: var(--fn-text);
   background: var(--fn-bg);
@@ -1902,6 +1902,10 @@ span.button-text {
   background: transparent;
 }
 
+.detail-feature-tag.active {
+  border-width: 2px;
+}
+
 .detail-feature-tag:focus-visible {
   outline: none;
 }
@@ -2009,6 +2013,11 @@ span.button-text {
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
+}
+
+.detailButton.outlineButton .button-text {
+  font-size: 16px;
+  line-height: 22px;
 }
 
 .detail-more-wrapper {
