@@ -129,7 +129,7 @@ const isDetailWatched = computed(() => {
 const detailMetaItems = computed(() => {
   const items = []
   if (scoreText.value) {
-    items.push({label: `${scoreText.value} 分`, type: 'text'})
+    items.push({label: `${scoreText.value} 分`, type: 'score'})
   }
   const year = formatYear(VideoDataInfo.value?.release_date || VideoDataInfo.value?.air_date)
   if (year) {
@@ -825,17 +825,19 @@ onBeforeUnmount(() => {
           <div class="detail-action-info">
             <div class="detail-meta-list">
               <template v-for="(item, index) in detailMetaItems" :key="`${item.type}-${item.label}-${index}`">
-                <span v-if="index > 0" class="detail-meta-separator">/</span>
                 <span
                     class="mediaInfoItem"
                     :class="{
+                      'detail-meta-gallery': item.type === 'gallery'
+                    }"
+                ><span v-if="index > 0" class="detail-meta-separator">/</span><span
+                    class="detail-meta-content"
+                    :class="{
+                      'detail-meta-score': item.type === 'score',
                       'detail-meta-pill': item.type === 'tag',
                       'detail-meta-gallery': item.type === 'gallery'
                     }"
-                >
-                  <i v-if="item.type === 'gallery'" :class="galleryTypeIconClass" aria-hidden="true"></i>
-                  {{ item.label }}
-                </span>
+                ><i v-if="item.type === 'gallery'" :class="galleryTypeIconClass" aria-hidden="true"></i>{{ item.label }}</span></span>
               </template>
             </div>
             <div v-if="detailTrackLabels.length" class="detail-track-list">
@@ -1763,7 +1765,7 @@ span.button-text {
   justify-content: flex-end;
   gap: 6px 0;
   min-width: 0;
-  color: var(--fn-muted);
+  color: var(--fn-text);
   font-size: 14px;
   line-height: 22px;
 }
@@ -1772,6 +1774,16 @@ span.button-text {
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
+}
+
+.detail-meta-content {
+  display: inline-flex;
+  align-items: center;
+}
+
+.detail-meta-list .detail-meta-score {
+  color: var(--fn-rating);
+  font-weight: 600;
 }
 
 .detail-meta-list .detail-meta-pill {
@@ -1799,7 +1811,7 @@ span.button-text {
 .detail-meta-separator {
   display: inline-flex;
   align-items: center;
-  margin: -2px 8px 0;
+  margin: -2px 4px 0;
   color: color-mix(in srgb, var(--fn-muted) 64%, transparent);
   font-size: 16px;
   line-height: 24px;
