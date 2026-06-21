@@ -280,7 +280,7 @@ const shouldShowMobileDanmuPortalControls = computed(() => {
   return shouldShowMobileDanmuControls.value
 })
 const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.value || isForcedLandscapeActive())
-const mobileDanmuPortalPortraitActive = computed(() => isMobileUiActive() && isPortraitMobilePlayer() && !mobileDanmuPortalLandscapeActive.value)
+const mobileDanmuPortalPortraitActive = computed(() => isMobileUiActive() && isPortraitViewport() && !mobileDanmuPortalLandscapeActive.value)
 const shouldShowMobileExtraControls = computed(() => false)
 const shouldShowMobileInlineTextControls = computed(() => false)
 const mobileQualityOptions = computed(() => qualitySelector.value.flatMap(group => group.selector || []))
@@ -571,7 +571,7 @@ function isMobileUiActive() {
 }
 
 function isPortraitMobilePlayer() {
-  return isMobileUiActive() && !isForcedLandscapeActive() && (isPortraitViewport() || !fullscreenElement() || isCompactPlayerViewport())
+  return isMobileUiActive() && !isForcedLandscapeActive() && isPortraitViewport()
 }
 
 function isForcedLandscapeActive() {
@@ -625,7 +625,15 @@ function handleDirectMobileDanmuPanelTrigger(event) {
   if (!isMobileUiActive()) {
     return
   }
-  const isSupportedTrigger = event?.type === 'click' || event?.type === 'touchend' || event?.type === 'pointerup'
+  const isMousePointer = (event?.type === 'pointerdown' || event?.type === 'pointerup') && event.pointerType === 'mouse'
+  if (isMousePointer) {
+    return
+  }
+  const isSupportedTrigger = event?.type === 'click' ||
+      event?.type === 'touchstart' ||
+      event?.type === 'touchend' ||
+      event?.type === 'pointerdown' ||
+      event?.type === 'pointerup'
   if (!isSupportedTrigger) {
     preventMobileDanmuTriggerEvent(event)
     return
@@ -660,7 +668,9 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
 function triggerMobileDanmuSettingsPanel(event) {
   const now = window.performance?.now?.() || Date.now()
   const type = event?.type || ''
-  const isTouchLike = type === 'touchend' || (type === 'pointerup' && event.pointerType !== 'mouse')
+  const isTouchLike = type === 'touchstart' ||
+      type === 'touchend' ||
+      ((type === 'pointerdown' || type === 'pointerup') && event.pointerType !== 'mouse')
   if (isTouchLike && now - lastMobileDanmuSettingsTriggerAt < 240) {
     preventMobileDanmuTriggerEvent(event)
     return
@@ -681,8 +691,10 @@ function bindMobileDanmuPanelTriggerElement(trigger) {
     return
   }
   boundMobileDanmuPanelTriggers.add(trigger)
+  trigger.addEventListener('pointerdown', handleDirectMobileDanmuPanelTrigger, {capture: true})
   trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
   trigger.addEventListener('pointerup', handleDirectMobileDanmuPanelTrigger, {capture: true})
+  trigger.addEventListener('touchstart', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
   trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
 }
 
@@ -781,26 +793,33 @@ function handleMobileDanmuPanelClick(event) {
   }
   const root = playerFrame.value
   const target = event.target
-  if (event?.type !== 'click' && target?.closest?.('.apd-config, .apd-style, .art-control-mobile-danmu-settings-trigger')) {
-    preventMobileDanmuTriggerEvent(event)
-    return
-  }
   if (target?.closest?.('.mobile-danmu-controls, .mobile-danmu-settings, .mobile-extra-controls, .mobile-extra-menu')) {
     return
   }
   if (!root || !target || !root.contains(target)) {
-    closeMobileDanmuPanels()
+    if (event?.type === 'click') {
+      closeMobileDanmuPanels()
+    }
     return
   }
   if (target.closest('.apd-config-panel, .apd-style-panel')) {
     return
   }
   const panelTrigger = target.closest('.apd-config, .apd-style, .art-control-mobile-danmu-settings-trigger')
+  if (panelTrigger && root.contains(panelTrigger)) {
+    if ((event?.type === 'pointerdown' || event?.type === 'pointerup') && event.pointerType === 'mouse') {
+      return
+    }
+    triggerMobileDanmuSettingsPanel(event)
+    return
+  }
+  if (event?.type !== 'click') {
+    return
+  }
   if (!panelTrigger || !root.contains(panelTrigger)) {
     closeMobileDanmuPanels()
     return
   }
-  triggerMobileDanmuSettingsPanel(event)
 }
 
 function handleMobileFullscreenControlClick(event) {
@@ -2449,6 +2468,10 @@ onBeforeRouteLeave((to, from) => {
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('pointerdown', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('pointerup', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('touchstart', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
   stopMobileDanmuFallbackSyncLoop()
@@ -2466,6 +2489,10 @@ onBeforeUnmount(async () => {
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('pointerdown', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('pointerup', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('touchstart', handleMobileDanmuPanelClick, true)
+  document.removeEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
   stopMobileDanmuFallbackSyncLoop()
@@ -2476,6 +2503,10 @@ onMounted(async () => {
   startMobileDanmuFallbackSyncLoop()
   window.addEventListener('keydown', handlePlayerKeydown)
   document.addEventListener('click', handleMobileDanmuPanelClick, true)
+  document.addEventListener('pointerdown', handleMobileDanmuPanelClick, true)
+  document.addEventListener('pointerup', handleMobileDanmuPanelClick, true)
+  document.addEventListener('touchstart', handleMobileDanmuPanelClick, true)
+  document.addEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.addEventListener('click', handleMobileFullscreenControlClick, true)
   addMobileLandscapeListeners()
   await onMountedFun();
@@ -3931,6 +3962,8 @@ img.play-icon {
 :deep(.art-video-player .art-control-mobile-landscape-fullscreen),
 :deep(.art-video-player .art-control-mobile-danmu-toggle),
 :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  position: relative;
+  z-index: 30;
   display: none !important;
   align-items: center;
   justify-content: center;
@@ -3940,6 +3973,8 @@ img.play-icon {
   font-weight: 700;
   line-height: 1;
   overflow: visible !important;
+  pointer-events: auto !important;
+  touch-action: manipulation;
 }
 
 :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
@@ -3969,6 +4004,7 @@ img.play-icon {
 :deep(.art-video-player .art-control-mobile-danmu-settings-trigger i) {
   font-size: 16px;
   line-height: 1;
+  pointer-events: none;
 }
 
 :deep(.art-video-player .mobile-art-danmu-symbol) {
@@ -3983,6 +4019,7 @@ img.play-icon {
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
+  pointer-events: none;
 }
 
 :deep(.art-video-player .art-control-mobile-danmu-toggle.is-muted .mobile-art-danmu-symbol) {
