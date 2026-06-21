@@ -121,9 +121,35 @@ function libraryMetaText(item) {
   return libraryTypeLabel(item)
 }
 
+function libraryCountUnit(item) {
+  switch (item?.category) {
+    case 'Movie':
+    case 'TV':
+      return '部'
+    case 'LiveChannel':
+      return '个频道'
+    case 'Music':
+      return '首'
+    case 'Directory':
+      return '个文件夹'
+    case 'Video':
+      return '个视频'
+    default:
+      return '项'
+  }
+}
+
 function libraryCountText(item) {
   const count = libraryItemCount(item)
-  return count > 0 ? `${count}` : ''
+  return count > 0 ? `${count} ${libraryCountUnit(item)}` : ''
+}
+
+function libraryPreviewItems(item) {
+  const list = MediaDbData.info?.[item?.guid]?.list
+  if (!Array.isArray(list)) {
+    return []
+  }
+  return list.filter(target => target?.poster || target?.posters).slice(0, 3)
 }
 
 function getPlaybackParentGuid(item) {
@@ -370,16 +396,30 @@ onUnmounted(() => {
                 :key="item.guid"
                 :to="`/library/${item.guid}`"
             >
-            <div class="library-icon-wrap" aria-hidden="true">
-              <i :class="libraryIconClass(item)"></i>
+            <div class="library-preview" aria-hidden="true">
+              <template v-if="libraryPreviewItems(item).length > 0">
+                <div
+                    class="library-preview-poster"
+                    v-for="preview in libraryPreviewItems(item)"
+                    :key="preview.guid || preview.id || preview.title"
+                >
+                  <img :src="posterImageUrl(preview, 180)" alt="">
+                </div>
+              </template>
+              <div v-else class="library-icon-wrap">
+                <i :class="libraryIconClass(item)"></i>
+              </div>
             </div>
             <div class="library-card-info">
-              <div class="library-title">
-                {{ item.title }}
+              <div class="library-title-row">
+                <div class="library-title">
+                  {{ item.title }}
+                </div>
+                <span v-if="libraryCountText(item)" class="library-count-badge">{{ libraryCountText(item) }}</span>
               </div>
               <div class="library-meta">
                 <span>{{ libraryMetaText(item) }}</span>
-                <span v-if="libraryCountText(item)">{{ libraryCountText(item) }} 项</span>
+                <span v-if="libraryPreviewItems(item).length > 0">最近更新</span>
               </div>
             </div>
             <i class="bx bx-chevron-right library-arrow" aria-hidden="true"></i>
@@ -985,12 +1025,12 @@ img.carousel-img {
 .library-card {
   box-sizing: border-box;
   display: flex;
-  flex: 0 0 270px;
+  flex: 0 0 302px;
   align-items: center;
-  gap: 12px;
-  width: 270px;
-  min-height: 76px;
-  padding: 14px;
+  gap: 14px;
+  width: 302px;
+  min-height: 82px;
+  padding: 12px 14px 12px 12px;
   color: var(--fn-text);
   background: var(--fn-panel);
   border: 1px solid var(--fn-border);
@@ -1009,17 +1049,57 @@ img.carousel-img {
   border-color: rgba(255, 255, 255, 0.12);
 }
 
+.library-preview {
+  position: relative;
+  flex: 0 0 72px;
+  width: 72px;
+  height: 54px;
+}
+
+.library-preview-poster {
+  position: absolute;
+  top: 0;
+  width: 36px;
+  height: 54px;
+  overflow: hidden;
+  background: var(--fn-top-control);
+  border: 2px solid var(--fn-panel);
+  border-radius: 5px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+.library-preview-poster:nth-child(1) {
+  left: 0;
+  z-index: 3;
+}
+
+.library-preview-poster:nth-child(2) {
+  left: 18px;
+  z-index: 2;
+}
+
+.library-preview-poster:nth-child(3) {
+  left: 36px;
+  z-index: 1;
+}
+
+.library-preview-poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .library-icon-wrap {
-  flex: 0 0 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 54px;
+  height: 54px;
   color: var(--fn-blue);
   background: rgba(0, 102, 255, 0.1);
   border-radius: 8px;
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .library-card-info {
@@ -1031,13 +1111,35 @@ img.carousel-img {
   text-align: left;
 }
 
+.library-title-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
 .library-title {
+  flex: 1 1 auto;
   max-width: 100%;
   overflow: hidden;
   color: var(--fn-text);
   font-size: 15px;
   font-weight: 600;
   line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-count-badge {
+  flex: 0 0 auto;
+  max-width: 92px;
+  overflow: hidden;
+  padding: 2px 7px;
+  color: var(--fn-soft);
+  background: var(--fn-top-control);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1388,16 +1490,34 @@ img.carousel-img,
   }
 
   .library-card {
-    flex-basis: min(270px, calc(100vw - 40px));
-    width: min(270px, calc(100vw - 40px));
-    min-height: 72px;
+    flex-basis: min(302px, calc(100vw - 40px));
+    width: min(302px, calc(100vw - 40px));
+    min-height: 78px;
     padding: 12px;
   }
 
+  .library-preview {
+    flex-basis: 64px;
+    width: 64px;
+    height: 50px;
+  }
+
+  .library-preview-poster {
+    width: 34px;
+    height: 50px;
+  }
+
+  .library-preview-poster:nth-child(2) {
+    left: 15px;
+  }
+
+  .library-preview-poster:nth-child(3) {
+    left: 30px;
+  }
+
   .library-icon-wrap {
-    flex-basis: 40px;
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
   }
 
   .card-shows {
