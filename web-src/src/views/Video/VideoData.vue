@@ -2065,13 +2065,16 @@ span.button-text {
   width: 90px;
   height: 90px;
   margin: 0 auto 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 50%;
 }
 
 .person-avatar img {
   width: 90px;
   height: 90px;
   aspect-ratio: 1 / 1;
-  border-radius: 6px;
+  border-radius: 50%;
   object-fit: cover;
   display: block;
 }
