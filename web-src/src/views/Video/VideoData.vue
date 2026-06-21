@@ -2081,7 +2081,7 @@ span.button-text {
 }
 
 .people-section {
-  padding: 6px 44px 28px;
+  padding: 18px 44px 28px;
 }
 
 .people-section .show-header {
