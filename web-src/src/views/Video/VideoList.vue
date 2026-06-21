@@ -433,6 +433,7 @@ const favoriteTabs = [
   {value: 'movie', label: '电影'},
   {value: 'tv', label: '电视节目'},
   {value: 'live', label: '电视直播'},
+  {value: 'episode', label: '单集'},
   {value: 'person', label: '人物'}
 ]
 const favoriteTabValues = new Set(favoriteTabs.map(item => item.value))
@@ -648,6 +649,9 @@ function favoriteTypes(value) {
   }
   if (value === 'live') {
     return ['LiveChannel']
+  }
+  if (value === 'episode') {
+    return ['Episode']
   }
   if (value === 'person') {
     return ['Person']
