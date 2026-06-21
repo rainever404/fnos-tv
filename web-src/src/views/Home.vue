@@ -421,25 +421,22 @@ onUnmounted(() => {
                 v-for="item in visibleLibraries"
                 :key="item.guid"
                 :to="`/library/${item.guid}`"
+                :aria-label="`进入${item.title || '媒体库'}，${libraryCountText(item)}`"
             >
-            <div class="library-preview" aria-hidden="true">
-              <img
-                  v-if="libraryPreviewItems(item).length > 0"
-                  :src="posterImageUrl(libraryPreviewItems(item)[0], 160)"
-                  alt=""
-              >
-              <i v-else :class="libraryIconClass(item)"></i>
-            </div>
-            <div class="library-card-info">
-              <div class="library-title">
-                {{ item.title }}
-              </div>
-              <div class="library-meta">
-                <span>{{ libraryCategoryLabel(item) }}</span>
-                <span>{{ libraryCountText(item) }}</span>
+            <div class="library-poster-box" aria-hidden="true">
+              <template v-if="libraryPreviewItems(item).length > 0">
+                <img
+                    v-for="preview in libraryPreviewItems(item)"
+                    :key="preview.guid || preview.poster || preview.posters"
+                    :src="posterImageUrl(preview, 220)"
+                    alt=""
+                >
+              </template>
+              <div v-else class="library-empty-preview">
+                <i :class="libraryIconClass(item)"></i>
               </div>
             </div>
-            <i class='bx bx-chevron-right library-enter-icon' aria-hidden="true"></i>
+            <div class="library-title">{{ item.title }}</div>
           </router-link>
         </div>
       </div>
@@ -1029,10 +1026,11 @@ img.carousel-img {
 
 .library-grid {
   display: flex;
-  gap: 12px;
+  gap: 20px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 1px 0 2px;
+  padding: 0 0 3px;
+  white-space: nowrap;
   scrollbar-width: none;
 }
 
@@ -1043,130 +1041,101 @@ img.carousel-img {
 .library-card {
   box-sizing: border-box;
   position: relative;
-  display: flex;
-  flex: 0 0 268px;
-  width: 268px;
-  min-height: 78px;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 36px 10px 10px;
+  display: inline-flex;
+  flex: 0 0 256px;
+  width: 256px;
+  height: 185px;
+  flex-direction: column;
+  padding: 4px;
   color: var(--fn-text);
   background: var(--fn-panel);
   border: 1px solid var(--fn-border);
-  border-radius: 8px;
+  border-radius: 10px;
   box-shadow: none;
   overflow: hidden;
   text-decoration: none;
-  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  vertical-align: top;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .library-card:hover {
   border-color: rgba(0, 102, 255, 0.18);
   background: var(--fn-panel-hover);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
 }
 
 .dark .library-card:hover {
   border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: none;
 }
 
-.library-preview {
+.library-poster-box {
   position: relative;
   display: flex;
-  flex: 0 0 56px;
-  width: 56px;
-  height: 56px;
+  width: 100%;
+  height: 139px;
+  min-height: 139px;
+  flex: 0 0 139px;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   overflow: hidden;
-  color: var(--fn-blue);
-  background: rgba(0, 102, 255, 0.1);
-  border-radius: 6px;
+  background: rgba(32, 32, 33, 0.8);
+  border-radius: 6px 6px 0 0;
 }
 
-.library-preview img {
+.library-poster-box::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 48px;
+  background: linear-gradient(180deg, rgba(25, 25, 26, 0), rgba(25, 25, 26, 0.82));
+  pointer-events: none;
+}
+
+.library-poster-box img {
   display: block;
-  width: 100%;
+  min-width: 0;
+  flex: 1 1 0;
   height: 100%;
   object-fit: cover;
 }
 
-.library-preview i {
-  font-size: 28px;
+.library-poster-box img:only-child {
+  width: 100%;
+  flex-basis: 100%;
 }
 
-.library-card-info {
+.library-empty-preview {
   display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  align-items: center;
   justify-content: center;
-  gap: 5px;
-  pointer-events: none;
+  color: var(--fn-blue);
+  background: rgba(0, 102, 255, 0.1);
+}
+
+.library-empty-preview i {
+  font-size: 42px;
 }
 
 .library-title {
-  display: block;
-  max-width: 100%;
-  overflow: hidden;
-  color: var(--fn-text);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 20px;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.library-meta {
   display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 8px;
-  overflow: hidden;
-  color: var(--fn-text-muted);
-  font-size: 12px;
-  line-height: 16px;
-  white-space: nowrap;
-}
-
-.library-meta span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.library-meta span + span {
   position: relative;
-  padding-left: 9px;
-}
-
-.library-meta span + span::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 3px;
-  height: 3px;
-  background: var(--fn-text-muted);
-  border-radius: 50%;
-  opacity: 0.72;
-  transform: translateY(-50%);
-}
-
-.library-enter-icon {
-  position: absolute;
-  top: 50%;
-  right: 11px;
-  color: var(--fn-text-muted);
-  font-size: 20px;
-  transform: translateY(-50%);
-  transition: color 0.16s ease, transform 0.16s ease;
-}
-
-.library-card:hover .library-enter-icon {
-  color: var(--fn-blue);
-  transform: translate(2px, -50%);
+  z-index: 1;
+  height: 36px;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.96);
+  background: linear-gradient(180deg, rgba(25, 25, 26, 0.84), rgba(25, 25, 26, 0.96));
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 20px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .carousel-container {
