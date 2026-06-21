@@ -137,7 +137,7 @@ const categoryNavItems = computed(() => {
     },
     {
       label: '电影',
-      icon: 'bx bx-film',
+      icon: 'bx bx-movie-play',
       count: sumCount('movie'),
       category: 'movie',
       to: {
@@ -177,7 +177,7 @@ const categoryNavItems = computed(() => {
 function libraryNavIconClass(item) {
   switch (item?.category) {
     case 'Movie':
-      return 'bx bx-film'
+      return 'bx bx-movie-play'
     case 'TV':
       return 'bx bx-tv'
     case 'LiveChannel':
@@ -1057,7 +1057,7 @@ watch(
               </div>
             </n-layout-header>
             <button v-if="hasDetailBackButton" class="detail-back-button" type="button" aria-label="返回" @click="goBack">
-              <i class='bx bx-chevron-left'></i>
+              <i class='bx bx-arrow-back'></i>
             </button>
             <n-layout position="absolute" :style="{ top: '0' }" has-sider>
               <div
@@ -1097,7 +1097,7 @@ watch(
                       <li>
                         <router-link to="/" :class="{ 'is-active': isHomeActive() }" @click="closeMobileSider">
                                                     <span class="icon">
-                                                        <i class='bx bx-home'></i>
+                                                        <i class='bx bxs-home'></i>
                                                     </span>
                           <span class="title">首页</span>
                         </router-link>
