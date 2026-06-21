@@ -89,6 +89,64 @@ const settingsOptions = ref([
   }
 ])
 
+const officialNavIcons = {
+  home: [
+    {
+      d: 'M11.386 1.21a1 1 0 011.228 0l9 7A1 1 0 0122 9v11a3 3 0 01-3 3H5a3 3 0 01-3-3V9a1 1 0 01.386-.79l9-7zM4 9.49V20a1 1 0 001 1h14a1 1 0 001-1V9.49l-8-6.223-8 6.222z',
+      fillRule: 'evenodd',
+      clipRule: 'evenodd'
+    }
+  ],
+  favorite: [
+    {
+      d: 'M20.662 8.996a4.316 4.316 0 00-7.847-2.482l-.818 1.161-.817-1.16a4.316 4.316 0 00-7.848 2.481c0 2.273 1.36 4.57 3.274 6.505 1.777 1.794 3.886 3.124 5.391 3.704 1.505-.58 3.614-1.91 5.39-3.704 1.916-1.934 3.275-4.232 3.275-6.505zm2 0c0 3.042-1.781 5.82-3.853 7.912-2.082 2.102-4.628 3.688-6.497 4.31l-.315.104-.315-.105c-1.868-.62-4.415-2.207-6.496-4.31-2.072-2.092-3.854-4.87-3.854-7.911A6.316 6.316 0 017.647 2.68c1.687 0 3.217.664 4.35 1.74a6.316 6.316 0 0110.666 4.576z',
+      fillOpacity: '.8'
+    }
+  ],
+  movie: [
+    {
+      d: 'M12 1c6.075 0 11 4.925 11 11 0 3.722-1.85 7.01-4.68 9H22a1 1 0 110 2H12C5.925 23 1 18.075 1 12S5.925 1 12 1zm0 2a9 9 0 100 18 9 9 0 000-18zm0 11a2 2 0 110 4 2 2 0 010-4zm-4-4a2 2 0 110 4 2 2 0 010-4zm8 0a2 2 0 110 4 2 2 0 010-4zm-4-4a2 2 0 110 4 2 2 0 010-4z'
+    }
+  ],
+  tv: [
+    {
+      d: 'M6.293 1.293a1 1 0 011.414 0L12 5.586l4.293-4.293a1 1 0 111.414 1.414L14.414 6H20a3 3 0 013 3v11a3 3 0 01-3 3H4a3 3 0 01-3-3V9a3 3 0 013-3h5.586L6.293 2.707a1 1 0 010-1.414zM4 8a1 1 0 00-1 1v11a1 1 0 001 1h16a1 1 0 001-1V9a1 1 0 00-1-1H4z',
+      fillRule: 'evenodd',
+      clipRule: 'evenodd'
+    }
+  ],
+  collection: [
+    {
+      d: 'M20 12a1 1 0 00-1-1H5a1 1 0 00-1 1v8a1 1 0 001 1h14a1 1 0 001-1v-8zm-1-7a1 1 0 110 2H5a1 1 0 010-2h14zm-2-4a1 1 0 110 2H7a1 1 0 010-2h10zm5 19a3 3 0 01-3 3H5a3 3 0 01-3-3v-8a3 3 0 013-3h14a3 3 0 013 3v8z'
+    }
+  ],
+  grid: [
+    {
+      d: 'M2 4a2 2 0 012-2h5a2 2 0 012 2v5a2 2 0 01-2 2H4a2 2 0 01-2-2V4zm7 0H4v5h5V4zm4 0a2 2 0 012-2h5a2 2 0 012 2v5a2 2 0 01-2 2h-5a2 2 0 01-2-2V4zm7 0h-5v5h5V4zM2 15a2 2 0 012-2h5a2 2 0 012 2v5a2 2 0 01-2 2H4a2 2 0 01-2-2v-5zm7 0H4v5h5v-5zm4 0a2 2 0 012-2h5a2 2 0 012 2v5a2 2 0 01-2 2h-5a2 2 0 01-2-2v-5zm7 0h-5v5h5v-5z',
+      fillRule: 'evenodd',
+      clipRule: 'evenodd'
+    }
+  ],
+  live: [
+    {
+      d: 'M4 4a1 1 0 00-1 1v10a1 1 0 001 1h16a1 1 0 001-1V5a1 1 0 00-1-1H4zM1 5a3 3 0 013-3h16a3 3 0 013 3v10a3 3 0 01-3 3H4a3 3 0 01-3-3V5zm5 16a1 1 0 011-1h10a1 1 0 110 2H7a1 1 0 01-1-1z',
+      fillRule: 'evenodd',
+      clipRule: 'evenodd'
+    }
+  ],
+  folder: [
+    {
+      d: 'M1.879 3.379A3 3 0 014 2.5h3.93a3 3 0 012.502 1.345l.813 1.205a1 1 0 00.845.45H20a3 3 0 013 3v10a3 3 0 01-3 3H4a3 3 0 01-3-3v-13a3 3 0 01.879-2.121zM4 4.5a1 1 0 00-1 1v13a1 1 0 001 1h16a1 1 0 001-1v-10a1 1 0 00-1-1h-7.896a3 3 0 01-2.526-1.345L8.765 4.95a1 1 0 00-.835-.45H4z',
+      fillRule: 'evenodd',
+      clipRule: 'evenodd'
+    }
+  ]
+}
+
+function navIconPaths(key) {
+  return officialNavIcons[key] || officialNavIcons.collection
+}
+
 const allLibraryItems = computed(() => {
   return (MediaDbData.list || []).filter(item => item.category !== 'Others')
 })
@@ -128,7 +186,7 @@ const categoryNavItems = computed(() => {
   return [
     {
       label: '全部',
-      icon: 'bx bx-grid-alt',
+      iconKey: 'grid',
       count: sumCount('total', mediaTotalCount.value),
       category: 'all',
       to: {
@@ -137,7 +195,7 @@ const categoryNavItems = computed(() => {
     },
     {
       label: '电影',
-      icon: 'bx bx-film',
+      iconKey: 'movie',
       count: sumCount('movie'),
       category: 'movie',
       to: {
@@ -146,7 +204,7 @@ const categoryNavItems = computed(() => {
     },
     {
       label: '电视节目',
-      icon: 'bx bx-tv',
+      iconKey: 'tv',
       count: sumCount('tv'),
       category: 'tv',
       to: {
@@ -155,7 +213,7 @@ const categoryNavItems = computed(() => {
     },
     {
       label: '电视直播',
-      icon: 'bx bx-desktop',
+      iconKey: 'live',
       count: sumCount('live'),
       category: 'live',
       to: {
@@ -164,7 +222,7 @@ const categoryNavItems = computed(() => {
     },
     {
       label: '其他',
-      icon: 'bx bx-folder',
+      iconKey: 'folder',
       count: sumCount('video'),
       category: 'other',
       to: {
@@ -174,24 +232,24 @@ const categoryNavItems = computed(() => {
   ]
 })
 
-function libraryNavIconClass(item) {
+function libraryNavIconKey(item) {
   switch (item?.category) {
     case 'Movie':
-      return 'bx bx-film'
+      return 'movie'
     case 'TV':
-      return 'bx bx-tv'
+      return 'tv'
     case 'LiveChannel':
-      return 'bx bx-desktop'
+      return 'live'
     case 'Music':
-      return 'bx bx-music'
+      return 'collection'
     case 'Directory':
-      return 'bx bx-folder'
+      return 'folder'
     case 'Video':
-      return 'bx bx-video'
+      return 'collection'
     case 'Mix':
-      return 'bx bx-collection'
+      return 'collection'
     default:
-      return 'bx bx-collection'
+      return 'collection'
   }
 }
 
@@ -1097,7 +1155,16 @@ watch(
                       <li>
                         <router-link to="/" :class="{ 'is-active': isHomeActive() }" @click="closeMobileSider">
                                                     <span class="icon">
-                                                        <i :class="isHomeActive() ? 'bx bxs-home' : 'bx bx-home'"></i>
+                                                        <svg class="nav-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+                                                          <path
+                                                              v-for="(path, pathIndex) in navIconPaths('home')"
+                                                              :key="pathIndex"
+                                                              :d="path.d"
+                                                              :fill-rule="path.fillRule"
+                                                              :clip-rule="path.clipRule"
+                                                              :fill-opacity="path.fillOpacity"
+                                                          />
+                                                        </svg>
                                                     </span>
                           <span class="title">首页</span>
                         </router-link>
@@ -1114,7 +1181,16 @@ watch(
                       <li>
                         <router-link to="/favorite" :class="{ 'is-active': isFavoriteActive() }" @click="closeMobileSider">
                           <span class="icon">
-                            <i class='bx bx-heart'></i>
+                            <svg class="nav-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+                              <path
+                                  v-for="(path, pathIndex) in navIconPaths('favorite')"
+                                  :key="pathIndex"
+                                  :d="path.d"
+                                  :fill-rule="path.fillRule"
+                                  :clip-rule="path.clipRule"
+                                  :fill-opacity="path.fillOpacity"
+                              />
+                            </svg>
                           </span>
                           <span class="title">收藏</span>
                           <span class="title nav-count">{{ favoriteCount }}</span>
@@ -1131,7 +1207,16 @@ watch(
                         <div>
                           <router-link :class="{ 'is-active': isLibraryActive(item) }" :to="`/library/${item.guid}`" @click="closeMobileSider">
                             <span class="icon">
-                              <i :class="libraryNavIconClass(item)"></i>
+                              <svg class="nav-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+                                <path
+                                    v-for="(path, pathIndex) in navIconPaths(libraryNavIconKey(item))"
+                                    :key="pathIndex"
+                                    :d="path.d"
+                                    :fill-rule="path.fillRule"
+                                    :clip-rule="path.clipRule"
+                                    :fill-opacity="path.fillOpacity"
+                                />
+                              </svg>
                             </span>
                             <span :data-id="item.gallery_uid" class="title">{{ item.title }}</span>
                             <span class="title nav-count">{{
@@ -1150,14 +1235,32 @@ watch(
                       <li v-for="item in categoryNavItems" :key="item.label">
                         <router-link v-if="item.to" :to="item.to" :class="{ 'is-active': isCategoryActive(item) }" @click="closeMobileSider">
                           <span class="icon">
-                            <i :class='item.icon'></i>
+                            <svg class="nav-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+                              <path
+                                  v-for="(path, pathIndex) in navIconPaths(item.iconKey)"
+                                  :key="pathIndex"
+                                  :d="path.d"
+                                  :fill-rule="path.fillRule"
+                                  :clip-rule="path.clipRule"
+                                  :fill-opacity="path.fillOpacity"
+                              />
+                            </svg>
                           </span>
                           <span class="title">{{ item.label }}</span>
                           <span class="title nav-count">{{ item.count }}</span>
                         </router-link>
                         <span v-else class="nav-link is-muted">
                           <span class="icon">
-                            <i :class='item.icon'></i>
+                            <svg class="nav-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+                              <path
+                                  v-for="(path, pathIndex) in navIconPaths(item.iconKey)"
+                                  :key="pathIndex"
+                                  :d="path.d"
+                                  :fill-rule="path.fillRule"
+                                  :clip-rule="path.clipRule"
+                                  :fill-opacity="path.fillOpacity"
+                              />
+                            </svg>
                           </span>
                           <span class="title">{{ item.label }}</span>
                           <span class="title nav-count">{{ item.count }}</span>
@@ -1965,12 +2068,28 @@ body {
   content: none;
 }
 
-.navigation ul li a .icon i,
-.navigation ul li .nav-link .icon i {
+.navigation ul li a .icon,
+.navigation ul li .nav-link .icon {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
   min-width: 28px;
+  width: 28px;
+  color: inherit;
+}
+
+.navigation ul li a .icon i,
+.navigation ul li .nav-link .icon i,
+.navigation ul li a .icon .nav-svg-icon,
+.navigation ul li .nav-link .icon .nav-svg-icon {
+  display: block;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
   font-size: 20px;
   line-height: 1;
   text-align: left;
+  fill: currentColor;
 }
 
 .navigation ul li a .title,
@@ -2013,7 +2132,8 @@ body {
 }
 
 .navigation ul li a.is-active .icon,
-.navigation ul li a.is-active .icon i {
+.navigation ul li a.is-active .icon i,
+.navigation ul li a.is-active .icon .nav-svg-icon {
   color: var(--fn-blue) !important;
 }
 
@@ -2035,26 +2155,32 @@ body {
 
 .home.light .navigation ul li a.router-link-active:not(.is-active) .icon,
 .home.light .navigation ul li a.router-link-active:not(.is-active) .icon i,
+.home.light .navigation ul li a.router-link-active:not(.is-active) .icon .nav-svg-icon,
 .home.light .navigation ul li a.router-link-active:not(.is-active) .title,
 .home.dark .navigation ul li a.router-link-active:not(.is-active) .icon,
 .home.dark .navigation ul li a.router-link-active:not(.is-active) .icon i,
+.home.dark .navigation ul li a.router-link-active:not(.is-active) .icon .nav-svg-icon,
 .home.dark .navigation ul li a.router-link-active:not(.is-active) .title {
   color: inherit !important;
 }
 
 .home.light .navigation ul li a.is-active .icon,
 .home.light .navigation ul li a.is-active .icon i,
+.home.light .navigation ul li a.is-active .icon .nav-svg-icon,
 .home.light .navigation ul li a.is-active .title:not(.nav-count),
 .home.dark .navigation ul li a.is-active .icon,
 .home.dark .navigation ul li a.is-active .icon i,
+.home.dark .navigation ul li a.is-active .icon .nav-svg-icon,
 .home.dark .navigation ul li a.is-active .title:not(.nav-count) {
   color: var(--fn-nav-active-text) !important;
 }
 
 .home.light .navigation ul li a.is-active .icon,
 .home.light .navigation ul li a.is-active .icon i,
+.home.light .navigation ul li a.is-active .icon .nav-svg-icon,
 .home.dark .navigation ul li a.is-active .icon,
-.home.dark .navigation ul li a.is-active .icon i {
+.home.dark .navigation ul li a.is-active .icon i,
+.home.dark .navigation ul li a.is-active .icon .nav-svg-icon {
   color: var(--fn-blue) !important;
 }
 
