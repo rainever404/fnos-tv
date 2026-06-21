@@ -79,6 +79,16 @@ const galleryTypeLabel = computed(() => {
   return '视频'
 })
 
+const galleryTypeIconClass = computed(() => {
+  if (gallery_type.value === 'Movie') {
+    return 'bx bx-film'
+  }
+  if (gallery_type.value === 'TV' || gallery_type.value === 'season') {
+    return 'bx bx-tv'
+  }
+  return 'bx bx-video'
+})
+
 const scoreText = computed(() => {
   const score = Number(VideoDataInfo.value?.vote_average)
   if (!Number.isFinite(score) || score <= 0) {
@@ -119,26 +129,30 @@ const isDetailWatched = computed(() => {
 const detailMetaItems = computed(() => {
   const items = []
   if (scoreText.value) {
-    items.push(`${scoreText.value} 分`)
+    items.push({label: `${scoreText.value} 分`, type: 'text'})
   }
   const year = formatYear(VideoDataInfo.value?.release_date || VideoDataInfo.value?.air_date)
   if (year) {
-    items.push(year)
+    items.push({label: year, type: 'text'})
   }
   const duration = selectedDuration.value || VideoDataInfo.value?.runtime * 60
   if (duration) {
-    items.push(formatDuration(duration))
+    items.push({label: formatDuration(duration), type: 'text'})
   }
   const genres = formatGenres(VideoDataInfo.value?.genres)
   if (genres) {
-    items.push(genres)
+    items.push({label: genres, type: 'text'})
   }
   const countries = formatCountries(VideoDataInfo.value?.production_countries)
   if (countries) {
-    items.push(countries)
+    items.push({label: countries, type: 'text'})
+  }
+  const colorRange = translateStreamLabel(selectedVideoStream.value?.color_range_type)
+  if (colorRange && colorRange !== '其他') {
+    items.push({label: colorRange, type: 'tag'})
   }
   if (galleryTypeLabel.value) {
-    items.push(galleryTypeLabel.value)
+    items.push({label: galleryTypeLabel.value, type: 'gallery'})
   }
   return items
 })
@@ -810,9 +824,18 @@ onBeforeUnmount(() => {
           </div>
           <div class="detail-action-info">
             <div class="detail-meta-list">
-              <template v-for="(item, index) in detailMetaItems" :key="item">
+              <template v-for="(item, index) in detailMetaItems" :key="`${item.type}-${item.label}-${index}`">
                 <span v-if="index > 0" class="detail-meta-separator">/</span>
-                <span class="mediaInfoItem">{{ item }}</span>
+                <span
+                    class="mediaInfoItem"
+                    :class="{
+                      'detail-meta-pill': item.type === 'tag',
+                      'detail-meta-gallery': item.type === 'gallery'
+                    }"
+                >
+                  <i v-if="item.type === 'gallery'" :class="galleryTypeIconClass" aria-hidden="true"></i>
+                  {{ item.label }}
+                </span>
               </template>
             </div>
             <div v-if="detailTrackLabels.length" class="detail-track-list">
@@ -1749,6 +1772,28 @@ span.button-text {
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
+}
+
+.detail-meta-list .detail-meta-pill {
+  height: 18px;
+  padding: 0 5px;
+  color: var(--fn-muted);
+  border: 1px solid color-mix(in srgb, var(--fn-muted) 58%, transparent);
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.detail-meta-list .detail-meta-gallery {
+  gap: 4px;
+}
+
+.detail-meta-gallery i {
+  color: var(--fn-muted);
+  font-size: 15px;
+  line-height: 1;
 }
 
 .detail-meta-separator {
