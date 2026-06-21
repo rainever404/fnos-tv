@@ -1537,6 +1537,10 @@ watch(
   margin-bottom: 20px;
 }
 
+.list-toolbar:has(#video-list-filter-toggle:checked) {
+  margin-bottom: 407px;
+}
+
 .list-title {
   margin-top: -5px;
   margin-bottom: 25px;
@@ -1847,15 +1851,17 @@ watch(
 }
 
 .filter-popover {
+  top: 44px;
   left: 0;
   right: auto;
-  width: min(1046px, calc(100vw - 348px));
-  max-height: 360px;
+  width: min(1060px, calc(100vw - 380px));
+  max-height: 362px;
   overflow: auto;
-  padding: 18px 22px 16px;
-  background: rgb(32, 32, 33);
-  border-color: rgba(255, 255, 255, 0.06);
+  padding: 20px 8px 20px 24px;
+  background: color-mix(in srgb, var(--fn-top-control) 70%, transparent);
+  border: 0;
   border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
 }
 
 .sort-toggle:not(:checked) ~ .sort-popover {
@@ -1902,6 +1908,7 @@ watch(
   display: flex;
   align-items: flex-start;
   gap: 16px;
+  width: calc(100% - 14px);
   margin-bottom: 10px;
 }
 
@@ -1911,7 +1918,7 @@ watch(
 
 .filter-row-title {
   flex: 0 0 84px;
-  color: var(--fn-soft);
+  color: color-mix(in srgb, var(--fn-text) 68%, transparent);
   font-size: 13px;
   line-height: 18px;
 }
@@ -1932,13 +1939,15 @@ watch(
   align-items: center;
   justify-content: center;
   min-height: 18px;
-  padding: 0 10px;
-  color: var(--fn-muted);
+  padding: 0 12px;
+  color: var(--fn-top-control-text);
   background: transparent;
   border: 0;
-  border-radius: 999px;
+  border-radius: 0;
   cursor: pointer;
+  font: inherit;
   font-size: 13px;
+  font-weight: 400;
   line-height: 18px;
   white-space: nowrap;
 }
@@ -1947,12 +1956,12 @@ watch(
 .filter-reset:hover,
 .filter-collapse:hover {
   color: var(--fn-text);
-  background: var(--fn-top-control);
+  background: transparent;
 }
 
 .filter-option.active {
   color: var(--fn-blue);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .filter-actions {
