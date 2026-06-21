@@ -534,7 +534,7 @@ async function GetVideoData() {
   let res = await COMMON.requests("GET", api, true)
   VideoDataInfo.value = res;
   const backdrop = res.backdrops || res.backdrop || res.posters || res.poster
-  backImg.value = COMMON.mediaImageUrl(backdrop, 400, '')
+  backImg.value = COMMON.mediaImageUrl(backdrop, 1200, '')
   // play_guid.value = VideoDataInfo.value.type === "Movie"?VideoDataInfo.value.guid:  VideoDataInfo.value.play_item_guid
 }
 
@@ -1672,8 +1672,8 @@ span.button-text {
 
 .backdropContainer::after {
   background:
-      linear-gradient(180deg, rgba(0, 0, 0, 0.07) 0%, rgba(0, 0, 0, 0.14) 44%, rgba(0, 0, 0, 0.78) 100%),
-      linear-gradient(90deg, rgba(0, 0, 0, 0.36) 0%, rgba(0, 0, 0, 0.08) 46%, rgba(0, 0, 0, 0.15) 100%);
+      linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.09) 44%, rgba(0, 0, 0, 0.76) 100%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.28) 0%, rgba(0, 0, 0, 0.04) 46%, rgba(0, 0, 0, 0.08) 100%);
 }
 
 .view-backdrop,
