@@ -454,7 +454,7 @@ function isLibraryActive(item) {
     return false
   }
   if (isMediaDetailRoute()) {
-    return false
+    return item.category === mediaDetailCategory()
   }
   if (route.name === 'LibraryList' && route.params.guid) {
     return route.params.guid === item.guid
@@ -466,7 +466,7 @@ function isLibraryActive(item) {
 }
 
 function isHomeActive() {
-  return route.path === '/' || route.name === 'PersonData' || isMediaDetailRoute()
+  return route.path === '/' || route.name === 'PersonData'
 }
 
 function isCategoryActive(item) {

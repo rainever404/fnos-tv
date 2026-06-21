@@ -1,5 +1,5 @@
 <script setup>
-import {computed, getCurrentInstance, onMounted, ref} from "vue";
+import {computed, getCurrentInstance, onBeforeUnmount, onMounted, ref} from "vue";
 import {onBeforeRouteUpdate} from "vue-router";
 import {usePlayerData} from "@/store.js";
 
@@ -25,11 +25,20 @@ const CountryMap = ref({})
 const LanguageMap = ref({})
 const showTechInfoDialog = ref(false)
 const showOverviewDialog = ref(false)
+const showDetailMoreMenu = ref(false)
 const EpisodeCarouselRef = ref(null);
 const play_item_guid = ref(null);
 const play_guid = ref(null)
 const MIN_RESUME_SECONDS = 30
 const RESUME_END_BUFFER_SECONDS = 30
+const detailMoreMenuItems = [
+  {label: '管理版本'},
+  {label: '手动匹配影片'},
+  {label: '解除匹配影片'},
+  {label: '刷新元数据', separated: true},
+  {label: '编辑元数据'},
+  {label: '删除', separated: true, danger: true}
+]
 
 function routeGuid(targetRoute = proxy.$route) {
   return targetRoute.params?.guid || targetRoute.query?.guid || null
@@ -126,6 +135,9 @@ const detailMetaItems = computed(() => {
   const countries = formatCountries(VideoDataInfo.value?.production_countries)
   if (countries) {
     items.push(countries)
+  }
+  if (galleryTypeLabel.value) {
+    items.push(galleryTypeLabel.value)
   }
   return items
 })
@@ -563,6 +575,20 @@ async function toggleDetailWatched() {
   }
 }
 
+function toggleDetailMoreMenu(event) {
+  event?.stopPropagation?.()
+  showDetailMoreMenu.value = !showDetailMoreMenu.value
+}
+
+function closeDetailMoreMenu() {
+  showDetailMoreMenu.value = false
+}
+
+function handleDetailMoreAction(item) {
+  closeDetailMoreMenu()
+  COMMON.ShowMsg(`${item.label}功能暂未接入`)
+}
+
 async function GetPersonList() {
   let api = "/api/v1/person/list/" + guid.value;
   let res = await COMMON.requests("POST", api, true, {
@@ -657,11 +683,17 @@ onBeforeRouteUpdate(async (to, from) => {
   gallery_type.value = routeGalleryType(to)
   showTechInfoDialog.value = false
   showOverviewDialog.value = false
+  showDetailMoreMenu.value = false
   await onMountedFun();
 });
 
 onMounted(async () => {
+  document.addEventListener('click', closeDetailMoreMenu)
   await onMountedFun();
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeDetailMoreMenu)
 })
 
 
@@ -725,6 +757,37 @@ onMounted(async () => {
               <i :class="isDetailWatched ? 'bx bxs-check-circle' : 'bx bx-check-circle'"></i>
             </span>
           </button>
+          <div class="detail-more-wrapper" @click.stop>
+            <button
+                type="button"
+                class="detailButton circleButton detail-more-button"
+                :class="{ active: showDetailMoreMenu }"
+                title="更多"
+                aria-label="更多"
+                @click="toggleDetailMoreMenu"
+            >
+              <span class="button-icon">
+                <i class='bx bx-dots-horizontal-rounded'></i>
+              </span>
+            </button>
+            <div
+                v-if="showDetailMoreMenu"
+                class="detail-more-menu"
+                role="menu"
+            >
+              <button
+                  v-for="item in detailMoreMenuItems"
+                  :key="item.label"
+                  type="button"
+                  class="detail-more-menu-item"
+                  :class="{ separated: item.separated, danger: item.danger }"
+                  role="menuitem"
+                  @click="handleDetailMoreAction(item)"
+              >
+                {{ item.label }}
+              </button>
+            </div>
+          </div>
           <div class="detail-action-info">
             <div class="detail-meta-list">
               <template v-for="(item, index) in detailMetaItems" :key="item">
@@ -750,7 +813,7 @@ onMounted(async () => {
         <div v-if="overviewText" class="overview-text detail-overview">
           <span class="detail-overview-text">{{ overviewText }}</span>
           <button
-              v-if="overviewText.length > 96"
+              v-if="overviewText.length > 360"
               class="overview-more-button"
               type="button"
               @click="showOverviewDialog = true"
@@ -1645,7 +1708,7 @@ span.button-text {
   gap: 12px;
   min-width: 0;
   min-height: 54px;
-  margin-left: clamp(32px, 6vw, 96px);
+  margin-left: 40px;
 }
 
 .detail-meta-list {
@@ -1688,7 +1751,7 @@ span.button-text {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 38px;
   padding: 0 46px;
   background: var(--fn-bg);
 }
@@ -1789,6 +1852,69 @@ span.button-text {
   line-height: inherit;
 }
 
+.detail-more-wrapper {
+  position: relative;
+  flex: 0 0 54px;
+  width: 54px;
+  height: 54px;
+}
+
+.detail-more-wrapper .detailButton.circleButton {
+  width: 100%;
+  height: 100%;
+}
+
+.detail-more-wrapper .detail-more-button.active {
+  color: var(--fn-text);
+  background: var(--fn-top-control);
+  border-color: var(--fn-border);
+}
+
+.detail-more-menu {
+  position: absolute;
+  top: 58px;
+  right: 0;
+  z-index: 80;
+  width: 184px;
+  padding: 5px 0;
+  color: var(--fn-text);
+  background: var(--fn-panel);
+  border: 1px solid var(--fn-border);
+  border-radius: 12px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+  box-sizing: border-box;
+}
+
+.detail-more-menu-item {
+  display: flex;
+  align-items: center;
+  width: calc(100% - 2px);
+  height: 36px;
+  margin: 0 1px;
+  padding: 0 16px;
+  color: var(--fn-text);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+}
+
+.detail-more-menu-item:hover {
+  background: var(--fn-top-control);
+}
+
+.detail-more-menu-item.separated {
+  margin-top: 9px;
+}
+
+.detail-more-menu-item.danger {
+  color: var(--fn-text);
+}
+
 .detail-overview {
   box-sizing: border-box;
   display: flex;
@@ -1796,12 +1922,12 @@ span.button-text {
   gap: 10px;
   width: auto;
   max-width: none;
-  margin: 12px 46px 28px;
+  margin: 40px 46px 28px;
   padding: 0;
   color: var(--fn-muted);
   font-size: 15px;
   line-height: 23px;
-  text-align: left;
+  text-align: justify;
 }
 
 .detail-overview-text {
@@ -1810,7 +1936,7 @@ span.button-text {
   overflow: hidden;
   white-space: normal;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
 }
 
 .overview-more-button {
@@ -2223,6 +2349,17 @@ span.button-text {
     min-width: 48px;
   }
 
+  .detail-more-wrapper {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .detail-more-menu {
+    top: 52px;
+    right: 0;
+  }
+
   .detail-action-info {
     flex: 1 0 100%;
     gap: 8px;
@@ -2244,7 +2381,7 @@ span.button-text {
   }
 
   .detail-feature-tags {
-    margin-top: 8px;
+    margin-top: 16px;
     padding: 0 16px;
   }
 
@@ -2257,7 +2394,7 @@ span.button-text {
   .detail-overview {
     width: auto;
     min-width: 0;
-    margin: 10px 16px 24px;
+    margin: 18px 16px 24px;
     padding: 0;
   }
 
