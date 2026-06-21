@@ -465,13 +465,34 @@ const fallbackCountryOptions = [
   {label: '法国', value: 'FR'},
   {label: '英国', value: 'GB'},
   {label: '中国香港', value: 'HK'},
+  {label: '欧美', value: 'EA'},
+  {label: '华语', value: 'MD'},
+  {label: '西班牙', value: 'ES'},
+  {label: '德国', value: 'DE'},
   {label: '中国台湾', value: 'TW'},
   {label: '俄罗斯', value: 'RU'},
   {label: '印度', value: 'IN'},
   {label: '加拿大', value: 'CA'},
   {label: '澳大利亚', value: 'AU'},
+  {label: '南非', value: 'ZA'},
   {label: '意大利', value: 'IT'},
-  {label: '泰国', value: 'TH'}
+  {label: '泰国', value: 'TH'},
+  {label: '其他', value: 'Others'},
+  {label: '瑞士', value: 'CH'},
+  {label: '比利时', value: 'BE'},
+  {label: '越南', value: 'VN'},
+  {label: '塞尔维亚', value: 'RS'},
+  {label: '菲律宾', value: 'PH'},
+  {label: '新西兰', value: 'NZ'},
+  {label: '挪威', value: 'NO'},
+  {label: '墨西哥', value: 'MX'},
+  {label: '马耳他', value: 'MT'},
+  {label: '摩洛哥', value: 'MA'},
+  {label: '黎巴嫩', value: 'LB'},
+  {label: '爱尔兰', value: 'IE'},
+  {label: '希腊', value: 'GR'},
+  {label: '捷克', value: 'CZ'},
+  {label: '哥伦比亚', value: 'CO'}
 ]
 
 const decadeOptions = [
@@ -516,12 +537,26 @@ const watchedOptions = [
   {label: '未观看', value: '0'}
 ]
 
+const countryFilterOptions = computed(() => {
+  const merged = []
+  const seen = new Set()
+  for (const item of [...officialCountryOptions.value, ...fallbackCountryOptions]) {
+    const value = String(item?.value ?? '')
+    if (!value || seen.has(value)) {
+      continue
+    }
+    seen.add(value)
+    merged.push(item)
+  }
+  return merged.length ? merged : fallbackCountryOptions
+})
+
 const filterRows = computed(() => [
   {key: 'genres', label: '类型', options: officialGenreOptions.value.length ? officialGenreOptions.value : fallbackGenreOptions},
   {key: 'resolution', label: '分辨率', options: resolutionOptions},
   {key: 'color_range', label: '视频动态范围', options: colorRangeOptions},
   {key: 'audio_type', label: '音频规格', options: audioTypeOptions},
-  {key: 'locate', label: '国家/地区', options: officialCountryOptions.value.length ? officialCountryOptions.value : fallbackCountryOptions},
+  {key: 'locate', label: '国家/地区', options: countryFilterOptions.value},
   {key: 'decade', label: '发行年份', options: decadeOptions},
   {key: 'recognition_status', label: '匹配状态', options: recognitionStatusOptions},
   {key: 'watched', label: '是否已观看', options: watchedOptions}
