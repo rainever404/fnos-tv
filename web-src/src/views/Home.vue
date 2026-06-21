@@ -41,7 +41,7 @@ const dropdownOptions = [
 function updateCarouselDensity() {
   const width = window.innerWidth;
   const usable = width <= 768 ? Math.max(320, width - 28) : Math.max(720, width - 304);
-  per_view.value = width <= 768 ? 1 : Math.max(2, Math.min(6.8, (usable + 16) / 318));
+  per_view.value = width <= 768 ? 1 : Math.max(2, Math.min(6.8, (usable + 16) / 321));
   per_card.value = width <= 768 ? 3 : Math.max(5, Math.min(12, (usable + 20) / 190));
 }
 
@@ -967,7 +967,7 @@ img.carousel-img {
 }
 
 .card-list {
-  width: calc(100% + 88px);
+  width: calc(100% + 72px);
   max-width: none;
   margin-left: -44px;
 }
