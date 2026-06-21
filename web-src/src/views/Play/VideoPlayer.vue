@@ -138,6 +138,7 @@ let lastMobileDanmuSettingsToggleAt = 0;
 let lastMobileDanmuSettingsTouchAt = 0;
 let lastMobileDanmuSettingsPointerUpAt = 0;
 let lastMobileDanmuSettingsTouchEndAt = 0;
+let ignoreMobileDanmuSettingsReleaseUntil = 0;
 let mobileDanmuSettingsPressStarted = false;
 const MOBILE_DANMU_SETTINGS_PRESS_DEDUPE_MS = 140;
 const MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS = 900;
@@ -772,6 +773,9 @@ function shouldSkipMobileDanmuSettingsActivator(event, now) {
   if (!event) {
     return now - lastMobileDanmuSettingsToggleAt < MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS
   }
+  if (now < ignoreMobileDanmuSettingsReleaseUntil && !isMobileDanmuTriggerPress(event)) {
+    return true
+  }
   if (markMobileDanmuTriggerEvent(event)) {
     return true
   }
@@ -827,17 +831,34 @@ function noteMobileDanmuSettingsActivator(event, now) {
   mobileDanmuSettingsPressStarted = false
 }
 
-function noteMobileDanmuSettingsPress(event) {
-  const type = event?.type || ''
-  if (type !== 'touchstart' && !(type === 'pointerdown' && event?.pointerType !== 'mouse')) {
-    return false
-  }
+function toggleMobileDanmuSettingsOnPress(event) {
   const now = window.performance?.now?.() || Date.now()
+  if (markMobileDanmuTriggerEvent(event)) {
+    preventMobileDanmuTriggerEvent(event)
+    return
+  }
   if (now - lastMobileDanmuSettingsTouchAt < MOBILE_DANMU_SETTINGS_PRESS_DEDUPE_MS) {
-    return true
+    preventMobileDanmuTriggerEvent(event)
+    return
   }
   lastMobileDanmuSettingsTouchAt = now
-  return false
+  lastMobileDanmuSettingsToggleAt = now
+  ignoreMobileDanmuSettingsReleaseUntil = now + MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS
+  mobileDanmuSettingsPressStarted = true
+  preventMobileDanmuTriggerEvent(event)
+  keepMobileControlsVisible()
+  closeArtSettingPanel()
+  const shouldOpen = !showMobileDanmuSettings.value
+  closeMobileDanmuPanels()
+  if (shouldOpen) {
+    mobileControlMenu.value = ''
+    setMobileDanmuSettingsVisible(true)
+    if (art?.controls) {
+      art.controls.show = true
+      mobilePlayerControlsVisible.value = true
+    }
+  }
+  syncMobileDanmuControlButtons()
 }
 
 function handleDirectMobileDanmuPanelTrigger(event) {
@@ -858,10 +879,7 @@ function handleDirectMobileDanmuPanelTrigger(event) {
     const type = event?.type || ''
     const shouldToggleOnPress = type === 'touchstart' || (type === 'pointerdown' && event.pointerType !== 'mouse')
     if (shouldToggleOnPress) {
-      noteMobileDanmuSettingsPress(event)
-      mobileDanmuSettingsPressStarted = true
-      preventMobileDanmuTriggerEvent(event)
-      keepMobileControlsVisible()
+      toggleMobileDanmuSettingsOnPress(event)
     } else {
       mobileDanmuSettingsPressStarted = true
       stopMobileDanmuTriggerEvent(event)
@@ -1201,10 +1219,7 @@ function handleMobileDanmuPanelClick(event) {
       const type = event?.type || ''
       const shouldToggleOnPress = type === 'touchstart' || (type === 'pointerdown' && event.pointerType !== 'mouse')
       if (shouldToggleOnPress) {
-        noteMobileDanmuSettingsPress(event)
-        mobileDanmuSettingsPressStarted = true
-        preventMobileDanmuTriggerEvent(event)
-        keepMobileControlsVisible()
+        toggleMobileDanmuSettingsOnPress(event)
       }
       return
     }
@@ -6782,6 +6797,193 @@ img.play-icon {
     --mobile-control-rate-complete: 26px;
     --mobile-control-subtitle-complete: 32px;
     --mobile-control-icon-complete: 24px;
+  }
+}
+
+/* Real-phone portrait row: keep the same core controls visible as landscape. */
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) {
+  --mobile-phone-left-controls: clamp(92px, 27vw, 108px);
+  --mobile-phone-danmu: 24px;
+  --mobile-phone-danmu-settings: 34px;
+  --mobile-phone-quality: 34px;
+  --mobile-phone-rate: 24px;
+  --mobile-phone-subtitle: 30px;
+  --mobile-phone-icon: 24px;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding-inline: max(3px, env(safe-area-inset-left, 0px)) max(3px, env(safe-area-inset-right, 0px)) !important;
+  overflow: visible !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
+  display: flex !important;
+  flex: 0 0 var(--mobile-phone-left-controls) !important;
+  width: var(--mobile-phone-left-controls) !important;
+  min-width: 0 !important;
+  max-width: var(--mobile-phone-left-controls) !important;
+  overflow: hidden !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-playAndPause),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-volume) {
+  flex: 0 0 22px !important;
+  width: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+  padding-inline: 0 !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-time) {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  padding-inline: 0 !important;
+  overflow: hidden !important;
+  font-size: 10px !important;
+  line-height: 40px !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center) {
+  flex: 0 0 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  overflow: visible !important;
+  transform: none !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+  display: inline-flex !important;
+  flex-shrink: 0 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 40px !important;
+  padding-inline: 0 !important;
+  margin-left: 0 !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  color: rgba(255, 255, 255, 0.96) !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  touch-action: manipulation !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
+  order: 10 !important;
+  flex-basis: var(--mobile-phone-danmu) !important;
+  width: var(--mobile-phone-danmu) !important;
+  min-width: var(--mobile-phone-danmu) !important;
+  max-width: var(--mobile-phone-danmu) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  order: 11 !important;
+  flex-basis: var(--mobile-phone-danmu-settings) !important;
+  width: var(--mobile-phone-danmu-settings) !important;
+  min-width: var(--mobile-phone-danmu-settings) !important;
+  max-width: var(--mobile-phone-danmu-settings) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质) {
+  order: 12 !important;
+  flex-basis: var(--mobile-phone-quality) !important;
+  width: var(--mobile-phone-quality) !important;
+  min-width: var(--mobile-phone-quality) !important;
+  max-width: var(--mobile-phone-quality) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速) {
+  order: 13 !important;
+  flex-basis: var(--mobile-phone-rate) !important;
+  width: var(--mobile-phone-rate) !important;
+  min-width: var(--mobile-phone-rate) !important;
+  max-width: var(--mobile-phone-rate) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕) {
+  order: 14 !important;
+  flex-basis: var(--mobile-phone-subtitle) !important;
+  width: var(--mobile-phone-subtitle) !important;
+  min-width: var(--mobile-phone-subtitle) !important;
+  max-width: var(--mobile-phone-subtitle) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting) {
+  order: 15 !important;
+  flex-basis: var(--mobile-phone-icon) !important;
+  width: var(--mobile-phone-icon) !important;
+  min-width: var(--mobile-phone-icon) !important;
+  max-width: var(--mobile-phone-icon) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+  order: 16 !important;
+  flex-basis: var(--mobile-phone-icon) !important;
+  width: var(--mobile-phone-icon) !important;
+  min-width: var(--mobile-phone-icon) !important;
+  max-width: var(--mobile-phone-icon) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质 .art-selector-value),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速 .art-selector-value),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕 .art-selector-value),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control span) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+@media (max-width: 360px) and (orientation: portrait) {
+  .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) {
+    --mobile-phone-left-controls: clamp(82px, 26vw, 94px);
+    --mobile-phone-danmu: 22px;
+    --mobile-phone-danmu-settings: 32px;
+    --mobile-phone-quality: 32px;
+    --mobile-phone-rate: 22px;
+    --mobile-phone-subtitle: 28px;
+    --mobile-phone-icon: 22px;
   }
 }
 </style>
