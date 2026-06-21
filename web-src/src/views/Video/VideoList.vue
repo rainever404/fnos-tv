@@ -70,22 +70,14 @@ const listCountText = computed(() => {
   if (!loaded) {
     return activeFilterCount.value > 0 ? '筛选结果 0 项' : '暂无内容'
   }
-  if (total > loaded) {
-    return `已显示 ${loaded}/${total}`
+  if (total > 0) {
+    return `共 ${total} 项`
   }
-  return `共 ${total} 项`
+  return `共 ${loaded} 项`
 })
 
 const sortModeLabel = computed(() => {
   return pageSortModes.value.find(item => item.value === mode.value)?.label || (isFavoritePage.value ? '收藏时间' : '添加日期')
-})
-
-const sortOrderLabel = computed(() => {
-  return orders.find(item => item.value === order.value)?.label || '降序'
-})
-
-const layoutModeLabel = computed(() => {
-  return layoutOptions.find(item => item.value === layoutMode.value)?.label || '默认'
 })
 
 const layoutClass = computed(() => {
@@ -128,14 +120,7 @@ const isListLoading = computed(() => MediaDbInfo.value === null)
 const showEmptyState = computed(() => Array.isArray(MediaDbInfo.value) && MediaDbInfo.value.length === 0)
 
 const listToolbarMeta = computed(() => {
-  const items = [listCountText.value]
-  if (!isListLoading.value && !showEmptyState.value) {
-    items.push(`${sortModeLabel.value} · ${sortOrderLabel.value}`)
-    if (!isFavoritePage.value) {
-      items.push(layoutModeLabel.value)
-    }
-  }
-  return items
+  return [listCountText.value]
 })
 
 const emptyStateTitle = computed(() => {
@@ -1234,7 +1219,7 @@ watch(
           <div class="sort-menu">
             <input id="video-list-sort-toggle" class="sort-toggle video-list-toolbar-toggle" type="checkbox">
             <label class="toolbar-pill sort-pill" for="video-list-sort-toggle" aria-label="排序">
-              <span>{{ sortModeLabel }} · {{ sortOrderLabel }}</span>
+              <span>{{ sortModeLabel }}</span>
               <i class='bx bx-chevron-down'></i>
             </label>
             <div class="sort-popover" role="dialog" aria-label="排序">
@@ -1266,7 +1251,7 @@ watch(
           <div class="sort-menu">
             <input id="video-list-layout-toggle" class="sort-toggle video-list-toolbar-toggle" type="checkbox">
             <label class="toolbar-pill layout-pill" for="video-list-layout-toggle" aria-label="布局">
-              <span>{{ layoutModeLabel }}</span>
+              <span>布局</span>
               <i class='bx bx-chevron-down'></i>
             </label>
             <div class="sort-popover layout-popover" role="dialog" aria-label="布局">
@@ -1534,8 +1519,8 @@ watch(
   height: 36px;
   padding: 0 14px;
   color: var(--fn-text);
-  background: var(--fn-top-control);
-  border: 1px solid transparent;
+  background: transparent;
+  border: 1px solid var(--fn-border);
   border-radius: 999px;
   box-sizing: border-box;
   cursor: pointer;
@@ -1556,11 +1541,11 @@ watch(
 }
 
 .sort-pill {
-  width: 168px;
+  width: 134px;
 }
 
 .layout-pill {
-  width: 102px;
+  width: 78px;
 }
 
 .toolbar-pill i {
@@ -1571,7 +1556,7 @@ watch(
 .toolbar-pill:hover,
 .sort-toggle:checked + .toolbar-pill {
   background: var(--fn-top-control-hover);
-  border-color: rgba(10, 132, 255, 0.2);
+  border-color: var(--fn-border-hover, rgba(255, 255, 255, 0.22));
 }
 
 .toolbar-pill.active {
@@ -1860,11 +1845,11 @@ watch(
 }
 
 .view-card-list {
-  --poster-card-width: 183px;
+  --poster-card-width: 165px;
   display: grid;
   grid-template-columns: repeat(auto-fill, var(--poster-card-width));
   justify-content: start;
-  grid-gap: 29px 21px;
+  grid-gap: 28px 20px;
   padding: 0;
 }
 
@@ -1911,20 +1896,20 @@ watch(
 }
 
 .favorite-content .view-card-list {
-  --poster-card-width: 183px;
+  --poster-card-width: 165px;
   grid-template-columns: repeat(auto-fill, var(--poster-card-width));
   justify-content: start;
   padding-top: 10px;
 }
 
 .view-card-list.layout-compact {
-  --poster-card-width: 160px;
+  --poster-card-width: 150px;
   grid-gap: 22px 18px;
 }
 
 .view-card-list.layout-large {
-  --poster-card-width: 214px;
-  grid-gap: 30px 22px;
+  --poster-card-width: 183px;
+  grid-gap: 29px 21px;
 }
 
 .view-item {
