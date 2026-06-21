@@ -7,7 +7,7 @@ import {useRoute} from "vue-router";
 const MediaDbData = useMediaDbData()
 const route = useRoute()
 
-const DEFAULT_PAGE_SIZE = 240;
+const DEFAULT_PAGE_SIZE = 50;
 const FAVORITE_PAGE_SIZE = 50;
 const guid = ref(null);
 const mode = computed({
@@ -166,7 +166,6 @@ async function handleEmptyStateAction() {
 const instance = getCurrentInstance();
 const proxy = instance.appContext.config.globalProperties;
 const COMMON = proxy.$COMMON;
-applyRouteState(route, {resetList: false})
 
 
 const modes = [
@@ -230,6 +229,7 @@ const favoriteTabs = [
   {value: 'person', label: '人物'}
 ]
 const favoriteTabValues = new Set(favoriteTabs.map(item => item.value))
+applyRouteState(route, {resetList: false})
 
 const fallbackGenreOptions = [
   {label: '冒险', value: 12},
@@ -764,13 +764,7 @@ async function GetLibraryOfficialBootstrap() {
 }
 
 function currentListPageSize() {
-  if (isFavoritePage.value) {
-    return FAVORITE_PAGE_SIZE
-  }
-  if (hasActiveFilters()) {
-    return DEFAULT_PAGE_SIZE
-  }
-  return size.value || DEFAULT_PAGE_SIZE
+  return isFavoritePage.value ? FAVORITE_PAGE_SIZE : DEFAULT_PAGE_SIZE
 }
 
 async function GetMediaDbInfos(requestId = listRequestId, {page = currentPage.value, append = false} = {}) {
@@ -862,9 +856,6 @@ async function GetMediaDbCount(requestId = listRequestId) {
                       : guid.value
   const count = Number(res?.[countKey] || 0)
   totalCount.value = Number.isFinite(count) ? count : 0
-  if (totalCount.value > 0) {
-    size.value = totalCount.value
-  }
 }
 
 async function reloadMediaList({resetRouteState = false} = {}) {
