@@ -729,7 +729,7 @@ onBeforeUnmount(() => {
         <div class="detail-action-row">
           <button @click="Play()" class="detailButton outlineButton">
             <span class="button-icon">
-              <i class='bx bxs-caret-right-circle'></i>
+              <i class='bx bx-play'></i>
             </span>
             <span class="button-text">{{ primaryPlayLabel }}</span>
           </button>
@@ -754,7 +754,7 @@ onBeforeUnmount(() => {
               @click="toggleDetailWatched"
           >
             <span class="button-icon">
-              <i :class="isDetailWatched ? 'bx bxs-check-circle' : 'bx bx-check-circle'"></i>
+              <i :class="isDetailWatched ? 'bx bxs-show' : 'bx bx-show'"></i>
             </span>
           </button>
           <div class="detail-more-wrapper" @click.stop>
