@@ -249,10 +249,18 @@ const detailTrackLabels = computed(() => {
   const subtitle = selectedSubtitleStream.value
   const audio = selectedAudioStream.value
   if (subtitle) {
-    labels.push(`${languageLabel(subtitle.language, '字幕')}字幕`)
+    labels.push({
+      label: `${languageLabel(subtitle.language, '字幕')}字幕`,
+      type: 'subtitle',
+      dropdown: true
+    })
   }
   if (audio) {
-    labels.push(`${languageLabel(audio.language, '音频')}音频`)
+    labels.push({
+      label: `${languageLabel(audio.language, '音频')}音频`,
+      type: 'audio',
+      dropdown: false
+    })
   }
   return labels
 })
@@ -841,7 +849,15 @@ onBeforeUnmount(() => {
               </template>
             </div>
             <div v-if="detailTrackLabels.length" class="detail-track-list">
-              <span v-for="item in detailTrackLabels" :key="item">{{ item }}</span>
+              <span
+                  v-for="item in detailTrackLabels"
+                  :key="`${item.type}-${item.label}`"
+                  class="detail-track-item"
+                  :class="{ 'detail-track-item-dropdown': item.dropdown }"
+              >
+                {{ item.label }}
+                <i v-if="item.dropdown" class="bx bx-chevron-down" aria-hidden="true"></i>
+              </span>
             </div>
           </div>
         </div>
@@ -1825,6 +1841,24 @@ span.button-text {
   color: var(--fn-muted);
   font-size: 14px;
   line-height: 20px;
+}
+
+.detail-track-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.detail-track-item-dropdown {
+  color: var(--fn-text);
+}
+
+.detail-track-item-dropdown i {
+  color: inherit;
+  font-size: 15px;
+  line-height: 1;
+  transform: translateY(1px);
 }
 
 .detail-feature-tags {
