@@ -1941,7 +1941,9 @@ body {
   padding: 0 44px 0 12px;
   color: var(--fn-nav-text) !important;
   border-radius: 8px;
+  font-size: 16px;
   font-weight: 400;
+  line-height: 20px;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -1966,7 +1968,7 @@ body {
 .navigation ul li a .icon i,
 .navigation ul li .nav-link .icon i {
   min-width: 28px;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1;
   text-align: left;
 }
