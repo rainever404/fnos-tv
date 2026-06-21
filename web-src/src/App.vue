@@ -1886,6 +1886,13 @@ body {
   border: 0;
   border-radius: 999px;
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.16s ease, color 0.16s ease, background 0.16s ease;
+}
+
+.top-search:hover .top-search-clear,
+.top-search:focus-within .top-search-clear {
+  opacity: 0.72;
 }
 
 .top-search-clear:hover {
@@ -1901,7 +1908,7 @@ body {
 .search-popover {
   position: absolute;
   top: 51px;
-  right: 0;
+  left: 0;
   z-index: 40;
   width: 475px;
   max-width: calc(100vw - 32px);
@@ -1910,6 +1917,7 @@ body {
   background: rgb(42, 42, 43);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
+  box-sizing: border-box;
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
 }
 
@@ -2318,20 +2326,21 @@ body {
 
 .search-result-list {
   display: grid;
-  gap: 0;
+  gap: 12px;
   max-height: min(62vh, 520px);
   overflow: auto;
-  padding: 2px 10px 4px;
+  padding: 0 12px 12px;
 }
 
 .search-tabs {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 28px;
   max-width: 100%;
-  margin: 0 20px 8px;
+  min-height: 37px;
+  margin: 0 12px 12px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding: 0 0 1px 12px;
 }
 
 .search-tab {
@@ -2340,14 +2349,14 @@ body {
   justify-content: center;
   gap: 5px;
   flex: 0 0 auto;
-  height: 30px;
-  padding: 0;
-  color: var(--fn-muted);
+  height: 36px;
+  padding: 0 2px;
+  color: rgba(255, 255, 255, 0.6);
   background: transparent;
   border: 0;
   border-radius: 0;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 20px;
   white-space: nowrap;
 }
@@ -2358,7 +2367,7 @@ body {
 }
 
 .search-tab.active {
-  color: #1677ff;
+  color: #0066ff;
   background: transparent;
   font-weight: 600;
 }
@@ -2368,10 +2377,10 @@ body {
   grid-template-columns: 48px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
-  min-height: 84px;
-  padding: 7px 20px;
+  min-height: 78px;
+  padding: 4px;
   color: var(--fn-text);
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 .search-result-item:hover {
@@ -2399,8 +2408,8 @@ body {
 .search-result-title {
   overflow: hidden;
   color: var(--fn-text);
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
