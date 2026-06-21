@@ -1097,7 +1097,7 @@ watch(
                       <li>
                         <router-link to="/" :class="{ 'is-active': isHomeActive() }" @click="closeMobileSider">
                                                     <span class="icon">
-                                                        <i class='bx bxs-home'></i>
+                                                        <i :class="isHomeActive() ? 'bx bxs-home' : 'bx bx-home'"></i>
                                                     </span>
                           <span class="title">首页</span>
                         </router-link>
