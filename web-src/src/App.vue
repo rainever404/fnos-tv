@@ -175,7 +175,7 @@ const categoryNavItems = computed(() => {
 })
 
 const searchTabOptions = computed(() => {
-  const tabs = [
+  return [
     {key: 'all', label: '全部'},
     {key: 'movie', label: '电影'},
     {key: 'tv', label: '电视节目'},
@@ -183,10 +183,6 @@ const searchTabOptions = computed(() => {
     {key: 'person', label: '人物'},
     {key: 'other', label: '其他'}
   ]
-  return tabs.map(tab => ({
-    ...tab,
-    count: searchResults.value.filter(item => tab.key === 'all' || searchCategory(item) === tab.key).length
-  }))
 })
 
 const visibleSearchResults = computed(() => {
@@ -982,7 +978,6 @@ watch(
                                 @click="searchActiveTab = item.key"
                             >
                               <span>{{ item.label }}</span>
-                              <span v-if="item.count > 0" class="search-tab-count">{{ item.count }}</span>
                             </button>
                           </div>
                           <div class="search-result-list" v-if="visibleSearchResults.length > 0">
@@ -2184,12 +2179,6 @@ body {
   color: #fff;
   background: rgb(25, 25, 26);
   font-weight: 600;
-}
-
-.search-tab-count {
-  color: inherit;
-  font-size: 12px;
-  opacity: 0.72;
 }
 
 .search-result-item {
