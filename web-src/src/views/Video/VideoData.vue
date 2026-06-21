@@ -731,21 +731,21 @@ onMounted(async () => {
                 <span v-if="index > 0" class="detail-meta-separator">/</span>
                 <span class="mediaInfoItem">{{ item }}</span>
               </template>
-              <template v-if="streamFeatureTags.length">
-                <span v-if="detailMetaItems.length" class="detail-meta-separator">/</span>
-                <span
-                    v-for="(tag, index) in streamFeatureTags"
-                    :key="tag + index"
-                    class="detail-inline-tag"
-                >
-                  {{ tag }}
-                </span>
-              </template>
             </div>
             <div v-if="detailTrackLabels.length" class="detail-track-list">
               <span v-for="item in detailTrackLabels" :key="item">{{ item }}</span>
             </div>
           </div>
+        </div>
+        <div v-if="streamFeatureTags.length" class="detail-feature-tags">
+          <span
+              v-for="(tag, index) in streamFeatureTags"
+              :key="tag + index"
+              class="detail-feature-tag"
+              :class="{ active: index === 0 }"
+          >
+            {{ tag }}
+          </span>
         </div>
         <div v-if="overviewText" class="overview-text detail-overview">
           <span class="detail-overview-text">{{ overviewText }}</span>
@@ -1684,19 +1684,36 @@ span.button-text {
   line-height: 20px;
 }
 
-.detail-inline-tag {
+.detail-feature-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 0 46px;
+  background: var(--fn-bg);
+}
+
+.detail-feature-tag {
   display: inline-flex;
   align-items: center;
-  height: 18px;
-  margin-left: 6px;
-  padding: 0 5px;
+  justify-content: center;
+  min-width: 112px;
+  height: 36px;
+  padding: 0 18px;
   color: var(--fn-text);
-  border: 1px solid color-mix(in srgb, var(--fn-muted) 58%, transparent);
-  border-radius: 4px;
-  font-size: 11px;
+  background: var(--fn-panel);
+  border: 1px solid var(--fn-border);
+  border-radius: 7px;
+  box-sizing: border-box;
+  font-size: 13px;
   font-weight: 600;
   line-height: 18px;
   white-space: nowrap;
+}
+
+.detail-feature-tag.active {
+  color: var(--fn-blue);
+  border-color: var(--fn-blue);
 }
 
 .detailButton {
@@ -2224,6 +2241,17 @@ span.button-text {
     justify-content: flex-start;
     gap: 12px;
     font-size: 13px;
+  }
+
+  .detail-feature-tags {
+    margin-top: 8px;
+    padding: 0 16px;
+  }
+
+  .detail-feature-tag {
+    min-width: 96px;
+    height: 34px;
+    padding: 0 14px;
   }
 
   .detail-overview {
