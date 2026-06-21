@@ -1932,11 +1932,11 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   box-sizing: border-box;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
 }
 
 .dark .search-popover {
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+  box-shadow: none;
 }
 
 .home.detail-page .topbar-control.n-button,
@@ -2340,7 +2340,7 @@ body {
 
 .search-result-list {
   display: grid;
-  gap: 12px;
+  gap: 24px;
   max-height: min(62vh, 520px);
   overflow: auto;
   padding: 0 12px 12px;
@@ -2354,7 +2354,7 @@ body {
   min-height: 37px;
   margin: 0 12px 12px;
   overflow-x: auto;
-  padding: 0 0 1px 12px;
+  padding: 0 0 0 12px;
 }
 
 .search-tab {
@@ -2391,10 +2391,11 @@ body {
   grid-template-columns: 48px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
-  min-height: 78px;
-  padding: 4px;
+  min-height: 72px;
+  padding: 2px 4px;
   color: var(--fn-text);
   border-radius: 12px;
+  box-sizing: border-box;
 }
 
 .search-result-item:hover {
