@@ -1710,8 +1710,9 @@ body {
 
 .top-search-icon {
   flex: 0 0 auto;
-  margin-left: 14px;
-  color: var(--fn-soft);
+  margin-left: 26px;
+  margin-right: 10px;
+  color: rgba(255, 255, 255, 0.78);
   font-size: 18px;
   line-height: 1;
 }
@@ -1720,7 +1721,7 @@ body {
   flex: 1 1 auto;
   min-width: 0;
   height: 34px;
-  padding: 0 10px;
+  padding: 0;
   color: var(--fn-text);
   background: transparent;
   border: 0;
@@ -2163,9 +2164,9 @@ body {
 .search-tabs {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 20px;
   max-width: 100%;
-  margin: 0 10px 8px;
+  margin: 0 20px 8px;
   overflow-x: auto;
   padding-bottom: 4px;
 }
@@ -2177,11 +2178,11 @@ body {
   gap: 5px;
   flex: 0 0 auto;
   height: 30px;
-  padding: 0 10px;
+  padding: 0;
   color: var(--fn-muted);
   background: transparent;
   border: 0;
-  border-radius: 999px;
+  border-radius: 0;
   cursor: pointer;
   font-size: 13px;
   line-height: 20px;
@@ -2190,22 +2191,22 @@ body {
 
 .search-tab:hover {
   color: var(--fn-text);
-  background: var(--fn-top-control);
+  background: transparent;
 }
 
 .search-tab.active {
-  color: #fff;
-  background: rgb(25, 25, 26);
+  color: #1677ff;
+  background: transparent;
   font-weight: 600;
 }
 
 .search-result-item {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
-  min-height: 78px;
-  padding: 8px 10px;
+  min-height: 84px;
+  padding: 7px 20px;
   color: var(--fn-text);
   border-radius: 8px;
 }
@@ -2216,15 +2217,15 @@ body {
 
 .search-result-item img {
   width: 48px;
-  height: 64px;
+  height: 68px;
   object-fit: cover;
   border-radius: 6px;
   background: var(--fn-panel);
 }
 
 .search-result-item.type-person img {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 68px;
   border-radius: 6px;
 }
 
@@ -2247,6 +2248,11 @@ body {
   margin-top: 3px;
   color: var(--fn-soft);
   font-size: 13px;
+}
+
+.search-result-item:not(.type-person) .search-result-subtitle {
+  color: #f3c74d;
+  font-weight: 600;
 }
 
 .search-result-detail {
