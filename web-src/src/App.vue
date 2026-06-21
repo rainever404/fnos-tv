@@ -137,7 +137,7 @@ const categoryNavItems = computed(() => {
     },
     {
       label: '电影',
-      icon: 'bx bx-movie-play',
+      icon: 'bx bx-movie',
       count: sumCount('movie'),
       category: 'movie',
       to: {
@@ -177,7 +177,7 @@ const categoryNavItems = computed(() => {
 function libraryNavIconClass(item) {
   switch (item?.category) {
     case 'Movie':
-      return 'bx bx-movie-play'
+      return 'bx bx-movie'
     case 'TV':
       return 'bx bx-tv'
     case 'LiveChannel':
