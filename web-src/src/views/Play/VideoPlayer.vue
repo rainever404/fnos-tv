@@ -283,7 +283,12 @@ const shouldShowMobileDanmuPortalControls = computed(() => {
 const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.value || isForcedLandscapeActive())
 const mobileDanmuPortalPortraitActive = computed(() => isMobileUiActive() && isPortraitViewport() && !mobileDanmuPortalLandscapeActive.value)
 const shouldShowMobileExtraControls = computed(() => false)
-const shouldShowMobileInlineTextControls = computed(() => false)
+const shouldShowMobileInlineTextControls = computed(() => {
+  return isMobileUiActive() &&
+      isPortraitMobilePlayer() &&
+      mobilePlayerControlsVisible.value &&
+      !mobileArtTextControlsVisible.value
+})
 const mobileQualityOptions = computed(() => qualitySelector.value.flatMap(group => group.selector || []))
 const mobileSubtitleOptions = computed(() => {
   const streams = StreamList.value?.subtitle_streams || []
@@ -638,13 +643,7 @@ function handleDirectMobileDanmuPanelTrigger(event) {
   if (isMousePointer) {
     return
   }
-  const isSupportedTrigger = event?.type === 'click' ||
-      event?.type === 'touchstart' ||
-      event?.type === 'touchend' ||
-      event?.type === 'pointerdown' ||
-      event?.type === 'pointerup'
-  if (!isSupportedTrigger) {
-    preventMobileDanmuTriggerEvent(event)
+  if (!isMobileDanmuTriggerActivator(event)) {
     return
   }
   const target = event.target
@@ -678,7 +677,6 @@ function triggerMobileDanmuSettingsPanel(event) {
   const now = window.performance?.now?.() || Date.now()
   const type = event?.type || ''
   if (!isMobileDanmuTriggerActivator(event)) {
-    preventMobileDanmuTriggerEvent(event)
     return
   }
   const isTouchLike = type === 'touchend' || (type === 'pointerup' && event.pointerType !== 'mouse')
@@ -843,6 +841,9 @@ function handleMobileDanmuPanelClick(event) {
   const panelTrigger = target.closest('.apd-config, .apd-style, .art-control-mobile-danmu-settings-trigger')
   if (panelTrigger && root.contains(panelTrigger)) {
     if ((event?.type === 'pointerdown' || event?.type === 'pointerup') && event.pointerType === 'mouse') {
+      return
+    }
+    if (!isMobileDanmuTriggerActivator(event)) {
       return
     }
     triggerMobileDanmuSettingsPanel(event)
@@ -3203,14 +3204,14 @@ h1 {
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-extra-menu {
-  position: fixed;
+  position: absolute;
   right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px));
   bottom: max(122px, calc(env(safe-area-inset-bottom, 0px) + 122px));
   z-index: 2147483001;
   display: grid;
   grid-template-columns: repeat(2, minmax(96px, 1fr));
   gap: 8px;
-  width: min(282px, calc(100vw - 24px));
+  width: min(282px, calc(100% - 24px));
   max-height: min(320px, calc(100svh - 176px));
   padding: 10px;
   overflow-y: auto;
@@ -3248,7 +3249,7 @@ h1 {
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-inline-text-controls {
-  position: fixed;
+  position: absolute;
   right: max(86px, calc(env(safe-area-inset-right, 0px) + 86px));
   bottom: max(13px, calc(env(safe-area-inset-bottom, 0px) + 13px));
   z-index: 2147483000;
@@ -3278,7 +3279,7 @@ h1 {
 }
 
 .mobile-danmu-settings.is-mobile-portal {
-  position: fixed;
+  position: absolute;
   right: max(12px, env(safe-area-inset-right, 0px));
   bottom: max(66px, calc(env(safe-area-inset-bottom, 0px) + 66px));
   z-index: 2147482999;
@@ -3287,12 +3288,12 @@ h1 {
 .mobile-danmu-settings.is-mobile-portal.is-portrait-portal {
   right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
   bottom: max(76px, calc(env(safe-area-inset-bottom, 0px) + 76px));
-  width: min(342px, calc(100vw - 20px));
+  width: min(342px, calc(100% - 20px));
   max-height: min(430px, calc(100svh - 108px));
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
-  position: fixed;
+  position: absolute;
   z-index: 2147482999;
   bottom: max(66px, calc(env(safe-area-inset-bottom, 0px) + 66px));
 }
@@ -3335,7 +3336,7 @@ h1 {
 
   .mobile-danmu-settings.is-mobile-portal,
   .player:not(.is-forced-landscape) .mobile-danmu-settings {
-    position: fixed;
+    position: absolute;
     display: block;
     right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
     bottom: max(76px, calc(env(safe-area-inset-bottom, 0px) + 76px));
@@ -3351,7 +3352,7 @@ h1 {
     gap: 1px !important;
     width: 100%;
     min-width: 0;
-    padding-inline: max(4px, env(safe-area-inset-left, 0px)) max(4px, env(safe-area-inset-right, 0px));
+    padding-inline: max(3px, env(safe-area-inset-left, 0px)) max(3px, env(safe-area-inset-right, 0px));
     overflow: visible !important;
   }
 
@@ -3364,7 +3365,7 @@ h1 {
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
     flex: 0 0 auto;
-    max-width: 124px;
+    max-width: 116px;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-playAndPause),
@@ -3408,7 +3409,7 @@ h1 {
     display: flex !important;
     flex: 1 1 auto;
     justify-content: flex-start;
-    max-width: calc(100% - 126px);
+    max-width: calc(100% - 118px);
     overflow-x: auto !important;
     overflow-y: visible !important;
     scrollbar-width: none;
@@ -3472,7 +3473,7 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time) {
-    max-width: 68px;
+    max-width: 60px;
     font-size: 10px !important;
     white-space: nowrap;
     overflow: hidden;
@@ -3574,7 +3575,7 @@ h1 {
   bottom: max(74px, calc(env(safe-area-inset-bottom, 0px) + 74px));
   z-index: 100060;
   box-sizing: border-box;
-  width: min(342px, calc(100vw - 24px));
+  width: min(342px, calc(100% - 24px));
   max-height: min(56vh, 430px);
   padding: 14px;
   overflow-y: auto;
@@ -3599,6 +3600,7 @@ h1 {
 
 .player.is-mobile-player .mobile-danmu-settings.is-mobile-portal.is-visible {
   display: block !important;
+  position: absolute !important;
   z-index: 2147483004;
   opacity: 1 !important;
   pointer-events: auto !important;
