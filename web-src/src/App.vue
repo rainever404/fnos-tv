@@ -143,7 +143,55 @@ const officialNavIcons = {
   ]
 }
 
-function navIconPaths(key) {
+const officialActiveNavIcons = {
+  home: [
+    {
+      d: 'M11.386 1.21a1 1 0 011.228 0l9 7A1 1 0 0122 9v11a3 3 0 01-3 3H5a3 3 0 01-3-3V9a1 1 0 01.386-.79l9-7z'
+    }
+  ],
+  favorite: [
+    {
+      d: 'M12 21.322l-.315-.105c-1.868-.62-4.415-2.207-6.496-4.31-2.072-2.092-3.854-4.87-3.854-7.911A6.316 6.316 0 017.65 2.68c1.687 0 3.217.664 4.35 1.74a6.316 6.316 0 0110.665 4.576c0 3.042-1.782 5.82-3.854 7.912-2.08 2.102-4.627 3.688-6.496 4.31l-.315.104z'
+    }
+  ],
+  movie: [
+    {
+      d: 'M12 1c6.075 0 11 4.925 11 11 0 3.722-1.85 7.01-4.68 9H22a1 1 0 110 2H12C5.925 23 1 18.075 1 12S5.925 1 12 1zm0 13a2 2 0 100 4 2 2 0 000-4zm-4-4a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4zm-4-4a2 2 0 100 4 2 2 0 000-4z',
+      fillRule: 'evenodd',
+      clipRule: 'evenodd'
+    }
+  ],
+  tv: [
+    {
+      d: 'M6.293 1.293a1 1 0 011.414 0L12 5.586l4.293-4.293a1 1 0 111.414 1.414L14.414 6H20a3 3 0 013 3v11a3 3 0 01-3 3H4a3 3 0 01-3-3V9a3 3 0 013-3h5.586L6.293 2.707a1 1 0 010-1.414z'
+    }
+  ],
+  collection: [
+    {
+      d: 'M19 9H5a3 3 0 00-3 3v8a3 3 0 003 3h14a3 3 0 003-3v-8a3 3 0 00-3-3zM5 5a1 1 0 000 2h14a1 1 0 100-2H5zm2-4a1 1 0 000 2h10a1 1 0 100-2H7z'
+    }
+  ],
+  grid: [
+    {
+      d: 'M2 4a2 2 0 012-2h5a2 2 0 012 2v5a2 2 0 01-2 2H4a2 2 0 01-2-2V4zm11 0a2 2 0 012-2h5a2 2 0 012 2v5a2 2 0 01-2 2h-5a2 2 0 01-2-2V4zM2 15a2 2 0 012-2h5a2 2 0 012 2v5a2 2 0 01-2 2H4a2 2 0 01-2-2v-5zm11 0a2 2 0 012-2h5a2 2 0 012 2v5a2 2 0 01-2 2h-5a2 2 0 01-2-2v-5z'
+    }
+  ],
+  live: [
+    {
+      d: 'M4 2h16a3 3 0 013 3v10a3 3 0 01-3 3H4a3 3 0 01-3-3V5a3 3 0 013-3zm2 19a1 1 0 011-1h10a1 1 0 110 2H7a1 1 0 01-1-1z'
+    }
+  ],
+  folder: [
+    {
+      d: 'M4 2.5h3.93a3 3 0 012.502 1.345l.813 1.205a1 1 0 00.845.45H20a3 3 0 013 3v10a3 3 0 01-3 3H4a3 3 0 01-3-3v-13a3 3 0 013-3z'
+    }
+  ]
+}
+
+function navIconPaths(key, active = false) {
+  if (active && officialActiveNavIcons[key]) {
+    return officialActiveNavIcons[key]
+  }
   return officialNavIcons[key] || officialNavIcons.collection
 }
 
@@ -1142,7 +1190,7 @@ watch(
                                                     <span class="icon">
                                                         <svg class="nav-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
                                                           <path
-                                                              v-for="(path, pathIndex) in navIconPaths('home')"
+                                                              v-for="(path, pathIndex) in navIconPaths('home', isHomeActive())"
                                                               :key="pathIndex"
                                                               :d="path.d"
                                                               :fill-rule="path.fillRule"
@@ -1168,7 +1216,7 @@ watch(
                           <span class="icon">
                             <svg class="nav-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
                               <path
-                                  v-for="(path, pathIndex) in navIconPaths('favorite')"
+                                  v-for="(path, pathIndex) in navIconPaths('favorite', isFavoriteActive())"
                                   :key="pathIndex"
                                   :d="path.d"
                                   :fill-rule="path.fillRule"
@@ -1194,7 +1242,7 @@ watch(
                             <span class="icon">
                               <svg class="nav-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
                                 <path
-                                    v-for="(path, pathIndex) in navIconPaths(libraryNavIconKey(item))"
+                                    v-for="(path, pathIndex) in navIconPaths(libraryNavIconKey(item), isLibraryActive(item))"
                                     :key="pathIndex"
                                     :d="path.d"
                                     :fill-rule="path.fillRule"
@@ -1222,7 +1270,7 @@ watch(
                           <span class="icon">
                             <svg class="nav-svg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
                               <path
-                                  v-for="(path, pathIndex) in navIconPaths(item.iconKey)"
+                                  v-for="(path, pathIndex) in navIconPaths(item.iconKey, isCategoryActive(item))"
                                   :key="pathIndex"
                                   :d="path.d"
                                   :fill-rule="path.fillRule"
