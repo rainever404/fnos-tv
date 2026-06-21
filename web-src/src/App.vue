@@ -32,6 +32,7 @@ const detailRouteNames = new Set(['VideoData', 'MovieData', 'PersonData'])
 const mediaDetailRouteNames = new Set(['VideoData', 'MovieData'])
 const isDetailPage = computed(() => mediaDetailRouteNames.has(route.name));
 const hasDetailBackButton = computed(() => detailRouteNames.has(route.name));
+const isStandalonePage = computed(() => route.path === '/player' || route.path.startsWith('/settings'));
 const searchOpen = ref(false);
 const searchKeyword = ref('');
 const searchResults = ref([]);
@@ -577,6 +578,9 @@ function sumCount(key, fallback = 0) {
 }
 
 function setThemeMode(mode) {
+  if (!['system', 'light', 'dark'].includes(mode)) {
+    return
+  }
   themeMode.value = mode;
   VueCookies.set("theme_mode", mode, 60 * 60 * 24 * 365);
   VueCookies.set("dark", dark.value ? "true" : "false", 60 * 60 * 24 * 365);
@@ -594,6 +598,17 @@ function handleSelect(key) {
 
 function handleSettingsSelect(key) {
   setThemeMode(key)
+}
+
+function goSettingsLibrary() {
+  router.push({
+    path: '/settings/library'
+  })
+  closeMobileSider()
+}
+
+function handleExternalThemeMode(event) {
+  setThemeMode(event?.detail?.mode)
 }
 
 function getSearchRoute(item) {
@@ -946,6 +961,7 @@ onMounted(async () => {
   window.addEventListener('resize', handleWindowResize)
   window.addEventListener('keydown', handleGlobalKeydown)
   window.addEventListener('fnos-tv:favorites-updated', handleFavoriteUpdated)
+  window.addEventListener('fnos-tv:set-theme-mode', handleExternalThemeMode)
   document.addEventListener('click', handleSearchOutsideClick)
   document.addEventListener('touchstart', handleSearchOutsideClick)
   await onMountedFun();
@@ -955,6 +971,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleWindowResize)
   window.removeEventListener('keydown', handleGlobalKeydown)
   window.removeEventListener('fnos-tv:favorites-updated', handleFavoriteUpdated)
+  window.removeEventListener('fnos-tv:set-theme-mode', handleExternalThemeMode)
   document.removeEventListener('click', handleSearchOutsideClick)
   document.removeEventListener('touchstart', handleSearchOutsideClick)
   document.body.classList.remove('mobile-sider-open')
@@ -1015,7 +1032,7 @@ watch(
     <n-message-provider>
       <n-notification-provider>
         <n-dialog-provider>
-          <router-view v-if="route.path === '/player'"/>
+          <router-view v-if="isStandalonePage"/>
           <n-layout
               v-else-if="route.path !== '/login'"
               :class='[dark ? "dark" : "light", "home", { "detail-page": isDetailPage, "sidebar-collapsed": effectiveSiderCollapsed || isMobile, "mobile-sider-open": mobileSiderOpen }]'
@@ -1136,14 +1153,11 @@ watch(
                     </n-button>
                   </n-dropdown>
 
-                  <n-dropdown trigger="click" placement="bottom-end" :options="settingsOptions"
-                              @select="handleSettingsSelect">
-                    <n-button class="topbar-control" quaternary circle aria-label="设置">
-                      <template #icon>
-                        <i class='bx bx-cog'></i>
-                      </template>
-                    </n-button>
-                  </n-dropdown>
+                  <n-button class="topbar-control" quaternary circle aria-label="设置" title="设置" @click="goSettingsLibrary">
+                    <template #icon>
+                      <i class='bx bx-cog'></i>
+                    </template>
+                  </n-button>
                 </div>
               </div>
             </n-layout-header>

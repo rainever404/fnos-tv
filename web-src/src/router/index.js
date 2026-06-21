@@ -50,6 +50,11 @@ const routes = [
         path: '/player',
         name: 'VideoPlayer',
         component: () => import('../views/Play/VideoPlayer.vue')
+    },
+    {
+        path: '/settings/library',
+        name: 'SettingsLibrary',
+        component: () => import('../views/Settings/SettingsLibrary.vue')
     }
 ]
 const router = createRouter({
