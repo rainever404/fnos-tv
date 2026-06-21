@@ -127,7 +127,6 @@ const detailMetaItems = computed(() => {
   if (countries) {
     items.push(countries)
   }
-  items.push(galleryTypeLabel.value)
   return items
 })
 
@@ -732,24 +731,32 @@ onMounted(async () => {
                 <span v-if="index > 0" class="detail-meta-separator">/</span>
                 <span class="mediaInfoItem">{{ item }}</span>
               </template>
+              <template v-if="streamFeatureTags.length">
+                <span v-if="detailMetaItems.length" class="detail-meta-separator">/</span>
+                <span
+                    v-for="(tag, index) in streamFeatureTags"
+                    :key="tag + index"
+                    class="detail-inline-tag"
+                >
+                  {{ tag }}
+                </span>
+              </template>
             </div>
             <div v-if="detailTrackLabels.length" class="detail-track-list">
               <span v-for="item in detailTrackLabels" :key="item">{{ item }}</span>
             </div>
           </div>
         </div>
-        <div v-if="streamFeatureTags.length" class="stream-feature-row">
-          <span
-              v-for="(tag, index) in streamFeatureTags"
-              :key="tag + index"
-              class="stream-feature-chip"
-              :class="{ active: index === 0 }"
-          >
-            {{ tag }}
-          </span>
-        </div>
         <div v-if="overviewText" class="overview-text detail-overview">
           <span class="detail-overview-text">{{ overviewText }}</span>
+          <button
+              v-if="overviewText.length > 96"
+              class="overview-more-button"
+              type="button"
+              @click="showOverviewDialog = true"
+          >
+            更多
+          </button>
         </div>
         <div v-if="gallery_type === 'TV'" class="showContainer">
           <div class="show-header">
@@ -973,7 +980,7 @@ onMounted(async () => {
 
 .main-content {
   position: relative;
-  --detail-hero-height: 386px;
+  --detail-hero-height: 480px;
   min-height: 100vh;
   overflow: hidden;
   background: var(--fn-bg);
@@ -1624,7 +1631,7 @@ span.button-text {
   justify-content: flex-start;
   gap: 8px;
   min-height: 54px;
-  margin-top: 39px;
+  margin-top: 16px;
   padding: 0 46px;
   color: var(--fn-text);
   background: var(--fn-bg);
@@ -1638,7 +1645,7 @@ span.button-text {
   gap: 12px;
   min-width: 0;
   min-height: 54px;
-  margin-left: clamp(18px, 4vw, 96px);
+  margin-left: clamp(32px, 6vw, 96px);
 }
 
 .detail-meta-list {
@@ -1681,6 +1688,7 @@ span.button-text {
   display: inline-flex;
   align-items: center;
   height: 18px;
+  margin-left: 6px;
   padding: 0 5px;
   color: var(--fn-text);
   border: 1px solid color-mix(in srgb, var(--fn-muted) 58%, transparent);
@@ -1689,35 +1697,6 @@ span.button-text {
   font-weight: 600;
   line-height: 18px;
   white-space: nowrap;
-}
-
-.stream-feature-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 46px 46px 40px;
-  background: var(--fn-bg);
-}
-
-.stream-feature-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  min-width: 88px;
-  padding: 0 24px;
-  color: var(--fn-text);
-  background: transparent;
-  border: 1px solid var(--fn-border);
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: default;
-}
-
-.stream-feature-chip.active {
-  color: var(--fn-blue);
-  border: 2px solid var(--fn-blue);
 }
 
 .detailButton {
@@ -1795,10 +1774,12 @@ span.button-text {
 
 .detail-overview {
   box-sizing: border-box;
-  display: block;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
   width: auto;
   max-width: none;
-  margin: 0 46px 28px;
+  margin: 12px 46px 28px;
   padding: 0;
   color: var(--fn-muted);
   font-size: 15px;
@@ -1807,9 +1788,23 @@ span.button-text {
 }
 
 .detail-overview-text {
-  display: block;
-  overflow: visible;
+  display: -webkit-box;
+  flex: 1;
+  overflow: hidden;
   white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.overview-more-button {
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--fn-blue);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  line-height: 23px;
+  cursor: pointer;
 }
 
 .showContainer {
@@ -1817,7 +1812,7 @@ span.button-text {
 }
 
 .people-section {
-  padding: 18px 44px 28px;
+  padding: 6px 44px 28px;
 }
 
 .people-section .show-header {
@@ -2231,20 +2226,10 @@ span.button-text {
     font-size: 13px;
   }
 
-  .stream-feature-row {
-    padding: 20px 16px 22px;
-  }
-
-  .stream-feature-chip {
-    min-width: 0;
-    height: 34px;
-    padding: 0 16px;
-  }
-
   .detail-overview {
     width: auto;
     min-width: 0;
-    margin: 0 16px 24px;
+    margin: 10px 16px 24px;
     padding: 0;
   }
 
