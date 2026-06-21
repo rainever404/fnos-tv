@@ -9,6 +9,10 @@ const route = useRoute()
 
 const DEFAULT_PAGE_SIZE = 50;
 const FAVORITE_PAGE_SIZE = 50;
+const DEFAULT_LAYOUT_MODE = 'official';
+const LIST_CARD_SETTING_KEY = 'list:card:setting';
+const LIST_LAYOUT_STORAGE_KEY = 'fnos-tv:list-card-layout';
+const VALID_LAYOUT_MODES = new Set(['compact', 'official', 'large']);
 const guid = ref(null);
 const mode = computed({
   get: () => MediaDbData.sort_column,
@@ -25,7 +29,7 @@ const order = computed({
 const size = ref(DEFAULT_PAGE_SIZE);
 const totalCount = ref(0);
 const MediaDbInfo = ref(null);
-const layoutMode = ref('official');
+const layoutMode = ref(loadStoredLayoutMode());
 const category = ref(null);
 const favoriteType = ref('all');
 const currentPage = ref(1);
@@ -212,6 +216,87 @@ const layoutOptions = [
     label: '大卡片'
   }
 ]
+
+function normalizeLayoutMode(value) {
+  if (value === undefined || value === null || value === '') {
+    return ''
+  }
+  if (typeof value === 'object') {
+    const candidateKeys = [
+      'layout',
+      'mode',
+      'card_layout',
+      'cardLayout',
+      'value',
+      'data',
+      'setting',
+      'settings',
+      'config',
+      'type',
+      'size'
+    ]
+    for (const key of candidateKeys) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        const normalized = normalizeLayoutMode(value[key])
+        if (normalized) {
+          return normalized
+        }
+      }
+    }
+    return ''
+  }
+
+  const raw = String(value).trim()
+  if (!raw) {
+    return ''
+  }
+  if ((raw.startsWith('{') && raw.endsWith('}')) || (raw.startsWith('[') && raw.endsWith(']'))) {
+    try {
+      return normalizeLayoutMode(JSON.parse(raw))
+    } catch {
+    }
+  }
+
+  const normalized = raw.toLowerCase()
+  if (VALID_LAYOUT_MODES.has(normalized)) {
+    return normalized
+  }
+  if (['small', 'mini', 'dense', 'list', '0'].includes(normalized)) {
+    return 'compact'
+  }
+  if (['default', 'normal', 'medium', 'middle', '1'].includes(normalized)) {
+    return 'official'
+  }
+  if (['big', 'large-card', 'cover', 'poster', '2'].includes(normalized)) {
+    return 'large'
+  }
+  return ''
+}
+
+function loadStoredLayoutMode() {
+  try {
+    return normalizeLayoutMode(window.localStorage.getItem(LIST_LAYOUT_STORAGE_KEY)) || DEFAULT_LAYOUT_MODE
+  } catch {
+    return DEFAULT_LAYOUT_MODE
+  }
+}
+
+function persistLayoutMode(value = layoutMode.value) {
+  const normalized = normalizeLayoutMode(value) || DEFAULT_LAYOUT_MODE
+  try {
+    window.localStorage.setItem(LIST_LAYOUT_STORAGE_KEY, normalized)
+  } catch {
+  }
+}
+
+function applyListCardSetting(value) {
+  const normalized = normalizeLayoutMode(value)
+  if (!normalized) {
+    return
+  }
+  layoutMode.value = normalized
+  persistLayoutMode(normalized)
+}
 
 const categoryTitleMap = {
   all: '全部',
@@ -735,11 +820,18 @@ async function GetFavoriteOfficialBootstrap() {
     COMMON.requests("GET", `/api/v1/tag/list?${params.toString()}`, true),
     COMMON.requests("POST", '/api/v1/user/getData', true, {
       key: `favorite:list:setting:${favoriteType.value}`
-    }),
-    COMMON.requests("POST", '/api/v1/user/getData', true, {
-      key: 'list:card:setting'
     })
   ])
+}
+
+async function GetListCardSetting() {
+  try {
+    const res = await COMMON.requests("POST", '/api/v1/user/getData', true, {
+      key: LIST_CARD_SETTING_KEY
+    })
+    applyListCardSetting(res)
+  } catch {
+  }
 }
 
 async function GetLibraryOfficialBootstrap() {
@@ -755,9 +847,6 @@ async function GetLibraryOfficialBootstrap() {
     COMMON.requests("POST", '/api/v1/user/getData', true, {
       key: 'mdb:list:setting',
       mdb_guid: guid.value
-    }),
-    COMMON.requests("POST", '/api/v1/user/getData', true, {
-      key: 'list:card:setting'
     }),
     COMMON.requests("GET", `/api/v1/item/${guid.value}`, true)
   ])
@@ -866,6 +955,7 @@ async function reloadMediaList({resetRouteState = false} = {}) {
     applyRouteState(route)
   }
   await loadOfficialFilterOptions()
+  await GetListCardSetting()
   await GetFavoriteOfficialBootstrap()
   await GetLibraryOfficialBootstrap()
   if (requestId !== listRequestId) {
@@ -911,7 +1001,8 @@ async function setSortOrder(value) {
 }
 
 function setLayoutMode(value) {
-  layoutMode.value = value
+  layoutMode.value = normalizeLayoutMode(value) || DEFAULT_LAYOUT_MODE
+  persistLayoutMode(layoutMode.value)
   closeToolbarMenus()
 }
 
