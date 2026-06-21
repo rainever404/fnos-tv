@@ -525,7 +525,7 @@ onMounted(() => {
 }
 
 .settings-nav-item.active {
-  background: color-mix(in srgb, var(--settings-primary) 13%, transparent);
+  background: var(--settings-surface-hover);
   color: var(--settings-primary);
 }
 
@@ -643,14 +643,15 @@ onMounted(() => {
 .settings-table-wrap {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding-bottom: 44px;
   border-top: 1px solid var(--settings-border);
 }
 
 .settings-library-table {
   width: 100%;
-  min-width: 920px;
+  min-width: 0;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -666,12 +667,12 @@ onMounted(() => {
 }
 
 .settings-library-table th:nth-child(1) {
-  width: 26%;
+  width: 25%;
   text-align: center;
 }
 
 .settings-library-table th:nth-child(2) {
-  width: 32%;
+  width: 27%;
 }
 
 .settings-library-table th:nth-child(3) {
@@ -679,16 +680,17 @@ onMounted(() => {
 }
 
 .settings-library-table th:nth-child(4) {
-  width: 16%;
+  width: 17.5%;
 }
 
 .settings-library-table th:nth-child(5) {
-  width: 14%;
+  width: 18.5%;
   text-align: center;
 }
 
 .settings-library-table td {
-  height: 194px;
+  height: 195px;
+  box-sizing: border-box;
   padding: 16px;
   color: var(--settings-text);
   font-size: 14px;
@@ -842,7 +844,12 @@ onMounted(() => {
     flex: none;
     min-height: 0;
     max-height: none;
+    overflow-x: auto;
     padding-bottom: 0;
+  }
+
+  .settings-library-table {
+    min-width: 920px;
   }
 
   .settings-primary-button,
