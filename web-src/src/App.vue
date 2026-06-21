@@ -1663,12 +1663,13 @@ html[data-theme="light"] {
   --fn-soft: rgba(15, 23, 42, 0.42);
   --fn-top-control: rgba(15, 23, 42, 0.06);
   --fn-top-control-hover: rgba(15, 23, 42, 0.1);
+  --fn-top-control-text: rgba(15, 23, 42, 0.78);
   --fn-nav-text: rgba(0, 0, 0, 0.8);
   --fn-nav-hover: rgba(15, 23, 42, 0.06);
   --fn-nav-active: #ffffff;
   --fn-nav-active-text: #0066ff;
   --fn-blue: #0066ff;
-  --fn-rating: #ffd327;
+  --fn-rating: #f2c214;
   --fn-on-accent: #ffffff;
 }
 
@@ -1681,13 +1682,14 @@ html[data-theme="dark"] {
   --fn-text: rgba(255, 255, 255, 0.88);
   --fn-muted: rgba(255, 255, 255, 0.58);
   --fn-soft: rgba(255, 255, 255, 0.38);
-  --fn-top-control: rgba(255, 255, 255, 0.08);
-  --fn-top-control-hover: rgba(255, 255, 255, 0.14);
+  --fn-top-control: rgba(255, 255, 255, 0.06);
+  --fn-top-control-hover: rgba(255, 255, 255, 0.1);
+  --fn-top-control-text: rgba(255, 255, 255, 0.8);
   --fn-nav-text: rgba(255, 255, 255, 0.8);
   --fn-nav-hover: rgba(255, 255, 255, 0.06);
   --fn-nav-active: #19191a;
   --fn-nav-active-text: #0066ff;
-  --fn-rating: #ffd327;
+  --fn-rating: #f2c214;
   --fn-on-accent: #ffffff;
 }
 
@@ -1758,7 +1760,7 @@ body {
   width: 36px !important;
   height: 36px !important;
   min-width: 36px !important;
-  color: var(--fn-text);
+  color: var(--fn-top-control-text);
   background: var(--fn-top-control) !important;
   border: 0;
   box-sizing: border-box;
