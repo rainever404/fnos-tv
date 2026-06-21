@@ -1106,19 +1106,19 @@ img.carousel-img {
 
 .library-card-info {
   position: absolute;
-  bottom: 39px;
-  left: 50%;
+  right: 2px;
+  bottom: 2px;
+  left: 2px;
   z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 74px;
-  min-height: 24px;
-  padding: 0 12px;
+  min-height: 34px;
+  padding: 0 12px 1px;
   text-align: center;
-  background: rgba(0, 0, 0, 0.66);
+  background: linear-gradient(180deg, rgba(25, 25, 26, 0) 0%, rgba(25, 25, 26, 0.62) 46%, rgba(25, 25, 26, 0.92) 100%);
+  border-radius: 0 0 6px 6px;
   pointer-events: none;
-  transform: translateX(-50%);
 }
 
 .library-title {
