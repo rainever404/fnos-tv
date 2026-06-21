@@ -320,6 +320,7 @@ async function GetMediaDbInfos() {
         "exclude_grouped_video": 1,
         "sort_type": MediaDbData.sort_type,
         "sort_column": MediaDbData.sort_column,
+        "page": 1,
         "page_size": HOME_SHELF_PAGE_SIZE
       }
       let res = await COMMON.requests("POST", api, true, _data);

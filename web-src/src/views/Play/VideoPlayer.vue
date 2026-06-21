@@ -284,7 +284,8 @@ const shouldShowMobileExtraControls = computed(() => false)
 const shouldShowMobileInlineTextControls = computed(() => {
   return isMobileUiActive() &&
       isPortraitMobilePlayer() &&
-      !mobileArtTextControlsVisible.value
+      mobilePlayerControlsVisible.value &&
+      (isCompactPlayerViewport() || !mobileArtTextControlsVisible.value)
 })
 const mobileQualityOptions = computed(() => qualitySelector.value.flatMap(group => group.selector || []))
 const mobileSubtitleOptions = computed(() => {
@@ -391,6 +392,9 @@ const setting = ref({
       position: 'right',
       html: '<span class="mobile-art-danmu-symbol">弹</span><i class="bx bx-slider-alt"></i>',
       tooltip: '弹幕设置',
+      mounted: function ($ref) {
+        bindMobileDanmuPanelTriggerElement($ref)
+      },
       click: function (...args) {
         toggleMobileDanmuSettingsFromTrigger(...args)
       }
@@ -656,11 +660,25 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
   if (shouldOpen) {
     mobileControlMenu.value = ''
     showMobileDanmuSettings.value = true
+    if (art?.controls) {
+      art.controls.show = true
+      mobilePlayerControlsVisible.value = true
+    }
   }
   mobileDanmuPanelTouchHandledAt = now
   mobileDanmuPanelTouchHandledType = event?.type || ''
   syncMobileDanmuControlButtons()
   preventMobileDanmuTriggerEvent(event)
+}
+
+function bindMobileDanmuPanelTriggerElement(trigger) {
+  if (!trigger || boundMobileDanmuPanelTriggers.has(trigger)) {
+    return
+  }
+  boundMobileDanmuPanelTriggers.add(trigger)
+  trigger.addEventListener('pointerup', handleDirectMobileDanmuPanelTrigger, {capture: true})
+  trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {capture: true})
+  trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
 }
 
 function bindMobileDanmuPanelTriggers() {
@@ -669,13 +687,7 @@ function bindMobileDanmuPanelTriggers() {
     return
   }
   root.querySelectorAll('.apd-config, .apd-style, .art-control-mobile-danmu-settings-trigger').forEach(trigger => {
-    if (boundMobileDanmuPanelTriggers.has(trigger)) {
-      return
-    }
-    boundMobileDanmuPanelTriggers.add(trigger)
-    trigger.addEventListener('pointerup', handleDirectMobileDanmuPanelTrigger, {capture: true})
-    trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {capture: true})
-    trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
+    bindMobileDanmuPanelTriggerElement(trigger)
   })
 }
 
@@ -3201,9 +3213,9 @@ h1 {
 
 .mobile-danmu-settings.is-mobile-portal.is-portrait-portal {
   right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
-  bottom: max(130px, calc(env(safe-area-inset-bottom, 0px) + 130px));
+  bottom: max(76px, calc(env(safe-area-inset-bottom, 0px) + 76px));
   width: min(342px, calc(100vw - 20px));
-  max-height: min(430px, calc(100svh - 162px));
+  max-height: min(430px, calc(100svh - 108px));
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-settings {
@@ -3253,8 +3265,8 @@ h1 {
     position: fixed;
     display: block;
     right: max(10px, calc(env(safe-area-inset-right, 0px) + 10px));
-    bottom: max(130px, calc(env(safe-area-inset-bottom, 0px) + 130px));
-    max-height: min(430px, calc(100svh - 162px));
+    bottom: max(76px, calc(env(safe-area-inset-bottom, 0px) + 76px));
+    max-height: min(430px, calc(100svh - 108px));
     z-index: 2147482999;
   }
 }
@@ -3390,6 +3402,12 @@ h1 {
     text-overflow: ellipsis;
   }
 
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-画质),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-倍速),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-字幕) {
+    display: none !important;
+  }
+
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
     display: flex !important;
@@ -3499,6 +3517,13 @@ h1 {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
+}
+
+.player.is-mobile-player .mobile-danmu-settings.is-mobile-portal.is-visible {
+  display: block !important;
+  z-index: 2147483004;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 .mobile-danmu-settings-header,
