@@ -40,6 +40,18 @@ const searchLoading = ref(false);
 const searchInputRef = ref(null);
 const searchRootRef = ref(null);
 const favoriteCount = ref(0);
+const fallbackSearchGenreMap = {
+  7: '剧情',
+  18: '战争与政治',
+  35: '喜剧',
+  80: '犯罪',
+  99: '纪录',
+  10749: '爱情',
+  10751: '家庭',
+  10752: '战争',
+  90002: '战争与政治'
+}
+const SearchGenreMap = ref({...fallbackSearchGenreMap});
 let searchTimer = null;
 let searchRequestId = 0;
 const options = ref([
@@ -298,7 +310,14 @@ async function GetOfficialBootstrapData() {
       key: 'list:card:setting'
     }))
   }
-  await Promise.allSettled(tasks)
+  const results = await Promise.allSettled(tasks)
+  const genreIndex = getApis.indexOf('/api/v1/tag/genres?lan=zh-CN')
+  if (genreIndex >= 0 && results[genreIndex]?.status === 'fulfilled') {
+    SearchGenreMap.value = {
+      ...fallbackSearchGenreMap,
+      ...normalizeDict(results[genreIndex].value)
+    }
+  }
 }
 
 async function GetMediaDbInfos() {
@@ -552,6 +571,28 @@ function normalizeSearchItem(item) {
   }
 }
 
+function normalizeDict(list, keyName = 'id') {
+  const dict = {}
+  if (!Array.isArray(list)) {
+    return dict
+  }
+  for (const item of list) {
+    const key = item?.[keyName] ?? item?.id ?? item?.code
+    const value = item?.value || item?.name || item?.title || item?.cn || item?.zh
+    if (key !== undefined && value) {
+      dict[String(key)] = value
+    }
+  }
+  return dict
+}
+
+function dictValue(dict, key) {
+  if (key === undefined || key === null || key === '') {
+    return ''
+  }
+  return dict?.[String(key)] || ''
+}
+
 function searchItemKey(item, index) {
   return item?.guid || item?.item_guid || `${searchTitle(item)}-${index}`
 }
@@ -579,12 +620,50 @@ function searchTitle(item) {
 
 function searchYear(item) {
   if (searchCategory(item) === 'person') {
-    const count = item?.known_for_item_count || item?.item_count || item?.work_count
+    const count = item?.known_for_item_count || item?.item_count || item?.work_count || item?.number_of_item
     return count ? `${count} 个作品` : '人物'
   }
   const source = item?.release_date || item?.year || item?.create_time || ''
   const match = String(source).match(/\d{4}/)
   return match ? match[0] : item?.library_title || ''
+}
+
+function searchRating(item) {
+  const value = Number(item?.vote_average || item?.rating || item?.score)
+  if (!Number.isFinite(value) || value <= 0) {
+    return ''
+  }
+  return `${value.toFixed(1)} 分`
+}
+
+function searchGenres(item) {
+  if (!Array.isArray(item?.genres)) {
+    return ''
+  }
+  return item.genres
+      .map(value => dictValue(SearchGenreMap.value, value) || value)
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(' ')
+}
+
+function searchPrimaryMeta(item) {
+  if (searchCategory(item) === 'person') {
+    return searchYear(item)
+  }
+  return searchRating(item) || searchCategoryTitle(item?.gallery_type || item?.type)
+}
+
+function searchSecondaryMeta(item) {
+  if (searchCategory(item) === 'person') {
+    return ''
+  }
+  const year = searchYear(item)
+  const genres = searchGenres(item)
+  if (year && genres) {
+    return `${year}/${genres}`
+  }
+  return year || genres || item?.library_title || ''
 }
 
 function searchCategory(item) {
@@ -918,7 +997,8 @@ watch(
                               <img loading="lazy" v-lazy='searchPosterUrl(item)' alt="">
                               <div class="search-result-meta">
                                 <div class="search-result-title">{{ searchTitle(item) }}</div>
-                                <div class="search-result-subtitle">{{ searchYear(item) }} · {{ item.library_title }}</div>
+                                <div class="search-result-subtitle">{{ searchPrimaryMeta(item) }}</div>
+                                <div v-if="searchSecondaryMeta(item)" class="search-result-detail">{{ searchSecondaryMeta(item) }}</div>
                               </div>
                             </router-link>
                           </div>
@@ -2061,20 +2141,20 @@ body {
 
 .search-result-list {
   display: grid;
-  gap: 8px;
+  gap: 0;
   max-height: min(62vh, 520px);
   overflow: auto;
-  padding-right: 2px;
+  padding: 2px 10px 4px;
 }
 
 .search-tabs {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   max-width: 100%;
-  margin: 2px 2px 10px;
+  margin: 0 10px 8px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding-bottom: 4px;
 }
 
 .search-tab {
@@ -2101,8 +2181,8 @@ body {
 }
 
 .search-tab.active {
-  color: var(--fn-blue);
-  background: var(--fn-nav-active);
+  color: #fff;
+  background: rgb(25, 25, 26);
   font-weight: 600;
 }
 
@@ -2114,10 +2194,11 @@ body {
 
 .search-result-item {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: 52px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
-  padding: 8px;
+  min-height: 78px;
+  padding: 8px 10px;
   color: var(--fn-text);
   border-radius: 8px;
 }
@@ -2127,15 +2208,21 @@ body {
 }
 
 .search-result-item img {
-  width: 42px;
-  aspect-ratio: 2 / 3;
+  width: 48px;
+  height: 64px;
   object-fit: cover;
-  border-radius: 5px;
+  border-radius: 6px;
   background: var(--fn-panel);
 }
 
 .search-result-item.type-person img {
-  border-radius: 999px;
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+}
+
+.search-result-meta {
+  min-width: 0;
 }
 
 .search-result-title {
@@ -2153,6 +2240,16 @@ body {
   margin-top: 3px;
   color: var(--fn-soft);
   font-size: 13px;
+}
+
+.search-result-detail {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--fn-soft);
+  font-size: 13px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .search-state {
