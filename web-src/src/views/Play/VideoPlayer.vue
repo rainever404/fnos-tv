@@ -130,6 +130,9 @@ const touchState = {
 let playerTouchFrame = null;
 let mobileDanmuFallbackSyncTimer = null;
 let mobileControlRefreshTimers = [];
+let mobileControlObserver = null;
+let mobileControlObserverRoot = null;
+let mobileControlMutationScheduled = false;
 const boundMobileDanmuPanelTriggers = new WeakSet();
 let lastMobileDanmuSettingsToggleAt = 0;
 let lastMobileDanmuSettingsTouchAt = 0;
@@ -137,7 +140,13 @@ let lastMobileDanmuSettingsPointerUpAt = 0;
 let lastMobileDanmuSettingsTouchEndAt = 0;
 let mobileDanmuSettingsPressStarted = false;
 const MOBILE_DANMU_SETTINGS_DEDUPE_MS = 380;
-const MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR = '.art-control-mobile-danmu-settings-trigger, .artplayer-plugin-danmuku .apd-config, .artplayer-plugin-danmuku [class*="apd-config"]';
+const MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR = [
+  '.art-control-mobile-danmu-settings-trigger',
+  '.artplayer-plugin-danmuku .apd-config',
+  '.artplayer-plugin-danmuku [class*="apd-config"]',
+  '.artplayer-plugin-danmuku .apd-style',
+  '.artplayer-plugin-danmuku [class*="apd-style"]'
+].join(', ');
 const MOBILE_CORE_CONTROL_SELECTOR = [
   '.art-control-mobile-danmu-toggle',
   '.art-control-mobile-danmu-settings-trigger',
@@ -643,7 +652,7 @@ function closeMobileDanmuPanels() {
   }
   setMobileDanmuSettingsVisible(false)
   mobileControlMenu.value = ''
-  playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open').forEach(panel => {
+  playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open, [class*="apd-config"].is-panel-open, [class*="apd-style"].is-panel-open').forEach(panel => {
     panel.classList.remove('is-panel-open')
   })
 }
@@ -764,6 +773,12 @@ function shouldSkipMobileDanmuSettingsActivator(event, now) {
   }
   if (markMobileDanmuTriggerEvent(event)) {
     return true
+  }
+  if (type === 'touchstart') {
+    return now - lastMobileDanmuSettingsToggleAt < MOBILE_DANMU_SETTINGS_DEDUPE_MS
+  }
+  if (type === 'pointerdown' && event.pointerType !== 'mouse') {
+    return now - lastMobileDanmuSettingsToggleAt < MOBILE_DANMU_SETTINGS_DEDUPE_MS
   }
   if (type === 'touchend') {
     return now - Math.max(lastMobileDanmuSettingsPointerUpAt, lastMobileDanmuSettingsTouchAt) < MOBILE_DANMU_SETTINGS_DEDUPE_MS
@@ -953,14 +968,62 @@ function normalizeMobileCoreControls() {
       return
     }
     button.classList.remove('art-control-hide')
-    button.style.display = 'flex'
-    button.style.visibility = 'visible'
-    button.style.opacity = '1'
-    button.style.pointerEvents = 'auto'
+    button.style.setProperty('display', 'flex', 'important')
+    button.style.setProperty('visibility', 'visible', 'important')
+    button.style.setProperty('opacity', '1', 'important')
+    button.style.setProperty('pointer-events', 'auto', 'important')
+    button.style.setProperty('margin-left', '0', 'important')
+    button.style.removeProperty('transform')
+    if (isTextControl) {
+      button.style.setProperty('overflow', 'visible', 'important')
+    }
   })
   root.querySelectorAll('.art-control-mobile-danmu-toggle span, .art-control-mobile-danmu-settings-trigger span, .art-control-mobile-danmu-settings-trigger i').forEach(child => {
     child.style.pointerEvents = 'none'
   })
+}
+
+function scheduleMobileControlDomRefresh() {
+  if (mobileControlMutationScheduled || !isMobileUiActive()) {
+    return
+  }
+  mobileControlMutationScheduled = true
+  window.requestAnimationFrame(() => {
+    mobileControlMutationScheduled = false
+    if (!isMobileUiActive()) {
+      return
+    }
+    bindMobileDanmuPanelTriggers()
+    normalizeMobileCoreControls()
+    syncMobilePlayerControlsVisibleFromDom()
+    syncMobileDanmuControlButtons()
+  })
+}
+
+function observeMobileControlDom() {
+  const root = playerFrame.value?.querySelector?.('.art-video-player') || playerFrame.value
+  if (!root || !isMobileUiActive() || typeof window.MutationObserver !== 'function') {
+    return
+  }
+  if (mobileControlObserverRoot === root && mobileControlObserver) {
+    return
+  }
+  mobileControlObserver?.disconnect()
+  mobileControlObserverRoot = root
+  mobileControlObserver = new MutationObserver(scheduleMobileControlDomRefresh)
+  mobileControlObserver.observe(root, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ['class', 'style']
+  })
+}
+
+function disconnectMobileControlDomObserver() {
+  mobileControlObserver?.disconnect()
+  mobileControlObserver = null
+  mobileControlObserverRoot = null
+  mobileControlMutationScheduled = false
 }
 
 function syncMobilePlayerControlsVisibleFromDom(root = playerFrame.value) {
@@ -978,6 +1041,7 @@ function syncMobileDanmuFallbackControls() {
     bindPlayerTouchListeners()
     bindMobileDanmuPanelTriggers()
     normalizeMobileCoreControls()
+    observeMobileControlDom()
   }
   window.requestAnimationFrame(() => {
     refreshMobileUiState()
@@ -1138,7 +1202,7 @@ function syncMobileDanmuControlButtons() {
     root.querySelectorAll('.art-control-mobile-danmu-toggle').forEach(button => {
       button.classList.toggle('is-muted', !mobileDanmuVisible.value)
     })
-    root.querySelectorAll('.art-control-mobile-danmu-settings-trigger, .artplayer-plugin-danmuku .apd-config').forEach(button => {
+    root.querySelectorAll(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR).forEach(button => {
       button.classList.toggle('is-active', showMobileDanmuSettings.value)
     })
   })
@@ -1204,7 +1268,7 @@ function toggleMobileDanmuVisible() {
 function toggleMobileDanmuSettings() {
   mobileControlMenu.value = ''
   setMobileDanmuSettingsVisible(!showMobileDanmuSettings.value)
-  playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open').forEach(panel => {
+  playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open, [class*="apd-config"].is-panel-open, [class*="apd-style"].is-panel-open').forEach(panel => {
     panel.classList.remove('is-panel-open')
   })
 }
@@ -2826,6 +2890,7 @@ onBeforeRouteLeave((to, from) => {
   removePlayerTouchListeners()
   stopMobileDanmuFallbackSyncLoop()
   clearMobileControlRefreshTimers()
+  disconnectMobileControlDomObserver()
   cleanupMobileLandscape()
 });
 
@@ -2850,6 +2915,7 @@ onBeforeUnmount(async () => {
   removePlayerTouchListeners()
   stopMobileDanmuFallbackSyncLoop()
   clearMobileControlRefreshTimers()
+  disconnectMobileControlDomObserver()
   cleanupMobileLandscape()
 })
 onMounted(async () => {
@@ -6512,5 +6578,29 @@ img.play-icon {
     --mobile-control-subtitle-stable: 34px;
     --mobile-control-icon-stable: 24px;
   }
+}
+
+/* True-device final pass: do not let older mobile fallbacks hide the landscape-equivalent controls. */
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  margin-left: 0 !important;
+  transform: none !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-画质),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-倍速),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-字幕) {
+  overflow: visible !important;
 }
 </style>
