@@ -128,8 +128,6 @@ const touchState = {
 };
 let playerTouchFrame = null;
 let mobileDanmuFallbackSyncTimer = null;
-let mobileDanmuPanelTouchHandledAt = 0;
-let mobileDanmuPanelTouchHandledType = '';
 const boundMobileDanmuPanelTriggers = new WeakSet();
 
 const qualitySelector = ref([]);
@@ -281,12 +279,7 @@ const shouldShowMobileDanmuPortalControls = computed(() => {
 const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.value || isForcedLandscapeActive())
 const mobileDanmuPortalPortraitActive = computed(() => isMobileUiActive() && isPortraitMobilePlayer() && !mobileDanmuPortalLandscapeActive.value)
 const shouldShowMobileExtraControls = computed(() => false)
-const shouldShowMobileInlineTextControls = computed(() => {
-  return isMobileUiActive() &&
-      isPortraitMobilePlayer() &&
-      mobilePlayerControlsVisible.value &&
-      (isCompactPlayerViewport() || !mobileArtTextControlsVisible.value)
-})
+const shouldShowMobileInlineTextControls = computed(() => false)
 const mobileQualityOptions = computed(() => qualitySelector.value.flatMap(group => group.selector || []))
 const mobileSubtitleOptions = computed(() => {
   const streams = StreamList.value?.subtitle_streams || []
@@ -621,20 +614,16 @@ function preventMobileDanmuTriggerEvent(event) {
   event?.stopImmediatePropagation?.()
 }
 
-function isSyntheticMobileDanmuClick(event, now = Date.now()) {
-  const eventType = event?.type || ''
-  if (!eventType || !mobileDanmuPanelTouchHandledType || now - mobileDanmuPanelTouchHandledAt >= 450) {
-    return false
-  }
-  return eventType !== mobileDanmuPanelTouchHandledType
-}
-
 function getMobileDanmuTriggerEvent(args = []) {
   return args.find(item => item?.target && (typeof item.preventDefault === 'function' || typeof item.stopPropagation === 'function')) || null
 }
 
 function handleDirectMobileDanmuPanelTrigger(event) {
   if (!isMobileUiActive()) {
+    return
+  }
+  if (event?.type !== 'click') {
+    preventMobileDanmuTriggerEvent(event)
     return
   }
   const target = event.target
@@ -650,11 +639,6 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
     return
   }
   const event = getMobileDanmuTriggerEvent(args)
-  const now = Date.now()
-  if (isSyntheticMobileDanmuClick(event, now)) {
-    preventMobileDanmuTriggerEvent(event)
-    return
-  }
   const shouldOpen = !showMobileDanmuSettings.value
   closeMobileDanmuPanels()
   if (shouldOpen) {
@@ -665,8 +649,6 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
       mobilePlayerControlsVisible.value = true
     }
   }
-  mobileDanmuPanelTouchHandledAt = now
-  mobileDanmuPanelTouchHandledType = event?.type || ''
   syncMobileDanmuControlButtons()
   preventMobileDanmuTriggerEvent(event)
 }
@@ -676,8 +658,6 @@ function bindMobileDanmuPanelTriggerElement(trigger) {
     return
   }
   boundMobileDanmuPanelTriggers.add(trigger)
-  trigger.addEventListener('pointerup', handleDirectMobileDanmuPanelTrigger, {capture: true})
-  trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {capture: true})
   trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
 }
 
@@ -776,9 +756,7 @@ function handleMobileDanmuPanelClick(event) {
   }
   const root = playerFrame.value
   const target = event.target
-  const triggerFromDuplicateClick = isSyntheticMobileDanmuClick(event) &&
-      target?.closest?.('.apd-config, .apd-style, .art-control-mobile-danmu-settings-trigger')
-  if (triggerFromDuplicateClick) {
+  if (event?.type !== 'click' && target?.closest?.('.apd-config, .apd-style, .art-control-mobile-danmu-settings-trigger')) {
     preventMobileDanmuTriggerEvent(event)
     return
   }
@@ -2439,9 +2417,7 @@ onBeforeRouteLeave((to, from) => {
     timerSendPlayRecord.value = null
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
-  document.removeEventListener('pointerup', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
-  document.removeEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
   stopMobileDanmuFallbackSyncLoop()
@@ -2458,9 +2434,7 @@ onBeforeUnmount(async () => {
     gestureFeedbackTimer = null
   }
   window.removeEventListener('keydown', handlePlayerKeydown)
-  document.removeEventListener('pointerup', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileDanmuPanelClick, true)
-  document.removeEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
   stopMobileDanmuFallbackSyncLoop()
@@ -2470,9 +2444,7 @@ onMounted(async () => {
   refreshMobileUiState()
   startMobileDanmuFallbackSyncLoop()
   window.addEventListener('keydown', handlePlayerKeydown)
-  document.addEventListener('pointerup', handleMobileDanmuPanelClick, true)
   document.addEventListener('click', handleMobileDanmuPanelClick, true)
-  document.addEventListener('touchend', handleMobileDanmuPanelClick, true)
   document.addEventListener('click', handleMobileFullscreenControlClick, true)
   addMobileLandscapeListeners()
   await onMountedFun();
@@ -3232,15 +3204,15 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-    width: 32px !important;
-    min-width: 32px !important;
-    max-width: 32px !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    width: 42px !important;
-    min-width: 42px !important;
-    max-width: 42px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-portrait-dock.is-visible {
@@ -3346,7 +3318,7 @@ h1 {
     min-width: 24px !important;
     max-width: 44px;
     height: 40px !important;
-    padding-inline: 1px !important;
+    padding-inline: 0 !important;
     overflow: hidden;
     font-size: 11px !important;
     white-space: nowrap;
@@ -3402,12 +3374,6 @@ h1 {
     text-overflow: ellipsis;
   }
 
-  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-画质),
-  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-倍速),
-  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-字幕) {
-    display: none !important;
-  }
-
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
     display: flex !important;
@@ -3415,15 +3381,15 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-    width: 32px !important;
-    min-width: 32px !important;
-    max-width: 32px !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    width: 42px !important;
-    min-width: 42px !important;
-    max-width: 42px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
   }
 
   .player:not(.is-forced-landscape) .mobile-danmu-controls.is-player-inline.is-visible {
@@ -4255,15 +4221,15 @@ img.play-icon {
   }
 
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-    width: 32px !important;
-    min-width: 32px !important;
-    max-width: 32px !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
   }
 
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    width: 42px !important;
-    min-width: 42px !important;
-    max-width: 42px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
   }
 
   .player.is-forced-landscape {
