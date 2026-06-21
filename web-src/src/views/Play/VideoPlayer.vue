@@ -626,10 +626,10 @@ function preventMobileDanmuTriggerEvent(event) {
 
 function isMobileDanmuTriggerActivator(event) {
   const type = event?.type || ''
-  if (type === 'touchend' || type === 'click') {
+  if (type === 'touchstart' || type === 'touchend' || type === 'click') {
     return true
   }
-  return type === 'pointerup' && event.pointerType !== 'mouse'
+  return (type === 'pointerdown' || type === 'pointerup') && event.pointerType !== 'mouse'
 }
 
 function getMobileDanmuTriggerEvent(args = []) {
@@ -662,10 +662,12 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
   const event = getMobileDanmuTriggerEvent(args)
   const now = window.performance?.now?.() || Date.now()
   const type = event?.type || ''
-  const isTouchLike = type === 'touchend' || (type === 'pointerup' && event.pointerType !== 'mouse')
-  const isSyntheticFollowupClick = type === 'click' && now - lastMobileDanmuSettingsTouchAt < 560
+  const isTouchLike = type === 'touchstart' ||
+      type === 'touchend' ||
+      ((type === 'pointerdown' || type === 'pointerup') && event.pointerType !== 'mouse')
+  const isSyntheticFollowupClick = type === 'click' && now - lastMobileDanmuSettingsTouchAt < 720
   const isDuplicateArtCallback = !event && now - lastMobileDanmuSettingsToggleAt < 360
-  const isDuplicatePointerEvent = !!event && now - lastMobileDanmuSettingsToggleAt < 260
+  const isDuplicatePointerEvent = !!event && now - lastMobileDanmuSettingsToggleAt < 420
   if (isSyntheticFollowupClick || isDuplicateArtCallback || isDuplicatePointerEvent) {
     preventMobileDanmuTriggerEvent(event)
     return
@@ -700,7 +702,9 @@ function bindMobileDanmuPanelTriggerElement(trigger) {
     return
   }
   boundMobileDanmuPanelTriggers.add(trigger)
+  trigger.addEventListener('pointerdown', handleDirectMobileDanmuPanelTrigger, {capture: true})
   trigger.addEventListener('pointerup', handleDirectMobileDanmuPanelTrigger, {capture: true})
+  trigger.addEventListener('touchstart', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
   trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
   trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
 }
@@ -3341,10 +3345,10 @@ h1 {
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
     display: flex !important;
     align-items: center;
-    gap: 1px !important;
+    gap: 0 !important;
     width: 100%;
     min-width: 0;
-    padding-inline: max(3px, env(safe-area-inset-left, 0px)) max(3px, env(safe-area-inset-right, 0px));
+    padding-inline: max(2px, env(safe-area-inset-left, 0px)) max(2px, env(safe-area-inset-right, 0px));
     overflow: visible !important;
   }
 
@@ -3352,19 +3356,19 @@ h1 {
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
     min-width: 0;
-    gap: 1px !important;
+    gap: 0 !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
     flex: 0 0 auto;
-    max-width: 118px;
+    max-width: 96px;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-playAndPause),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-volume) {
-    width: 28px !important;
-    min-width: 28px !important;
-    max-width: 28px !important;
+    width: 26px !important;
+    min-width: 26px !important;
+    max-width: 26px !important;
     height: 40px !important;
   }
 
@@ -3401,7 +3405,7 @@ h1 {
     display: flex !important;
     flex: 1 1 auto;
     justify-content: flex-start;
-    max-width: calc(100% - 116px);
+    max-width: calc(100% - 94px);
     overflow-x: visible !important;
     overflow-y: visible !important;
     scrollbar-width: none;
@@ -3441,18 +3445,18 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-画质) {
-    min-width: 40px !important;
-    max-width: 40px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-倍速) {
-    min-width: 30px !important;
-    max-width: 30px !important;
+    min-width: 26px !important;
+    max-width: 26px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-字幕) {
-    min-width: 34px !important;
-    max-width: 34px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-volume),
@@ -3460,13 +3464,16 @@ h1 {
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-fullscreen),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-fullscreenWeb),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-mobile-landscape-fullscreen) {
-    width: 28px !important;
-    min-width: 28px !important;
-    max-width: 28px;
+    width: 26px !important;
+    min-width: 26px !important;
+    max-width: 26px;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time) {
-    max-width: 60px;
+    flex: 0 0 38px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
     font-size: 10px !important;
     white-space: nowrap;
     overflow: hidden;
@@ -3487,15 +3494,15 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-    width: 34px !important;
-    min-width: 34px !important;
-    max-width: 34px !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    width: 44px !important;
-    min-width: 44px !important;
-    max-width: 44px !important;
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
   }
 
   .player:not(.is-forced-landscape) .mobile-danmu-controls.is-player-inline.is-visible {
@@ -4443,32 +4450,32 @@ img.play-icon {
 }
 
 .player.is-mobile-player :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-  flex: 0 0 34px !important;
-  width: 34px !important;
-  min-width: 34px !important;
-  max-width: 34px !important;
+  flex: 0 0 30px !important;
+  width: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
   padding-inline: 0 !important;
 }
 
 .player.is-mobile-player :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-  flex: 0 0 44px !important;
-  width: 44px !important;
-  min-width: 44px !important;
-  max-width: 44px !important;
+  flex: 0 0 42px !important;
+  width: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
   padding-inline: 0 !important;
 }
 
 .player.is-mobile-player :deep(.art-video-player .art-controls-right .art-control.art-control-mobile-danmu-toggle) {
-  flex: 0 0 34px !important;
-  width: 34px !important;
-  min-width: 34px !important;
-  max-width: 34px !important;
+  flex: 0 0 30px !important;
+  width: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
 }
 
 .player.is-mobile-player :deep(.art-video-player .art-controls-right .art-control.art-control-mobile-danmu-settings-trigger) {
-  flex: 0 0 44px !important;
-  width: 44px !important;
-  min-width: 44px !important;
-  max-width: 44px !important;
+  flex: 0 0 42px !important;
+  width: 42px !important;
+  min-width: 42px !important;
+  max-width: 42px !important;
 }
 </style>
