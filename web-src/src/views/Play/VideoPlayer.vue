@@ -139,7 +139,8 @@ let lastMobileDanmuSettingsTouchAt = 0;
 let lastMobileDanmuSettingsPointerUpAt = 0;
 let lastMobileDanmuSettingsTouchEndAt = 0;
 let mobileDanmuSettingsPressStarted = false;
-const MOBILE_DANMU_SETTINGS_DEDUPE_MS = 380;
+const MOBILE_DANMU_SETTINGS_PRESS_DEDUPE_MS = 140;
+const MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS = 900;
 const MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR = [
   '.art-control-mobile-danmu-settings-trigger',
   '.artplayer-plugin-danmuku .apd-config',
@@ -769,31 +770,31 @@ function findMobileDanmuSettingsTrigger(event) {
 function shouldSkipMobileDanmuSettingsActivator(event, now) {
   const type = event?.type || ''
   if (!event) {
-    return now - lastMobileDanmuSettingsToggleAt < MOBILE_DANMU_SETTINGS_DEDUPE_MS
+    return now - lastMobileDanmuSettingsToggleAt < MOBILE_DANMU_SETTINGS_PRESS_DEDUPE_MS
   }
   if (markMobileDanmuTriggerEvent(event)) {
     return true
   }
   if (type === 'touchstart') {
-    return now - lastMobileDanmuSettingsToggleAt < MOBILE_DANMU_SETTINGS_DEDUPE_MS
+    return now - lastMobileDanmuSettingsTouchAt < MOBILE_DANMU_SETTINGS_PRESS_DEDUPE_MS
   }
   if (type === 'pointerdown' && event.pointerType !== 'mouse') {
-    return now - lastMobileDanmuSettingsToggleAt < MOBILE_DANMU_SETTINGS_DEDUPE_MS
+    return now - lastMobileDanmuSettingsTouchAt < MOBILE_DANMU_SETTINGS_PRESS_DEDUPE_MS
   }
   if (type === 'touchend') {
-    return now - Math.max(lastMobileDanmuSettingsPointerUpAt, lastMobileDanmuSettingsTouchAt) < MOBILE_DANMU_SETTINGS_DEDUPE_MS
+    return now - Math.max(lastMobileDanmuSettingsPointerUpAt, lastMobileDanmuSettingsTouchAt) < MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS
   }
   if (type === 'pointerup' && event.pointerType !== 'mouse') {
-    return now - lastMobileDanmuSettingsTouchAt < MOBILE_DANMU_SETTINGS_DEDUPE_MS
+    return now - lastMobileDanmuSettingsTouchAt < MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS
   }
   if (type === 'click') {
-    return now - Math.max(lastMobileDanmuSettingsTouchEndAt, lastMobileDanmuSettingsPointerUpAt, lastMobileDanmuSettingsTouchAt) < MOBILE_DANMU_SETTINGS_DEDUPE_MS
+    return now - Math.max(lastMobileDanmuSettingsTouchEndAt, lastMobileDanmuSettingsPointerUpAt, lastMobileDanmuSettingsTouchAt) < MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS
   }
   if (type === 'pointerup' && event.pointerType === 'mouse') {
-    return now - lastMobileDanmuSettingsToggleAt < MOBILE_DANMU_SETTINGS_DEDUPE_MS
+    return false
   }
   if (type === 'mouseup') {
-    return now - lastMobileDanmuSettingsToggleAt < MOBILE_DANMU_SETTINGS_DEDUPE_MS
+    return false
   }
   return false
 }
@@ -807,6 +808,9 @@ function noteMobileDanmuSettingsActivator(event, now) {
     lastMobileDanmuSettingsTouchAt = now
   }
   if (type === 'pointerup') {
+    lastMobileDanmuSettingsPointerUpAt = now
+  }
+  if (type === 'mouseup') {
     lastMobileDanmuSettingsPointerUpAt = now
   }
   if (type === 'touchend') {
@@ -6307,56 +6311,8 @@ img.play-icon {
   }
 }
 
-/* Final mobile portrait fallback: keep the same readable controls as landscape. */
-.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
-.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速),
-.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕) {
-  display: none !important;
-}
-
-.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) .mobile-inline-text-controls {
-  right: calc(env(safe-area-inset-right, 0px) + 54px) !important;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;
-  z-index: 2147483005;
-  display: grid !important;
-  grid-template-columns: 32px 24px 32px;
-  align-items: center;
-  justify-content: end;
-  width: 88px;
-  gap: 0;
-  pointer-events: auto;
-  touch-action: manipulation;
-}
-
-.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) .mobile-inline-text-controls button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  width: 100%;
-  height: 40px;
-  padding: 0;
-  overflow: hidden;
-  color: rgba(255, 255, 255, 0.96);
-  background: transparent;
-  border: 0;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) .mobile-inline-text-controls button:active {
-  color: #00aeec;
-}
-
 .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
   overflow: visible !important;
-}
-
-.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting) {
-  margin-left: 100px !important;
 }
 
 .player.is-mobile-player :deep(.art-video-player .apd-config-panel),
