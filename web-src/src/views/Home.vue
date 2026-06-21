@@ -347,7 +347,8 @@ onUnmounted(() => {
                     v-for="preview in libraryPreviewItems(item)"
                     :key="preview.guid || preview.id || preview.title"
                 >
-                  <img :src="posterImageUrl(preview, 180)" alt="">
+                  <img class="library-poster-main" :src="posterImageUrl(preview, 180)" alt="">
+                  <img class="library-poster-reflection" :src="posterImageUrl(preview, 180)" alt="" aria-hidden="true">
                 </div>
               </template>
               <div v-else class="library-icon-wrap">
@@ -989,7 +990,7 @@ img.carousel-img {
   position: absolute;
   top: 4px;
   right: 4px;
-  bottom: 38px;
+  bottom: 4px;
   left: 4px;
   display: grid;
   grid-auto-columns: minmax(0, 1fr);
@@ -997,7 +998,16 @@ img.carousel-img {
   gap: 1px;
   overflow: hidden;
   background: var(--fn-top-control);
-  border-radius: 6px 6px 0 0;
+  border-radius: 6px;
+}
+
+.library-preview::after {
+  content: "";
+  position: absolute;
+  inset: 54% 0 0;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(25, 25, 26, 0) 0%, rgba(25, 25, 26, 0.58) 46%, rgba(25, 25, 26, 0.9) 100%);
+  pointer-events: none;
 }
 
 .library-preview-poster {
@@ -1009,11 +1019,25 @@ img.carousel-img {
   background: var(--fn-top-control);
 }
 
-.library-preview-poster img {
+.library-poster-main,
+.library-poster-reflection {
   display: block;
   width: 100%;
-  height: 100%;
   object-fit: cover;
+}
+
+.library-poster-main {
+  height: calc(100% - 39px);
+}
+
+.library-poster-reflection {
+  height: 39px;
+  opacity: 0.28;
+  filter: saturate(0.82) brightness(0.66);
+  transform: scaleY(-1);
+  transform-origin: center;
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.48), rgba(0, 0, 0, 0));
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.48), rgba(0, 0, 0, 0));
 }
 
 .library-icon-wrap {
@@ -1029,17 +1053,19 @@ img.carousel-img {
 
 .library-card-info {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  bottom: 39px;
+  left: 50%;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 46px;
-  padding: 16px 14px 10px;
+  min-width: 74px;
+  min-height: 24px;
+  padding: 0 12px;
   text-align: center;
-  background: linear-gradient(180deg, rgba(25, 25, 26, 0) 0%, rgba(25, 25, 26, 0.76) 34%, rgba(25, 25, 26, 0.98) 100%);
+  background: rgba(0, 0, 0, 0.66);
   pointer-events: none;
+  transform: translateX(-50%);
 }
 
 .library-title {
@@ -1047,9 +1073,9 @@ img.carousel-img {
   max-width: 100%;
   overflow: hidden;
   color: #fff;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  line-height: 20px;
+  line-height: 24px;
   text-align: center;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.42);
   text-overflow: ellipsis;

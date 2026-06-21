@@ -1446,10 +1446,10 @@ html[data-theme="light"] {
 }
 
 html[data-theme="dark"] {
-  --fn-bg: #151515;
+  --fn-bg: #19191a;
   --fn-sidebar: #101113;
-  --fn-panel: #1d1d1f;
-  --fn-panel-hover: #242426;
+  --fn-panel: #19191a;
+  --fn-panel-hover: #202024;
   --fn-border: rgba(255, 255, 255, 0.07);
   --fn-text: rgba(255, 255, 255, 0.88);
   --fn-muted: rgba(255, 255, 255, 0.58);
