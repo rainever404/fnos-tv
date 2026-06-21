@@ -299,7 +299,8 @@ const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.va
 const mobileDanmuPortalPortraitActive = computed(() => isMobileUiActive() && isPortraitViewport() && !mobileDanmuPortalLandscapeActive.value)
 const shouldShowMobileExtraControls = computed(() => false)
 const shouldShowMobileInlineTextControls = computed(() => {
-  return false
+  return isMobileUiActive() &&
+      isPortraitMobilePlayer()
 })
 const mobileQualityOptions = computed(() => qualitySelector.value.flatMap(group => group.selector || []))
 const mobileSubtitleOptions = computed(() => {
@@ -755,8 +756,6 @@ function handleDirectMobileDanmuPanelTrigger(event) {
   }
   if (isMobileDanmuTriggerPress(event)) {
     keepMobileControlsVisible()
-    event?.stopPropagation?.()
-    event?.stopImmediatePropagation?.()
     return
   }
   if (!isMobileDanmuTriggerActivator(event)) {
@@ -874,6 +873,13 @@ function normalizeMobileCoreControls() {
   })
 }
 
+function syncMobilePlayerControlsVisibleFromDom(root = playerFrame.value) {
+  if (!root || !isMobileUiActive()) {
+    return
+  }
+  mobilePlayerControlsVisible.value = !!root.querySelector('.art-video-player.art-control-show')
+}
+
 function syncMobileDanmuFallbackControls() {
   if (!refreshMobileUiState()) {
     return
@@ -887,6 +893,7 @@ function syncMobileDanmuFallbackControls() {
     refreshMobileUiState()
     bindMobileDanmuPanelTriggers()
     normalizeMobileCoreControls()
+    syncMobilePlayerControlsVisibleFromDom()
     const hasArtControls = isMobileArtControlVisible('.art-control-mobile-danmu-toggle') &&
         isMobileArtControlVisible('.art-control-mobile-danmu-settings-trigger')
     mobileArtDanmuControlsVisible.value = hasArtControls
@@ -977,8 +984,6 @@ function handleMobileDanmuPanelClick(event) {
     }
     if (isMobileDanmuTriggerPress(event)) {
       keepMobileControlsVisible()
-      event?.stopPropagation?.()
-      event?.stopImmediatePropagation?.()
       return
     }
     if (!isMobileDanmuTriggerActivator(event)) {
@@ -5382,6 +5387,19 @@ img.play-icon {
   width: var(--mobile-player-subtitle-width) !important;
   min-width: var(--mobile-player-subtitle-width) !important;
   max-width: var(--mobile-player-subtitle-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕) {
+  color: transparent !important;
+  pointer-events: none !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质 *),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速 *),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕 *) {
+  color: transparent !important;
 }
 
 .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting) {

@@ -29,6 +29,7 @@ const showDetailMoreMenu = ref(false)
 const EpisodeCarouselRef = ref(null);
 const play_item_guid = ref(null);
 const play_guid = ref(null)
+const selectedMediaGuid = ref(null)
 const MIN_RESUME_SECONDS = 30
 const RESUME_END_BUFFER_SECONDS = 30
 const detailMoreMenuItems = [
@@ -144,15 +145,16 @@ const detailMetaItems = computed(() => {
 
 const selectedMediaFile = computed(() => {
   const files = StreamList.value?.files || []
-  const mediaGuid = playInfo.value?.media_guid
+  const mediaGuid = selectedMediaGuid.value || playInfo.value?.media_guid
   return files.find(item => item.guid === mediaGuid || item.media_guid === mediaGuid) || files[0] || null
 })
 
 const selectedVideoStream = computed(() => {
   const streams = StreamList.value?.video_streams || []
   const mediaGuid = selectedMediaFile.value?.guid || playInfo.value?.media_guid
-  return streams.find(item => item.guid === playInfo.value?.video_guid)
+  return streams.find(item => item.media_guid === mediaGuid && item.guid === playInfo.value?.video_guid)
       || streams.find(item => item.media_guid === mediaGuid)
+      || streams.find(item => item.guid === playInfo.value?.video_guid)
       || streams[0]
       || null
 })
@@ -160,8 +162,9 @@ const selectedVideoStream = computed(() => {
 const selectedAudioStream = computed(() => {
   const streams = StreamList.value?.audio_streams || []
   const mediaGuid = selectedMediaFile.value?.guid || playInfo.value?.media_guid
-  return streams.find(item => item.guid === playInfo.value?.audio_guid)
+  return streams.find(item => item.media_guid === mediaGuid && item.guid === playInfo.value?.audio_guid)
       || streams.find(item => item.media_guid === mediaGuid)
+      || streams.find(item => item.guid === playInfo.value?.audio_guid)
       || streams[0]
       || null
 })
@@ -169,8 +172,9 @@ const selectedAudioStream = computed(() => {
 const selectedSubtitleStream = computed(() => {
   const streams = StreamList.value?.subtitle_streams || []
   const mediaGuid = selectedMediaFile.value?.guid || playInfo.value?.media_guid
-  return streams.find(item => item.guid === playInfo.value?.subtitle_guid)
+  return streams.find(item => item.media_guid === mediaGuid && item.guid === playInfo.value?.subtitle_guid)
       || streams.find(item => item.media_guid === mediaGuid)
+      || streams.find(item => item.guid === playInfo.value?.subtitle_guid)
       || streams[0]
       || null
 })
@@ -213,11 +217,17 @@ const detailLogoUrl = computed(() => {
 const streamFeatureTags = computed(() => {
   const streams = Array.isArray(StreamList.value?.video_streams) ? StreamList.value.video_streams : []
   const source = streams.length ? streams : (selectedVideoStream.value ? [selectedVideoStream.value] : [])
+  const activeMediaGuid = selectedMediaFile.value?.guid || playInfo.value?.media_guid || ''
   return source.map(video => {
     const resolution = translateStreamLabel(video?.resolution_type)
     const color = translateStreamLabel(video?.color_range_type)
-    return [resolution, color].filter(Boolean).join(' ')
-  }).filter(Boolean)
+    const label = [resolution, color].filter(Boolean).join(' ')
+    return {
+      label,
+      mediaGuid: video?.media_guid || '',
+      active: Boolean(video?.media_guid && video.media_guid === activeMediaGuid)
+    }
+  }).filter(item => item.label)
 })
 
 const detailTrackLabels = computed(() => {
@@ -601,6 +611,7 @@ async function GetPersonList() {
 async function GetStreamList() {
   if (gallery_type.value === 'TV') {
     StreamList.value = null
+    selectedMediaGuid.value = null
     return
   }
   try {
@@ -609,6 +620,13 @@ async function GetStreamList() {
   } catch {
     StreamList.value = null
   }
+}
+
+function selectStreamFeature(mediaGuid) {
+  if (!mediaGuid) {
+    return
+  }
+  selectedMediaGuid.value = mediaGuid
 }
 
 async function GetEpisodeList() {
@@ -627,6 +645,7 @@ async function Play(_guid = playInfo.value?.item?.guid || play_guid.value) {
   const episodeGuid = _guid || playInfo.value?.item_guid || VideoDataInfo.value?.play_item_guid || guid.value
   const parentGuid = play_guid.value || guid.value
   const playType = playInfo.value?.type || gallery_type.value || VideoDataInfo.value?.type || 'Video'
+  const mediaGuid = selectedMediaFile.value?.guid || playInfo.value?.media_guid || undefined
   if (!episodeGuid || !parentGuid) {
     return
   }
@@ -637,7 +656,7 @@ async function Play(_guid = playInfo.value?.item?.guid || play_guid.value) {
       gallery_type: playType === 'season' ? 'TV' : playType,
       guid: parentGuid,
       episode_guid: episodeGuid,
-      media_guid: playInfo.value?.media_guid || undefined
+      media_guid: mediaGuid
     }
   })
 }
@@ -681,6 +700,7 @@ const goToSlide = (index) => {
 onBeforeRouteUpdate(async (to, from) => {
   guid.value = routeGuid(to);
   gallery_type.value = routeGalleryType(to)
+  selectedMediaGuid.value = null
   showTechInfoDialog.value = false
   showOverviewDialog.value = false
   showDetailMoreMenu.value = false
@@ -801,14 +821,17 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div v-if="streamFeatureTags.length" class="detail-feature-tags">
-          <span
+          <button
               v-for="(tag, index) in streamFeatureTags"
-              :key="tag + index"
+              :key="tag.mediaGuid || `${tag.label}-${index}`"
+              type="button"
               class="detail-feature-tag"
-              :class="{ active: index === 0 }"
+              :class="{ active: tag.active }"
+              :aria-pressed="tag.active ? 'true' : 'false'"
+              @click="selectStreamFeature(tag.mediaGuid)"
           >
-            {{ tag }}
-          </span>
+            {{ tag.label }}
+          </button>
         </div>
         <div v-if="overviewText" class="overview-text detail-overview">
           <span class="detail-overview-text">{{ overviewText }}</span>
@@ -1770,13 +1793,24 @@ span.button-text {
   box-sizing: border-box;
   font-size: 13px;
   font-weight: 600;
+  font-family: inherit;
   line-height: 18px;
   white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
+.detail-feature-tag:hover,
+.detail-feature-tag:focus-visible,
 .detail-feature-tag.active {
   color: var(--fn-blue);
   border-color: var(--fn-blue);
+}
+
+.detail-feature-tag:focus-visible {
+  outline: none;
 }
 
 .detailButton {
