@@ -128,6 +128,7 @@ const touchState = {
 };
 let playerTouchFrame = null;
 let mobileDanmuFallbackSyncTimer = null;
+let mobileControlRefreshTimers = [];
 const boundMobileDanmuPanelTriggers = new WeakSet();
 let lastMobileDanmuSettingsTriggerAt = 0;
 let lastMobileDanmuSettingsTouchAt = 0;
@@ -617,6 +618,14 @@ function preventMobileDanmuTriggerEvent(event) {
   event?.stopImmediatePropagation?.()
 }
 
+function isMobileDanmuTriggerActivator(event) {
+  const type = event?.type || ''
+  if (type === 'touchend' || type === 'click') {
+    return true
+  }
+  return type === 'pointerup' && event.pointerType !== 'mouse'
+}
+
 function getMobileDanmuTriggerEvent(args = []) {
   return args.find(item => item?.target && (typeof item.preventDefault === 'function' || typeof item.stopPropagation === 'function')) || null
 }
@@ -668,9 +677,11 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
 function triggerMobileDanmuSettingsPanel(event) {
   const now = window.performance?.now?.() || Date.now()
   const type = event?.type || ''
-  const isTouchLike = type === 'touchstart' ||
-      type === 'touchend' ||
-      ((type === 'pointerdown' || type === 'pointerup') && event.pointerType !== 'mouse')
+  if (!isMobileDanmuTriggerActivator(event)) {
+    preventMobileDanmuTriggerEvent(event)
+    return
+  }
+  const isTouchLike = type === 'touchend' || (type === 'pointerup' && event.pointerType !== 'mouse')
   if (isTouchLike && now - lastMobileDanmuSettingsTriggerAt < 240) {
     preventMobileDanmuTriggerEvent(event)
     return
@@ -785,6 +796,30 @@ function stopMobileDanmuFallbackSyncLoop() {
   }
   clearInterval(mobileDanmuFallbackSyncTimer)
   mobileDanmuFallbackSyncTimer = null
+}
+
+function clearMobileControlRefreshTimers() {
+  mobileControlRefreshTimers.forEach(timer => window.clearTimeout(timer))
+  mobileControlRefreshTimers = []
+}
+
+function refreshPlayerControls() {
+  if (!art) {
+    return
+  }
+  void UpdateControl(art).then(() => {
+    scheduleMobileDanmuFallbackSync()
+    syncMobileDanmuControlButtons()
+  })
+}
+
+function schedulePlayerControlRefresh() {
+  clearMobileControlRefreshTimers()
+  refreshPlayerControls()
+  ;[120, 360, 900, 1600].forEach(delay => {
+    const timer = window.setTimeout(refreshPlayerControls, delay)
+    mobileControlRefreshTimers.push(timer)
+  })
 }
 
 function handleMobileDanmuPanelClick(event) {
@@ -2118,6 +2153,7 @@ async function play() {
   await GetQuality();
   if (art !== null && art !== undefined) {
     await UpdateControl(art);
+    schedulePlayerControlRefresh();
   }
   await GetPalyUrl();
   GetEmoji();
@@ -2176,6 +2212,7 @@ async function ready() {
   // art.plugins.artplayerPluginDanmuku.config(danmu_setting)
 
   await UpdateControl(art);
+  schedulePlayerControlRefresh();
   art.plugins.artplayerPluginDanmuku.reset();
   syncMobileDanmuVisible();
   scheduleMobileDanmuFallbackSync();
@@ -2428,7 +2465,7 @@ async function getInstance(_art) {
   refreshMobileUiState()
   bindPlayerTouchListeners()
   if (qualitySelector.value.length || StreamList.value?.subtitle_streams?.length) {
-    void UpdateControl(art)
+    schedulePlayerControlRefresh()
   }
   scheduleMobileDanmuFallbackSync()
 }
@@ -2475,6 +2512,7 @@ onBeforeRouteLeave((to, from) => {
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
   stopMobileDanmuFallbackSyncLoop()
+  clearMobileControlRefreshTimers()
   cleanupMobileLandscape()
 });
 
@@ -2496,6 +2534,7 @@ onBeforeUnmount(async () => {
   document.removeEventListener('click', handleMobileFullscreenControlClick, true)
   removePlayerTouchListeners()
   stopMobileDanmuFallbackSyncLoop()
+  clearMobileControlRefreshTimers()
   cleanupMobileLandscape()
 })
 onMounted(async () => {
@@ -3313,6 +3352,7 @@ h1 {
     width: 100%;
     min-width: 0;
     padding-inline: max(4px, env(safe-area-inset-left, 0px)) max(4px, env(safe-area-inset-right, 0px));
+    overflow: visible !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left),
@@ -3323,8 +3363,8 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
-    flex: 0 1 auto;
-    max-width: 132px;
+    flex: 0 0 auto;
+    max-width: 124px;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-playAndPause),
@@ -3366,9 +3406,17 @@ h1 {
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
     display: flex !important;
-    flex: 1 0 auto;
-    justify-content: flex-end;
-    overflow: visible !important;
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    max-width: calc(100% - 126px);
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right::-webkit-scrollbar) {
+    display: none;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control) {
@@ -3378,7 +3426,7 @@ h1 {
     justify-content: center;
     width: auto !important;
     min-width: 24px !important;
-    max-width: 44px;
+    max-width: none;
     height: 40px !important;
     padding-inline: 0 !important;
     overflow: hidden;
@@ -3424,9 +3472,11 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time) {
-    max-width: 82px;
+    max-width: 68px;
     font-size: 10px !important;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-selector-value),
@@ -4270,6 +4320,7 @@ img.play-icon {
     justify-content: center;
     width: 0;
     min-width: 0;
+    overflow: visible !important;
   }
 
   :deep(.art-video-player .art-controls-center .artplayer-plugin-danmuku) {
