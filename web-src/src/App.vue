@@ -244,6 +244,7 @@ async function GetMediaDbList() {
 async function GetMediaDbSum() {
   let api = '/api/v1/mediadb/sum'
   MediaDbSum.value = await COMMON.requests("GET", api, true);
+  MediaDbData.sum = MediaDbSum.value || {}
 }
 
 async function GetFavoriteSummary() {

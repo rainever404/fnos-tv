@@ -6,9 +6,10 @@ import {ref} from 'vue'
 export const useMediaDbData = defineStore('MediaDbData', () => {
     const list = ref([])
     const info = ref({})
+    const sum = ref({})
     const sort_column = ref("create_time");
     const sort_type = ref("DESC");
-    return {list, info, sort_column, sort_type}
+    return {list, info, sum, sort_column, sort_type}
 })
 
 export const usePlayerData = defineStore("PlayerData", () => {
