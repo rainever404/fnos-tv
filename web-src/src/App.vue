@@ -472,21 +472,6 @@ function normalizeGalleryType(value) {
   return value
 }
 
-function isMediaDetailRoute(targetRoute = route) {
-  return mediaDetailRouteNames.has(targetRoute.name)
-}
-
-function mediaDetailCategory(targetRoute = route) {
-  if (targetRoute.name === 'MovieData') {
-    return 'Movie'
-  }
-  const type = normalizeGalleryType(targetRoute.query?.gallery_type)
-  if (type === 'season') {
-    return 'TV'
-  }
-  return type === 'TV' || type === 'Movie' ? type : null
-}
-
 function routeCategory(targetRoute = route) {
   return targetRoute.params?.category || targetRoute.query?.category || null
 }
@@ -511,8 +496,8 @@ function isLibraryActive(item) {
   if (!item) {
     return false
   }
-  if (isMediaDetailRoute()) {
-    return item.category === mediaDetailCategory()
+  if (detailRouteNames.has(route.name)) {
+    return false
   }
   if (route.name === 'LibraryList' && route.params.guid) {
     return route.params.guid === item.guid
@@ -524,7 +509,7 @@ function isLibraryActive(item) {
 }
 
 function isHomeActive() {
-  return route.path === '/' || route.name === 'PersonData'
+  return route.path === '/' || detailRouteNames.has(route.name)
 }
 
 function isCategoryActive(item) {
