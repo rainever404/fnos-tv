@@ -135,6 +135,7 @@ let lastMobileDanmuSettingsToggleAt = 0;
 let lastMobileDanmuSettingsTouchAt = 0;
 let lastMobileDanmuSettingsPointerUpAt = 0;
 let lastMobileDanmuSettingsTouchEndAt = 0;
+let mobileDanmuSettingsPressStarted = false;
 const MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR = '.art-control-mobile-danmu-settings-trigger, .artplayer-plugin-danmuku .apd-config';
 const MOBILE_CORE_CONTROL_SELECTOR = [
   '.art-control-mobile-danmu-toggle',
@@ -299,8 +300,7 @@ const mobileDanmuPortalLandscapeActive = computed(() => forcedLandscapeActive.va
 const mobileDanmuPortalPortraitActive = computed(() => isMobileUiActive() && isPortraitViewport() && !mobileDanmuPortalLandscapeActive.value)
 const shouldShowMobileExtraControls = computed(() => false)
 const shouldShowMobileInlineTextControls = computed(() => {
-  return isMobileUiActive() &&
-      isPortraitMobilePlayer()
+  return false
 })
 const mobileQualityOptions = computed(() => qualitySelector.value.flatMap(group => group.selector || []))
 const mobileSubtitleOptions = computed(() => {
@@ -626,16 +626,25 @@ function touchPointForPlayer(touch) {
   }
 }
 
+function setMobileDanmuSettingsVisible(visible) {
+  showMobileDanmuSettings.value = !!visible
+  const root = playerFrame.value
+  const panel = root?.querySelector?.('.mobile-danmu-settings')
+  if (panel) {
+    panel.classList.toggle('is-visible', !!visible)
+  }
+  syncMobileDanmuControlButtons()
+}
+
 function closeMobileDanmuPanels() {
   if (!isMobileDanmuControlContext()) {
     return
   }
-  showMobileDanmuSettings.value = false
+  setMobileDanmuSettingsVisible(false)
   mobileControlMenu.value = ''
   playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open').forEach(panel => {
     panel.classList.remove('is-panel-open')
   })
-  syncMobileDanmuControlButtons()
 }
 
 function preventMobileDanmuTriggerEvent(event) {
@@ -714,10 +723,10 @@ function shouldSkipMobileDanmuSettingsActivator(event, now) {
     return true
   }
   if (type === 'touchend') {
-    return now - lastMobileDanmuSettingsPointerUpAt < 700
+    return now - lastMobileDanmuSettingsPointerUpAt < 520
   }
   if (type === 'click') {
-    return now - Math.max(lastMobileDanmuSettingsToggleAt, lastMobileDanmuSettingsTouchEndAt, lastMobileDanmuSettingsPointerUpAt, lastMobileDanmuSettingsTouchAt) < 900
+    return now - Math.max(lastMobileDanmuSettingsTouchEndAt, lastMobileDanmuSettingsPointerUpAt, lastMobileDanmuSettingsTouchAt) < 520
   }
   if (type === 'pointerup' && event.pointerType === 'mouse') {
     return now - lastMobileDanmuSettingsToggleAt < 520
@@ -730,7 +739,7 @@ function shouldSkipMobileDanmuSettingsActivator(event, now) {
 
 function noteMobileDanmuSettingsActivator(event, now) {
   const type = event?.type || ''
-  if (type === 'pointerup' && event.pointerType !== 'mouse') {
+  if (type === 'pointerup') {
     lastMobileDanmuSettingsPointerUpAt = now
   }
   if (type === 'touchend') {
@@ -741,6 +750,7 @@ function noteMobileDanmuSettingsActivator(event, now) {
     lastMobileDanmuSettingsTouchAt = now
   }
   lastMobileDanmuSettingsToggleAt = now
+  mobileDanmuSettingsPressStarted = false
 }
 
 function handleDirectMobileDanmuPanelTrigger(event) {
@@ -758,10 +768,16 @@ function handleDirectMobileDanmuPanelTrigger(event) {
     return
   }
   if (isMobileDanmuTriggerPress(event)) {
+    mobileDanmuSettingsPressStarted = true
+    preventMobileDanmuTriggerEvent(event)
     keepMobileControlsVisible()
     return
   }
   if (!isMobileDanmuTriggerActivator(event)) {
+    return
+  }
+  if ((event?.type === 'click' || event?.type === 'mouseup') && mobileDanmuSettingsPressStarted) {
+    preventMobileDanmuTriggerEvent(event)
     return
   }
   triggerMobileDanmuSettingsPanel(event)
@@ -785,7 +801,7 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
   closeMobileDanmuPanels()
   if (shouldOpen) {
     mobileControlMenu.value = ''
-    showMobileDanmuSettings.value = true
+    setMobileDanmuSettingsVisible(true)
     if (art?.controls) {
       art.controls.show = true
       mobilePlayerControlsVisible.value = true
@@ -1113,11 +1129,10 @@ function toggleMobileDanmuVisible() {
 
 function toggleMobileDanmuSettings() {
   mobileControlMenu.value = ''
-  showMobileDanmuSettings.value = !showMobileDanmuSettings.value
+  setMobileDanmuSettingsVisible(!showMobileDanmuSettings.value)
   playerFrame.value?.querySelectorAll?.('.apd-config.is-panel-open, .apd-style.is-panel-open').forEach(panel => {
     panel.classList.remove('is-panel-open')
   })
-  syncMobileDanmuControlButtons()
 }
 
 function toggleMobileControlMenu(menu) {
@@ -5439,5 +5454,74 @@ img.play-icon {
     --mobile-player-subtitle-width: 29px;
     --mobile-player-icon-width: 22px;
   }
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
+  display: flex !important;
+  flex: 1 1 0 !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 40px !important;
+  padding-inline: 0 !important;
+  color: rgba(255, 255, 255, 0.94) !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  white-space: nowrap !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕) {
+  flex: 0 0 34px !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  max-width: 34px !important;
+  font-size: 11px !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速) {
+  flex: 0 0 26px !important;
+  width: 26px !important;
+  min-width: 26px !important;
+  max-width: 26px !important;
+  font-size: 11px !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+  flex: 0 0 25px !important;
+  width: 25px !important;
+  min-width: 25px !important;
+  max-width: 25px !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-selector-value),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control span) {
+  max-width: 34px !important;
+  overflow: hidden !important;
+  color: inherit !important;
+  text-overflow: clip !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) .mobile-inline-text-controls {
+  display: none !important;
 }
 </style>
