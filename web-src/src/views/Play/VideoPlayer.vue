@@ -707,8 +707,8 @@ function toggleMobileDanmuSettingsFromTrigger(...args) {
   const isTouchLike = type === 'touchend' ||
       (type === 'pointerup' && event.pointerType !== 'mouse')
   const isSyntheticFollowupClick = type === 'click' && now - lastMobileDanmuSettingsTouchAt < 1100
-  const isDuplicateArtCallback = !event && now - lastMobileDanmuSettingsToggleAt < 1100
-  const isDuplicatePointerEvent = !!event && now - lastMobileDanmuSettingsToggleAt < 420
+  const isDuplicateArtCallback = !event && now - lastMobileDanmuSettingsToggleAt < 360
+  const isDuplicatePointerEvent = !!event && now - lastMobileDanmuSettingsToggleAt < 180
   if (isSyntheticFollowupClick || isDuplicateArtCallback || isDuplicatePointerEvent) {
     preventMobileDanmuTriggerEvent(event)
     return
@@ -746,10 +746,9 @@ function bindMobileDanmuPanelTriggerElement(trigger) {
   if (window.PointerEvent) {
     trigger.addEventListener('pointerdown', handleDirectMobileDanmuPanelTrigger, {capture: true})
     trigger.addEventListener('pointerup', handleDirectMobileDanmuPanelTrigger, {capture: true})
-  } else {
-    trigger.addEventListener('touchstart', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
-    trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
   }
+  trigger.addEventListener('touchstart', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
+  trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
   trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
 }
 
@@ -2528,9 +2527,7 @@ async function getInstance(_art) {
   applyPlayerBrightness()
   refreshMobileUiState()
   bindPlayerTouchListeners()
-  if (qualitySelector.value.length || StreamList.value?.subtitle_streams?.length) {
-    schedulePlayerControlRefresh()
-  }
+  schedulePlayerControlRefresh()
   scheduleMobileDanmuFallbackSync()
 }
 
@@ -5044,5 +5041,114 @@ img.play-icon {
 
 .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger i) {
   font-size: 14px;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) {
+  --mobile-player-left-width: clamp(104px, 30vw, 122px);
+  --mobile-player-toggle-width: 28px;
+  --mobile-player-danmu-settings-width: 38px;
+  --mobile-player-text-width: 32px;
+  --mobile-player-rate-width: 25px;
+  --mobile-player-icon-width: 24px;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
+  box-sizing: border-box;
+  width: 100% !important;
+  padding-inline: max(4px, env(safe-area-inset-left, 0px)) max(4px, env(safe-area-inset-right, 0px)) !important;
+  overflow: visible !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
+  flex: 0 0 var(--mobile-player-left-width) !important;
+  width: var(--mobile-player-left-width) !important;
+  min-width: var(--mobile-player-left-width) !important;
+  max-width: var(--mobile-player-left-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-time) {
+  flex: 0 0 calc(var(--mobile-player-left-width) - 52px) !important;
+  width: calc(var(--mobile-player-left-width) - 52px) !important;
+  min-width: calc(var(--mobile-player-left-width) - 52px) !important;
+  max-width: calc(var(--mobile-player-left-width) - 52px) !important;
+  font-size: 10px !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
+  display: flex !important;
+  flex: 1 1 0 !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0 !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control) {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 40px !important;
+  padding-inline: 0 !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
+  flex: 0 0 var(--mobile-player-toggle-width) !important;
+  width: var(--mobile-player-toggle-width) !important;
+  min-width: var(--mobile-player-toggle-width) !important;
+  max-width: var(--mobile-player-toggle-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  flex: 0 0 var(--mobile-player-danmu-settings-width) !important;
+  width: var(--mobile-player-danmu-settings-width) !important;
+  min-width: var(--mobile-player-danmu-settings-width) !important;
+  max-width: var(--mobile-player-danmu-settings-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕) {
+  display: flex !important;
+  flex: 0 0 var(--mobile-player-text-width) !important;
+  width: var(--mobile-player-text-width) !important;
+  min-width: var(--mobile-player-text-width) !important;
+  max-width: var(--mobile-player-text-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速) {
+  display: flex !important;
+  flex: 0 0 var(--mobile-player-rate-width) !important;
+  width: var(--mobile-player-rate-width) !important;
+  min-width: var(--mobile-player-rate-width) !important;
+  max-width: var(--mobile-player-rate-width) !important;
+}
+
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb),
+.player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+  display: flex !important;
+  flex: 0 0 var(--mobile-player-icon-width) !important;
+  width: var(--mobile-player-icon-width) !important;
+  min-width: var(--mobile-player-icon-width) !important;
+  max-width: var(--mobile-player-icon-width) !important;
+}
+
+@media (max-width: 350px) and (orientation: portrait) {
+  .player.is-mobile-player.is-mobile-portrait:not(.is-forced-landscape) {
+    --mobile-player-left-width: 100px;
+    --mobile-player-text-width: 30px;
+    --mobile-player-rate-width: 24px;
+    --mobile-player-icon-width: 23px;
+  }
 }
 </style>
