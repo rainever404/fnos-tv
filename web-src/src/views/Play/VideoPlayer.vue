@@ -132,6 +132,7 @@ let mobileControlRefreshTimers = [];
 const boundMobileDanmuPanelTriggers = new WeakSet();
 let lastMobileDanmuSettingsTriggerAt = 0;
 let lastMobileDanmuSettingsTouchAt = 0;
+const MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR = '.art-control-mobile-danmu-settings-trigger';
 
 const qualitySelector = ref([]);
 const currentQuality = ref(null);
@@ -647,7 +648,7 @@ function handleDirectMobileDanmuPanelTrigger(event) {
     return
   }
   const target = event.target
-  const trigger = target?.closest?.('.apd-config, .apd-style, .art-control-mobile-danmu-settings-trigger')
+  const trigger = target?.closest?.(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR)
   if (!trigger || !playerFrame.value?.contains(trigger)) {
     return
   }
@@ -712,7 +713,7 @@ function bindMobileDanmuPanelTriggers() {
   if (!root || !isMobileUiActive()) {
     return
   }
-  root.querySelectorAll('.apd-config, .apd-style, .art-control-mobile-danmu-settings-trigger').forEach(trigger => {
+  root.querySelectorAll(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR).forEach(trigger => {
     bindMobileDanmuPanelTriggerElement(trigger)
   })
 }
@@ -838,7 +839,7 @@ function handleMobileDanmuPanelClick(event) {
   if (target.closest('.apd-config-panel, .apd-style-panel')) {
     return
   }
-  const panelTrigger = target.closest('.apd-config, .apd-style, .art-control-mobile-danmu-settings-trigger')
+  const panelTrigger = target.closest(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR)
   if (panelTrigger && root.contains(panelTrigger)) {
     if ((event?.type === 'pointerdown' || event?.type === 'pointerup') && event.pointerType === 'mouse') {
       return
@@ -3312,9 +3313,9 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    width: 38px !important;
-    min-width: 38px !important;
-    max-width: 38px !important;
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) .mobile-danmu-portrait-dock.is-visible {
@@ -3365,7 +3366,7 @@ h1 {
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
     flex: 0 0 auto;
-    max-width: 116px;
+    max-width: 118px;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-playAndPause),
@@ -3409,7 +3410,7 @@ h1 {
     display: flex !important;
     flex: 1 1 auto;
     justify-content: flex-start;
-    max-width: calc(100% - 118px);
+    max-width: calc(100% - 120px);
     overflow-x: auto !important;
     overflow-y: visible !important;
     scrollbar-width: none;
@@ -3449,27 +3450,28 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-画质) {
-    min-width: 28px !important;
-    max-width: 31px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-倍速) {
-    min-width: 22px !important;
-    max-width: 26px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-字幕) {
-    min-width: 26px !important;
-    max-width: 30px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-volume),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-setting),
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-fullscreen),
-  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-fullscreenWeb) {
-    width: 26px !important;
-    min-width: 26px !important;
-    max-width: 26px;
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-fullscreenWeb),
+  .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right .art-control-mobile-landscape-fullscreen) {
+    width: 28px !important;
+    min-width: 28px !important;
+    max-width: 28px;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time) {
@@ -3494,9 +3496,9 @@ h1 {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-    width: 30px !important;
-    min-width: 30px !important;
-    max-width: 30px !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    max-width: 28px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
@@ -4304,15 +4306,15 @@ img.play-icon {
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-    width: 32px !important;
-    min-width: 32px !important;
-    max-width: 32px !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    max-width: 28px !important;
   }
 
   .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
-    width: 42px !important;
-    min-width: 42px !important;
-    max-width: 42px !important;
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
   }
 
   :deep(.art-video-player .art-controls-center) {
@@ -4342,9 +4344,9 @@ img.play-icon {
   }
 
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
-    width: 30px !important;
-    min-width: 30px !important;
-    max-width: 30px !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    max-width: 28px !important;
   }
 
   .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
