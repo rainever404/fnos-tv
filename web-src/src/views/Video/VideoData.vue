@@ -789,14 +789,15 @@ onBeforeUnmount(() => {
           </button>
           <button
               type="button"
-              class="detailButton circleButton"
+              class="detailButton circleButton watchedButton"
               :class="{ active: isDetailWatched }"
               :title="isDetailWatched ? '标记为未观看' : '标记为已观看'"
               :aria-label="isDetailWatched ? '标记为未观看' : '标记为已观看'"
               @click="toggleDetailWatched"
           >
-            <span class="button-icon">
-              <i :class="isDetailWatched ? 'bx bxs-show' : 'bx bx-show'"></i>
+            <span class="button-icon watched-status-icon" aria-hidden="true">
+              <i class="bx bx-show watched-eye"></i>
+              <i :class="isDetailWatched ? 'bx bxs-check-circle watched-state' : 'bx bx-check-circle watched-state'"></i>
             </span>
           </button>
           <div class="detail-more-wrapper" @click.stop>
@@ -1969,6 +1970,36 @@ span.button-text {
   display: inline-flex;
   align-items: center;
   font-size: 18px;
+}
+
+.watchedButton .watched-status-icon {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  justify-content: center;
+}
+
+.watched-status-icon .watched-eye {
+  font-size: 20px;
+}
+
+.watched-status-icon .watched-state {
+  position: absolute;
+  right: -5px;
+  bottom: -4px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  font-size: 13px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.72);
+  background: var(--fn-bg);
+}
+
+.watchedButton.active .watched-state,
+.watchedButton:hover .watched-state {
+  color: #fff;
+  background: var(--fn-blue);
 }
 
 span.button-text {

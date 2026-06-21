@@ -866,6 +866,14 @@ function toggleMobileDanmuSettingsOnPress(event) {
   toggleMobileDanmuSettingsPanelState()
 }
 
+function shouldIgnoreMobileDanmuSettingsFollowUpClose(event) {
+  if ((event?.type || '') !== 'click') {
+    return false
+  }
+  const now = window.performance?.now?.() || Date.now()
+  return now < ignoreMobileDanmuSettingsReleaseUntil
+}
+
 function handleDirectMobileDanmuPanelTrigger(event) {
   if (!isMobileDanmuControlContext()) {
     return
@@ -937,12 +945,19 @@ function bindMobileDanmuPanelTriggerElement(trigger) {
   if (window.PointerEvent) {
     trigger.addEventListener('pointerdown', handleDirectMobileDanmuPanelTrigger, {capture: true})
     trigger.addEventListener('pointerup', handleDirectMobileDanmuPanelTrigger, {capture: true})
+    trigger.addEventListener('pointerdown', handleDirectMobileDanmuPanelTrigger)
+    trigger.addEventListener('pointerup', handleDirectMobileDanmuPanelTrigger)
   }
   trigger.addEventListener('mousedown', handleDirectMobileDanmuPanelTrigger, {capture: true})
   trigger.addEventListener('mouseup', handleDirectMobileDanmuPanelTrigger, {capture: true})
+  trigger.addEventListener('mousedown', handleDirectMobileDanmuPanelTrigger)
+  trigger.addEventListener('mouseup', handleDirectMobileDanmuPanelTrigger)
   trigger.addEventListener('touchstart', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
   trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {capture: true, passive: false})
+  trigger.addEventListener('touchstart', handleDirectMobileDanmuPanelTrigger, {passive: false})
+  trigger.addEventListener('touchend', handleDirectMobileDanmuPanelTrigger, {passive: false})
   trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger, {capture: true})
+  trigger.addEventListener('click', handleDirectMobileDanmuPanelTrigger)
 }
 
 function bindMobileDanmuPanelTriggers() {
@@ -1050,15 +1065,15 @@ function normalizeMobileCoreControlRow(root = playerFrame.value) {
   if (isPortraitMobilePlayer()) {
     const viewportWidth = Math.max(1, Math.round(window.visualViewport?.width || window.innerWidth || document.documentElement?.clientWidth || 393))
     const narrow = viewportWidth <= 360
-    const leftWidth = Math.round(Math.min(narrow ? 108 : 118, Math.max(narrow ? 92 : 96, viewportWidth * 0.3)))
+    const leftWidth = Math.round(Math.min(narrow ? 100 : 118, Math.max(narrow ? 88 : 104, viewportWidth * 0.28)))
     const widths = {
-      '.art-control-mobile-danmu-toggle': narrow ? 20 : 22,
-      '.art-control-mobile-danmu-settings-trigger': narrow ? 30 : 32,
-      '.art-control-画质': narrow ? 30 : 32,
-      '.art-control-倍速': narrow ? 20 : 22,
-      '.art-control-字幕': narrow ? 26 : 28,
-      '.art-control-setting': narrow ? 20 : 22,
-      '.art-control-mobile-landscape-fullscreen': narrow ? 20 : 22
+      '.art-control-mobile-danmu-toggle': narrow ? 24 : 28,
+      '.art-control-mobile-danmu-settings-trigger': narrow ? 34 : 40,
+      '.art-control-画质': narrow ? 38 : 42,
+      '.art-control-倍速': narrow ? 24 : 28,
+      '.art-control-字幕': narrow ? 32 : 36,
+      '.art-control-setting': narrow ? 24 : 28,
+      '.art-control-mobile-landscape-fullscreen': narrow ? 24 : 28
     }
     const controls = root.querySelector('.art-video-player .art-controls')
     const leftControls = root.querySelector('.art-video-player .art-controls-left')
@@ -1243,6 +1258,10 @@ function handleMobileDanmuPanelClick(event) {
   }
   if (!root || !target || !root.contains(target)) {
     if (event?.type === 'click') {
+      if (shouldIgnoreMobileDanmuSettingsFollowUpClose(event)) {
+        preventMobileDanmuTriggerEvent(event)
+        return
+      }
       closeMobileDanmuPanels()
     }
     return
@@ -1271,6 +1290,10 @@ function handleMobileDanmuPanelClick(event) {
     return
   }
   if (event?.type !== 'click') {
+    return
+  }
+  if (shouldIgnoreMobileDanmuSettingsFollowUpClose(event)) {
+    preventMobileDanmuTriggerEvent(event)
     return
   }
   if (!panelTrigger || !root.contains(panelTrigger)) {
@@ -7232,13 +7255,13 @@ img.play-icon {
 
 /* Final phone portrait contract: match landscape controls without the old scroll-only row. */
 .player.is-mobile-player:not(.is-forced-landscape) {
-  --mobile-final-left-controls: clamp(96px, 30vw, 118px);
-  --mobile-final-danmu: 22px;
-  --mobile-final-danmu-settings: 32px;
-  --mobile-final-quality: 32px;
-  --mobile-final-rate: 22px;
-  --mobile-final-subtitle: 28px;
-  --mobile-final-icon: 22px;
+  --mobile-final-left-controls: clamp(104px, 28vw, 118px);
+  --mobile-final-danmu: 28px;
+  --mobile-final-danmu-settings: 40px;
+  --mobile-final-quality: 42px;
+  --mobile-final-rate: 28px;
+  --mobile-final-subtitle: 36px;
+  --mobile-final-icon: 28px;
 }
 
 .player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
@@ -7418,13 +7441,13 @@ img.play-icon {
 
 @media (max-width: 360px) and (orientation: portrait) {
   .player.is-mobile-player:not(.is-forced-landscape) {
-    --mobile-final-left-controls: clamp(92px, 29vw, 108px);
-    --mobile-final-danmu: 20px;
-    --mobile-final-danmu-settings: 30px;
-    --mobile-final-quality: 30px;
-    --mobile-final-rate: 20px;
-    --mobile-final-subtitle: 26px;
-    --mobile-final-icon: 20px;
+    --mobile-final-left-controls: clamp(88px, 25vw, 100px);
+    --mobile-final-danmu: 24px;
+    --mobile-final-danmu-settings: 34px;
+    --mobile-final-quality: 38px;
+    --mobile-final-rate: 24px;
+    --mobile-final-subtitle: 32px;
+    --mobile-final-icon: 24px;
   }
 }
 </style>
