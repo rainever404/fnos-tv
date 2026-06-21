@@ -1672,8 +1672,8 @@ span.button-text {
 
 .backdropContainer::after {
   background:
-      linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.2) 44%, rgba(0, 0, 0, 0.86) 100%),
-      linear-gradient(90deg, rgba(0, 0, 0, 0.48) 0%, rgba(0, 0, 0, 0.12) 46%, rgba(0, 0, 0, 0.18) 100%);
+      linear-gradient(180deg, rgba(0, 0, 0, 0.07) 0%, rgba(0, 0, 0, 0.14) 44%, rgba(0, 0, 0, 0.78) 100%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.36) 0%, rgba(0, 0, 0, 0.08) 46%, rgba(0, 0, 0, 0.15) 100%);
 }
 
 .view-backdrop,
