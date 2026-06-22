@@ -1559,8 +1559,17 @@ watch(
   max-width: 100%;
   margin: -8px 0 22px;
   overflow-x: auto;
+  overflow-y: hidden;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--fn-border);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.favorite-tabs::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .favorite-tab {
