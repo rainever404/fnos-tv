@@ -796,8 +796,11 @@ onBeforeUnmount(() => {
               @click="toggleDetailWatched"
           >
             <span class="button-icon watched-status-icon" aria-hidden="true">
-              <i class="bx bx-show watched-eye"></i>
-              <i :class="isDetailWatched ? 'bx bxs-check-circle watched-state' : 'bx bx-check-circle watched-state'"></i>
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M12 2.75c2.46 0 4.855.821 6.879 2.342 2.021 1.519 3.58 3.665 4.494 6.153a1 1 0 0 1-1.877.69c-.79-2.151-2.126-3.972-3.82-5.245C15.986 5.42 14.01 4.75 12 4.75c-2.01 0-3.985.67-5.677 1.94-1.687 1.268-3.02 3.08-3.81 5.221a.316.316 0 0 0 0 .177c.79 2.14 2.123 3.954 3.81 5.222C8.015 18.58 9.99 19.25 12 19.25a1 1 0 0 1 0 2c-2.461 0-4.856-.822-6.879-2.342C3.1 17.39 1.541 15.243.627 12.755a2.316 2.316 0 0 1 0-1.51C1.54 8.757 3.1 6.611 5.12 5.092 7.144 3.572 9.539 2.75 12 2.75z"></path>
+                <path d="M21.293 15.293a1 1 0 1 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 1 1 1.414-1.414L18 18.586l3.293-3.293z"></path>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"></path>
+              </svg>
             </span>
           </button>
           <div class="detail-more-wrapper" @click.stop>
@@ -1979,33 +1982,17 @@ span.button-text {
 }
 
 .watchedButton .watched-status-icon {
-  position: relative;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   justify-content: center;
 }
 
-.watched-status-icon .watched-eye {
-  font-size: 20px;
-}
-
-.watched-status-icon .watched-state {
-  position: absolute;
-  right: -5px;
-  bottom: -4px;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  font-size: 13px;
-  line-height: 1;
-  color: rgba(255, 255, 255, 0.72);
-  background: var(--fn-bg);
-}
-
-.watchedButton.active .watched-state,
-.watchedButton:hover .watched-state {
-  color: #fff;
-  background: var(--fn-blue);
+.watched-status-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  fill: currentColor;
+  opacity: 0.88;
 }
 
 span.button-text {
