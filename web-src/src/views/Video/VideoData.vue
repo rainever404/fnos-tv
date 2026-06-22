@@ -784,7 +784,9 @@ onBeforeUnmount(() => {
               @click="toggleDetailFavorite"
           >
             <span class="button-icon">
-              <i :class="isDetailFavorite ? 'bx bxs-heart' : 'bx bx-heart'"></i>
+              <svg class="detail-favorite-icon" viewBox="0 0 24 24" focusable="false">
+                <path d="M20.662 8.996a4.316 4.316 0 0 0-7.847-2.482l-.818 1.161-.817-1.16a4.316 4.316 0 0 0-7.848 2.481c0 2.273 1.36 4.57 3.274 6.505 1.777 1.794 3.886 3.124 5.391 3.704 1.505-.58 3.614-1.91 5.39-3.704 1.916-1.934 3.275-4.232 3.275-6.505zm2 0c0 3.042-1.781 5.82-3.853 7.912-2.082 2.102-4.628 3.688-6.497 4.31l-.315.104-.315-.105c-1.868-.62-4.415-2.207-6.496-4.31-2.072-2.092-3.854-4.87-3.854-7.911A6.316 6.316 0 0 1 7.647 2.68c1.687 0 3.217.664 4.35 1.74a6.316 6.316 0 0 1 10.666 4.576z"></path>
+              </svg>
             </span>
           </button>
           <button
@@ -1979,6 +1981,13 @@ span.button-text {
   display: inline-flex;
   align-items: center;
   font-size: 18px;
+}
+
+.detailButton .button-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  fill: currentColor;
 }
 
 .watchedButton .watched-status-icon {

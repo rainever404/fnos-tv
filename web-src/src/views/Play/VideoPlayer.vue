@@ -337,6 +337,74 @@ const mobileQualityLabel = computed(() => currentQuality.value?.resolution || Qu
 const mobileSubtitleLabel = computed(() => currentSubtitle.value ? '字幕' : '字幕')
 const mobileRateOptions = [0.5, 0.8, 1, 1.2, 1.5, 1.8, 2, 2.5, 2.8, 3]
 
+function createMobileCoreControlDefinitions() {
+  return [
+    {
+      name: 'mobile-danmu-toggle',
+      index: 0.1,
+      position: 'right',
+      html: '<span class="mobile-art-danmu-symbol">弹</span>',
+      tooltip: '弹幕',
+      click: function () {
+        toggleMobileDanmuVisible()
+      }
+    },
+    {
+      name: 'mobile-danmu-settings-trigger',
+      index: 0.2,
+      position: 'right',
+      html: '<span class="mobile-art-danmu-symbol">弹</span><i class="bx bx-slider-alt"></i>',
+      tooltip: '弹幕设置',
+      mounted: function ($ref) {
+        bindMobileDanmuPanelTriggerElement($ref)
+      },
+      click: function (...args) {
+        toggleMobileDanmuSettingsFromTrigger(...args)
+      }
+    },
+    {
+      name: 'mobile-quality',
+      index: 0.3,
+      position: 'right',
+      html: '<span class="mobile-art-text-control mobile-art-quality-label">画质</span>',
+      tooltip: '画质',
+      click: function () {
+        toggleMobileControlMenu('quality')
+      }
+    },
+    {
+      name: 'mobile-rate',
+      index: 0.4,
+      position: 'right',
+      html: '<span class="mobile-art-text-control mobile-art-rate-label">1X</span>',
+      tooltip: '倍速',
+      click: function () {
+        toggleMobileControlMenu('rate')
+      }
+    },
+    {
+      name: 'mobile-subtitle',
+      index: 0.5,
+      position: 'right',
+      html: '<span class="mobile-art-text-control mobile-art-subtitle-label">字幕</span>',
+      tooltip: '字幕',
+      click: function () {
+        toggleMobileControlMenu('subtitle')
+      }
+    },
+    {
+      name: 'mobile-landscape-fullscreen',
+      index: 99,
+      position: 'right',
+      html: '<i class="bx bx-fullscreen"></i>',
+      tooltip: '横屏全屏',
+      click: async function () {
+        await toggleMobileLandscapeFullscreen()
+      }
+    }
+  ]
+}
+
 const setting = ref({
   url: "",
   id: "",
@@ -417,69 +485,7 @@ const setting = ref({
   },
   settings: [],
   controls: [
-    {
-      name: 'mobile-danmu-toggle',
-      index: 0.1,
-      position: 'right',
-      html: '<span class="mobile-art-danmu-symbol">弹</span>',
-      tooltip: '弹幕',
-      click: function () {
-        toggleMobileDanmuVisible()
-      }
-    },
-    {
-      name: 'mobile-danmu-settings-trigger',
-      index: 0.2,
-      position: 'right',
-      html: '<span class="mobile-art-danmu-symbol">弹</span><i class="bx bx-slider-alt"></i>',
-      tooltip: '弹幕设置',
-      mounted: function ($ref) {
-        bindMobileDanmuPanelTriggerElement($ref)
-      },
-      click: function (...args) {
-        toggleMobileDanmuSettingsFromTrigger(...args)
-      }
-    },
-    {
-      name: 'mobile-quality',
-      index: 0.3,
-      position: 'right',
-      html: '<span class="mobile-art-text-control mobile-art-quality-label">画质</span>',
-      tooltip: '画质',
-      click: function () {
-        toggleMobileControlMenu('quality')
-      }
-    },
-    {
-      name: 'mobile-rate',
-      index: 0.4,
-      position: 'right',
-      html: '<span class="mobile-art-text-control mobile-art-rate-label">1X</span>',
-      tooltip: '倍速',
-      click: function () {
-        toggleMobileControlMenu('rate')
-      }
-    },
-    {
-      name: 'mobile-subtitle',
-      index: 0.5,
-      position: 'right',
-      html: '<span class="mobile-art-text-control mobile-art-subtitle-label">字幕</span>',
-      tooltip: '字幕',
-      click: function () {
-        toggleMobileControlMenu('subtitle')
-      }
-    },
-    {
-      name: 'mobile-landscape-fullscreen',
-      index: 99,
-      position: 'right',
-      html: '<i class="bx bx-fullscreen"></i>',
-      tooltip: '横屏全屏',
-      click: async function () {
-        await toggleMobileLandscapeFullscreen()
-      }
-    },
+    ...createMobileCoreControlDefinitions(),
     // {
     //     position: 'right',
     //     index: 15,
@@ -1062,11 +1068,33 @@ function syncMobileInlineArtControlLabels(root = playerFrame.value) {
   setLabel('.art-control-mobile-subtitle', mobileSubtitleLabel.value || '字幕')
 }
 
+function ensureMobileCoreControls() {
+  const root = playerFrame.value
+  if (!root || !art?.controls || !isMobileUiActive()) {
+    return
+  }
+  createMobileCoreControlDefinitions().forEach(control => {
+    const selector = `.art-control-${control.name}`
+    if (root.querySelector(selector)) {
+      return
+    }
+    try {
+      art.controls.remove(control.name)
+    } catch {
+    }
+    try {
+      art.controls.add(control)
+    } catch {
+    }
+  })
+}
+
 function normalizeMobileCoreControls() {
   const root = playerFrame.value
   if (!root || !isMobileUiActive()) {
     return
   }
+  ensureMobileCoreControls()
   const usePortraitInlineTextControls = false
   root.querySelectorAll(MOBILE_CORE_CONTROL_SELECTOR).forEach(button => {
     const isTextControl = button.matches?.('.art-control-画质, .art-control-倍速, .art-control-字幕')
@@ -1135,15 +1163,15 @@ function normalizeMobileCoreControlRow(root = playerFrame.value) {
   if (isPortraitMobilePlayer()) {
     const viewportWidth = Math.max(1, Math.round(window.visualViewport?.width || window.innerWidth || document.documentElement?.clientWidth || 393))
     const narrow = viewportWidth <= 360
-    const leftWidth = Math.round(Math.min(narrow ? 132 : 150, Math.max(narrow ? 124 : 132, viewportWidth * 0.36)))
+    const leftWidth = Math.round(Math.min(narrow ? 98 : 112, Math.max(narrow ? 88 : 96, viewportWidth * 0.28)))
     const widths = {
-      '.art-control-mobile-danmu-toggle': narrow ? 24 : 28,
-      '.art-control-mobile-danmu-settings-trigger': narrow ? 34 : 40,
-      '.art-control-mobile-quality': narrow ? 36 : 40,
-      '.art-control-mobile-rate': narrow ? 24 : 28,
-      '.art-control-mobile-subtitle': narrow ? 30 : 34,
-      '.art-control-setting': narrow ? 24 : 28,
-      '.art-control-mobile-landscape-fullscreen': narrow ? 24 : 28
+      '.art-control-mobile-danmu-toggle': narrow ? 22 : 24,
+      '.art-control-mobile-danmu-settings-trigger': narrow ? 32 : 34,
+      '.art-control-mobile-quality': narrow ? 34 : 36,
+      '.art-control-mobile-rate': narrow ? 22 : 24,
+      '.art-control-mobile-subtitle': narrow ? 28 : 30,
+      '.art-control-setting': narrow ? 22 : 24,
+      '.art-control-mobile-landscape-fullscreen': narrow ? 22 : 24
     }
     const controls = root.querySelector('.art-video-player .art-controls')
     const leftControls = root.querySelector('.art-video-player .art-controls-left')
@@ -1320,6 +1348,28 @@ function handleMobileDanmuPanelClick(event) {
   }
   const root = playerFrame.value
   const target = event.target
+  const panelTrigger = findMobileDanmuSettingsTrigger(event)
+  if (panelTrigger && root?.contains(panelTrigger)) {
+    keepMobileControlsVisible()
+    if ((event?.type === 'pointerdown' || event?.type === 'pointerup') && event.pointerType === 'mouse' && event.button !== 0) {
+      return
+    }
+    if (isMobileDanmuTriggerPress(event)) {
+      const type = event?.type || ''
+      const shouldToggleOnPress = type === 'touchstart' || (type === 'pointerdown' && event.pointerType !== 'mouse')
+      if (shouldToggleOnPress) {
+        toggleMobileDanmuSettingsOnPress(event)
+      } else {
+        stopMobileDanmuTriggerEvent(event)
+      }
+      return
+    }
+    if (!isMobileDanmuTriggerActivator(event)) {
+      return
+    }
+    triggerMobileDanmuSettingsPanel(event)
+    return
+  }
   if (root && target && root.contains(target)) {
     keepMobileControlsVisible()
   }
@@ -1337,26 +1387,6 @@ function handleMobileDanmuPanelClick(event) {
     return
   }
   if (target.closest('.apd-config-panel, .apd-style-panel')) {
-    return
-  }
-  const panelTrigger = findMobileDanmuSettingsTrigger(event)
-  if (panelTrigger && root.contains(panelTrigger)) {
-    keepMobileControlsVisible()
-    if ((event?.type === 'pointerdown' || event?.type === 'pointerup') && event.pointerType === 'mouse' && event.button !== 0) {
-      return
-    }
-    if (isMobileDanmuTriggerPress(event)) {
-      const type = event?.type || ''
-      const shouldToggleOnPress = type === 'touchstart' || (type === 'pointerdown' && event.pointerType !== 'mouse')
-      if (shouldToggleOnPress) {
-        toggleMobileDanmuSettingsOnPress(event)
-      }
-      return
-    }
-    if (!isMobileDanmuTriggerActivator(event)) {
-      return
-    }
-    triggerMobileDanmuSettingsPanel(event)
     return
   }
   if (event?.type !== 'click') {
@@ -7968,6 +7998,123 @@ img.play-icon {
 
   .player.is-mobile-player :deep(.art-video-player .mobile-art-text-control) {
     font-size: 12px !important;
+  }
+}
+
+/* Phone hardening: keep the same compact control set in portrait as in landscape. */
+.player.is-mobile-player:not(.is-forced-landscape) {
+  --mobile-user-left-controls: clamp(90px, 25vw, 108px);
+  --mobile-user-danmu: 24px;
+  --mobile-user-danmu-settings: 34px;
+  --mobile-user-quality: 36px;
+  --mobile-user-rate: 24px;
+  --mobile-user-subtitle: 30px;
+  --mobile-user-icon: 24px;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
+  overflow: visible !important;
+  padding-inline: max(3px, env(safe-area-inset-left, 0px)) max(3px, env(safe-area-inset-right, 0px)) !important;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
+  flex: 0 0 var(--mobile-user-left-controls) !important;
+  width: var(--mobile-user-left-controls) !important;
+  min-width: 0 !important;
+  max-width: var(--mobile-user-left-controls) !important;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-playAndPause),
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-volume) {
+  flex: 0 0 22px !important;
+  width: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time),
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-time) {
+  max-width: calc(var(--mobile-user-left-controls) - 44px) !important;
+  font-size: 10px !important;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
+  max-width: calc(100% - var(--mobile-user-left-controls) - 4px) !important;
+  overflow: visible !important;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
+  flex: 0 0 var(--mobile-user-danmu) !important;
+  width: var(--mobile-user-danmu) !important;
+  min-width: var(--mobile-user-danmu) !important;
+  max-width: var(--mobile-user-danmu) !important;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+  flex: 0 0 var(--mobile-user-danmu-settings) !important;
+  width: var(--mobile-user-danmu-settings) !important;
+  min-width: var(--mobile-user-danmu-settings) !important;
+  max-width: var(--mobile-user-danmu-settings) !important;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-quality) {
+  flex: 0 0 var(--mobile-user-quality) !important;
+  width: var(--mobile-user-quality) !important;
+  min-width: var(--mobile-user-quality) !important;
+  max-width: var(--mobile-user-quality) !important;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-rate) {
+  flex: 0 0 var(--mobile-user-rate) !important;
+  width: var(--mobile-user-rate) !important;
+  min-width: var(--mobile-user-rate) !important;
+  max-width: var(--mobile-user-rate) !important;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-subtitle) {
+  flex: 0 0 var(--mobile-user-subtitle) !important;
+  width: var(--mobile-user-subtitle) !important;
+  min-width: var(--mobile-user-subtitle) !important;
+  max-width: var(--mobile-user-subtitle) !important;
+}
+
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting),
+.player.is-mobile-player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+  flex: 0 0 var(--mobile-user-icon) !important;
+  width: var(--mobile-user-icon) !important;
+  min-width: var(--mobile-user-icon) !important;
+  max-width: var(--mobile-user-icon) !important;
+}
+
+.player.is-mobile-player .mobile-danmu-settings.is-mobile-portal.is-visible {
+  position: fixed !important;
+  top: auto !important;
+  left: auto !important;
+  right: max(10px, env(safe-area-inset-right, 0px)) !important;
+  bottom: max(70px, calc(env(safe-area-inset-bottom, 0px) + 70px)) !important;
+  z-index: 2147483004 !important;
+  transform: translateY(0) !important;
+}
+
+@media (orientation: landscape) and (max-height: 640px) {
+  .player.is-mobile-player .mobile-danmu-settings.is-mobile-portal.is-visible,
+  .mobile-danmu-settings.is-mobile-portal.is-forced-landscape-portal.is-visible {
+    right: max(12px, env(safe-area-inset-right, 0px)) !important;
+    bottom: max(62px, calc(env(safe-area-inset-bottom, 0px) + 62px)) !important;
+    width: min(342px, calc(100% - 24px)) !important;
+    max-height: calc(100% - 88px) !important;
+  }
+}
+
+@media (max-width: 370px) and (orientation: portrait) {
+  .player.is-mobile-player:not(.is-forced-landscape) {
+    --mobile-user-left-controls: clamp(84px, 24vw, 94px);
+    --mobile-user-danmu: 22px;
+    --mobile-user-danmu-settings: 32px;
+    --mobile-user-quality: 34px;
+    --mobile-user-rate: 22px;
+    --mobile-user-subtitle: 28px;
+    --mobile-user-icon: 22px;
   }
 }
 </style>
