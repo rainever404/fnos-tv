@@ -446,11 +446,14 @@ onMounted(() => {
 .settings-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 34px;
-  margin-bottom: 36px;
+  gap: 12px;
+  min-width: 0;
+  height: 40px;
+  margin-bottom: 34px;
   font-size: 16px;
   font-weight: 650;
+  line-height: 40px;
+  white-space: nowrap;
 }
 
 .settings-back,
@@ -466,15 +469,17 @@ onMounted(() => {
 }
 
 .settings-back {
-  width: 28px;
-  height: 28px;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   color: var(--settings-text);
-  font-size: 25px;
-  border-radius: 6px;
+  font-size: 24px;
+  border-radius: 8px;
+  line-height: 1;
 }
 
 .settings-back:hover,
@@ -483,9 +488,19 @@ onMounted(() => {
 }
 
 .settings-logo {
-  width: 28px;
-  height: 28px;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
+}
+
+.settings-brand span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--settings-text);
+  line-height: 40px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-nav-group {

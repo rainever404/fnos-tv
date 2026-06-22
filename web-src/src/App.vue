@@ -40,6 +40,8 @@ const searchActiveTab = ref('all');
 const searchLoading = ref(false);
 const searchInputRef = ref(null);
 const searchRootRef = ref(null);
+const userMenuOpen = ref(false);
+const userMenuRef = ref(null);
 const favoriteCount = ref(0);
 const fallbackSearchGenreMap = {
   7: '剧情',
@@ -55,12 +57,30 @@ const fallbackSearchGenreMap = {
 const SearchGenreMap = ref({...fallbackSearchGenreMap});
 let searchTimer = null;
 let searchRequestId = 0;
-const options = ref([
-  {
-    label: '注销登录',
-    key: "out"
-  },
-])
+const userMenuItems = [
+  {key: 'password', label: '修改密码', icon: 'bx bx-lock-alt', action: 'settings'},
+  {key: 'play-preference', label: '播放偏好设置', icon: 'bx bx-play-circle', action: 'settings'},
+  {key: 'appearance', label: '外观', icon: 'bx bx-palette', action: 'settings'},
+  {key: 'help', label: '帮助中心', icon: 'bx bx-help-circle', action: 'message', separated: true},
+  {key: 'about', label: '关于飞牛影视', icon: 'bx bx-info-circle', action: 'message'},
+  {key: 'out', label: '退出', icon: 'bx bx-log-out', action: 'logout', separated: true, danger: true}
+]
+const userDisplayName = computed(() => UserInfo.value?.username || UserInfo.value?.name || 'admin');
+const userInitial = computed(() => {
+  const name = String(userDisplayName.value || '').trim();
+  return (name.slice(0, 1) || 'u').toLowerCase();
+})
+const userRoleLabel = computed(() => {
+  const roleName = UserInfo.value?.role_name || UserInfo.value?.roleName;
+  if (roleName) {
+    return roleName;
+  }
+  const role = UserInfo.value?.role || UserInfo.value?.user_role;
+  if (role === 'admin' || role === 1 || role === '1' || UserInfo.value?.is_admin) {
+    return '管理员';
+  }
+  return '管理员';
+})
 const themeOptions = ref([
   {
     label: '跟随系统',
@@ -374,7 +394,16 @@ function handleWindowResize() {
 }
 
 function handleGlobalKeydown(event) {
-  if (event.key === 'Escape' && mobileSiderOpen.value) {
+  if (event.key !== 'Escape') {
+    return
+  }
+  if (userMenuOpen.value) {
+    closeUserMenu()
+  }
+  if (searchOpen.value) {
+    closeSearch()
+  }
+  if (mobileSiderOpen.value) {
     closeMobileSider()
   }
 }
@@ -630,6 +659,37 @@ function goSettingsLibrary() {
     path: '/settings/library'
   })
   closeMobileSider()
+  closeUserMenu()
+}
+
+function openUserMenu() {
+  closeSearch()
+  userMenuOpen.value = true
+}
+
+function closeUserMenu() {
+  userMenuOpen.value = false
+}
+
+function toggleUserMenu() {
+  if (userMenuOpen.value) {
+    closeUserMenu()
+  } else {
+    openUserMenu()
+  }
+}
+
+function handleUserMenuAction(item) {
+  closeUserMenu()
+  if (item.action === 'logout') {
+    handleSelect('out')
+    return
+  }
+  if (item.action === 'settings') {
+    goSettingsLibrary()
+    return
+  }
+  COMMON.ShowMsg(`${item.label}功能请在官方飞牛影视中操作`)
 }
 
 function handleExternalThemeMode(event) {
@@ -928,14 +988,14 @@ function selectSearchResult() {
   closeSearch({clear: true})
 }
 
-function handleSearchOutsideClick(event) {
-  if (!searchOpen.value) {
-    return
+function handleTopbarOutsideClick(event) {
+  const target = event.target;
+  if (searchOpen.value && !searchRootRef.value?.contains?.(target)) {
+    closeSearch()
   }
-  if (searchRootRef.value?.contains?.(event.target)) {
-    return
+  if (userMenuOpen.value && !userMenuRef.value?.contains?.(target)) {
+    closeUserMenu()
   }
-  closeSearch()
 }
 
 async function runFunByPath(path, fun) {
@@ -987,8 +1047,8 @@ onMounted(async () => {
   window.addEventListener('keydown', handleGlobalKeydown)
   window.addEventListener('fnos-tv:favorites-updated', handleFavoriteUpdated)
   window.addEventListener('fnos-tv:set-theme-mode', handleExternalThemeMode)
-  document.addEventListener('click', handleSearchOutsideClick)
-  document.addEventListener('touchstart', handleSearchOutsideClick)
+  document.addEventListener('click', handleTopbarOutsideClick)
+  document.addEventListener('touchstart', handleTopbarOutsideClick)
   await onMountedFun();
 })
 
@@ -997,8 +1057,8 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
   window.removeEventListener('fnos-tv:favorites-updated', handleFavoriteUpdated)
   window.removeEventListener('fnos-tv:set-theme-mode', handleExternalThemeMode)
-  document.removeEventListener('click', handleSearchOutsideClick)
-  document.removeEventListener('touchstart', handleSearchOutsideClick)
+  document.removeEventListener('click', handleTopbarOutsideClick)
+  document.removeEventListener('touchstart', handleTopbarOutsideClick)
   document.body.classList.remove('mobile-sider-open')
   if (searchTimer) {
     window.clearTimeout(searchTimer)
@@ -1011,6 +1071,7 @@ watch(
     () => route.fullPath,
     async (newPath, oldPath) => {
       closeMobileSider();
+      closeUserMenu();
       if (newPath === "/" || (oldPath?.startsWith('/player') && route.path !== '/player')) {
         await onMountedFun();
       } else if (newPath === "/favorite" || newPath?.startsWith('/favorite?')) {
@@ -1169,14 +1230,58 @@ watch(
                     </div>
                   </div>
 
-                  <n-dropdown trigger="hover" placement="bottom-start" :options="options"
-                              @select="handleSelect">
-                    <n-button class="topbar-control" quaternary circle aria-label="用户" :title="UserInfo?.username || ''">
+                  <div
+                      ref="userMenuRef"
+                      class="user-menu-root"
+                      :class="{ open: userMenuOpen }"
+                  >
+                    <n-button
+                        class="topbar-control"
+                        quaternary
+                        circle
+                        aria-label="用户"
+                        :title="userDisplayName"
+                        @click.stop="toggleUserMenu"
+                    >
                       <template #icon>
                         <i class='bx bxs-user'></i>
                       </template>
                     </n-button>
-                  </n-dropdown>
+                    <div
+                        v-if="userMenuOpen"
+                        class="user-dropdown-panel"
+                        role="menu"
+                        aria-label="用户菜单"
+                        @click.stop
+                        @touchstart.stop
+                    >
+                      <div class="user-dropdown-header">
+                        <div class="user-dropdown-avatar">{{ userInitial }}</div>
+                        <div class="user-dropdown-profile">
+                          <div class="user-dropdown-name-row">
+                            <span class="user-dropdown-name">{{ userDisplayName }}</span>
+                            <span class="user-role-badge">{{ userRoleLabel }}</span>
+                          </div>
+                          <div class="user-dropdown-subtitle">{{ COMMON.title || 'FnTv' }}</div>
+                        </div>
+                      </div>
+                      <div class="user-dropdown-list">
+                        <template v-for="item in userMenuItems" :key="item.key">
+                          <div v-if="item.separated" class="user-menu-separator" aria-hidden="true"></div>
+                          <button
+                              class="user-menu-item"
+                              :class="{ danger: item.danger }"
+                              type="button"
+                              role="menuitem"
+                              @click="handleUserMenuAction(item)"
+                          >
+                            <i :class="item.icon"></i>
+                            <span>{{ item.label }}</span>
+                          </button>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
 
                   <n-button class="topbar-control" quaternary circle aria-label="设置" title="设置" @click="goSettingsLibrary">
                     <template #icon>
@@ -1696,6 +1801,8 @@ html[data-theme="light"] {
   --fn-sidebar: #f3f4f6;
   --fn-panel: #f7f8fa;
   --fn-panel-hover: #eef0f4;
+  --fn-popover: #ffffff;
+  --fn-popover-hover: #f4f6fb;
   --fn-border: rgba(15, 23, 42, 0.08);
   --fn-text: rgba(15, 23, 42, 0.9);
   --fn-muted: rgba(0, 0, 0, 0.8);
@@ -1717,6 +1824,8 @@ html[data-theme="dark"] {
   --fn-sidebar: #101113;
   --fn-panel: #19191a;
   --fn-panel-hover: #202024;
+  --fn-popover: #2a2a2b;
+  --fn-popover-hover: #343437;
   --fn-border: rgba(255, 255, 255, 0.07);
   --fn-text: rgba(255, 255, 255, 0.88);
   --fn-muted: rgba(255, 255, 255, 0.58);
@@ -1791,6 +1900,152 @@ body {
   height: 36px;
   width: 36px;
   flex: 0 0 36px;
+}
+
+.user-menu-root {
+  position: relative;
+}
+
+.user-menu-root.open .topbar-control.n-button {
+  background: var(--fn-top-control-hover) !important;
+}
+
+.user-dropdown-panel {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  z-index: 80;
+  width: 216px;
+  padding: 8px 0;
+  color: var(--fn-text);
+  background: var(--fn-popover);
+  border: 1px solid var(--fn-border);
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+  box-sizing: border-box;
+  line-height: 1;
+}
+
+.user-dropdown-header {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 12px;
+}
+
+.user-dropdown-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #19b476;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: lowercase;
+}
+
+.user-dropdown-profile {
+  min-width: 0;
+}
+
+.user-dropdown-name-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.user-dropdown-name {
+  overflow: hidden;
+  color: var(--fn-text);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-role-badge {
+  flex: 0 0 auto;
+  height: 18px;
+  padding: 0 6px;
+  color: var(--fn-blue);
+  background: rgba(0, 102, 255, 0.12);
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.user-dropdown-subtitle {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--fn-soft);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-dropdown-list {
+  display: grid;
+  padding: 0 6px;
+}
+
+.user-menu-separator {
+  height: 1px;
+  margin: 6px 8px;
+  background: var(--fn-border);
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  color: var(--fn-text);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  box-sizing: border-box;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  line-height: 38px;
+  text-align: left;
+}
+
+.user-menu-item:hover {
+  background: var(--fn-popover-hover);
+}
+
+.user-menu-item i {
+  flex: 0 0 18px;
+  color: var(--fn-soft);
+  font-size: 18px;
+  line-height: 1;
+  text-align: center;
+}
+
+.user-menu-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-item.danger {
+  color: #ff5b5b;
+}
+
+.user-menu-item.danger i {
+  color: #ff5b5b;
 }
 
 .topbar-control.n-button,
@@ -2338,6 +2593,12 @@ body {
 
   .header-right {
     gap: 10px !important;
+  }
+
+  .user-dropdown-panel {
+    top: 46px;
+    right: 0;
+    width: min(216px, calc(100vw - 24px));
   }
 
   .top-search.open,
