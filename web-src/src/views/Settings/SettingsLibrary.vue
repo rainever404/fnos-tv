@@ -13,6 +13,7 @@ const COMMON = instance.appContext.config.globalProperties.$COMMON
 
 const loading = ref(true)
 const scanning = ref(false)
+const scanningLibraryGuid = ref('')
 const versionInfo = ref({})
 const mediaDbList = ref([])
 const mediaDbSum = ref({})
@@ -256,7 +257,7 @@ function previewUrl(item) {
 }
 
 async function scanAllLibraries() {
-  if (scanning.value) {
+  if (scanning.value || scanningLibraryGuid.value) {
     return
   }
   scanning.value = true
@@ -267,6 +268,25 @@ async function scanAllLibraries() {
     COMMON.ShowMsg('扫描媒体库文件失败')
   } finally {
     scanning.value = false
+  }
+}
+
+async function scanLibrary(item) {
+  const libraryGuid = item?.guid || ''
+  if (!libraryGuid || scanning.value || scanningLibraryGuid.value) {
+    if (!libraryGuid) {
+      COMMON.ShowMsg('媒体库信息缺少 guid，无法扫描')
+    }
+    return
+  }
+  scanningLibraryGuid.value = libraryGuid
+  try {
+    await COMMON.requests('POST', `/api/v1/mdb/scan/${libraryGuid}`, true)
+    COMMON.ShowMsg(`已开始扫描${item?.title ? `「${item.title}」` : '该媒体库'}`)
+  } catch {
+    COMMON.ShowMsg('扫描媒体库失败')
+  } finally {
+    scanningLibraryGuid.value = ''
   }
 }
 
@@ -341,7 +361,7 @@ onMounted(() => {
           <i class='bx bx-list-ul'></i>
           <span>排序</span>
         </button>
-        <button class="settings-secondary-button" type="button" :disabled="scanning" @click="scanAllLibraries">
+        <button class="settings-secondary-button" type="button" :disabled="scanning || Boolean(scanningLibraryGuid)" @click="scanAllLibraries">
           <i class='bx bx-refresh' :class="{ spinning: scanning }"></i>
           <span>{{ scanning ? '正在扫描' : '扫描媒体库文件' }}</span>
         </button>
@@ -401,8 +421,14 @@ onMounted(() => {
                   <button type="button" aria-label="编辑媒体库" title="编辑媒体库" @click="showUnavailable('编辑媒体库')">
                     <i class='bx bx-edit-alt'></i>
                   </button>
-                  <button type="button" aria-label="扫描媒体库" title="扫描媒体库" @click="scanAllLibraries">
-                    <i class='bx bx-refresh'></i>
+                  <button
+                      type="button"
+                      aria-label="扫描媒体库"
+                      title="扫描媒体库"
+                      :disabled="scanning || Boolean(scanningLibraryGuid)"
+                      @click="scanLibrary(item)"
+                  >
+                    <i class='bx bx-refresh' :class="{ spinning: scanningLibraryGuid === item.guid }"></i>
                   </button>
                   <button type="button" aria-label="更多" title="更多" @click="showUnavailable('更多')">
                     <i class='bx bx-dots-horizontal-rounded'></i>
@@ -827,6 +853,11 @@ onMounted(() => {
   background: transparent;
   color: var(--settings-subtext);
   font-size: 22px;
+}
+
+.settings-actions button:disabled {
+  cursor: default;
+  opacity: 0.58;
 }
 
 .settings-empty-row {
