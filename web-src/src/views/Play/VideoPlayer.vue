@@ -763,6 +763,9 @@ function isMobileDanmuTriggerActivator(event) {
     return true
   }
   if (type === 'pointerup') {
+    if (event.pointerType !== 'mouse') {
+      return true
+    }
     return event.button === undefined || event.button === 0
   }
   return false
@@ -774,6 +777,9 @@ function isMobileDanmuTriggerPress(event) {
     return true
   }
   if (type === 'pointerdown') {
+    if (event.pointerType !== 'mouse') {
+      return true
+    }
     return event.button === undefined || event.button === 0
   }
   return false
@@ -8115,6 +8121,196 @@ img.play-icon {
     --mobile-user-rate: 22px;
     --mobile-user-subtitle: 28px;
     --mobile-user-icon: 22px;
+  }
+}
+
+/* True-phone fallback: some Android Chrome modes create our custom controls before
+   Vue has applied .is-mobile-player, so keep the full portrait row independent of that class. */
+@media (orientation: portrait), (max-width: 640px), (pointer: coarse), (hover: none) {
+  .player:not(.is-forced-landscape) {
+    --mobile-phone-left-controls: clamp(84px, 24vw, 102px);
+    --mobile-phone-danmu: 22px;
+    --mobile-phone-danmu-settings: 32px;
+    --mobile-phone-quality: 34px;
+    --mobile-phone-rate: 22px;
+    --mobile-phone-subtitle: 28px;
+    --mobile-phone-icon: 22px;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding-inline: max(3px, env(safe-area-inset-left, 0px)) max(3px, env(safe-area-inset-right, 0px)) !important;
+    overflow: visible !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
+    display: flex !important;
+    flex: 0 0 var(--mobile-phone-left-controls) !important;
+    width: var(--mobile-phone-left-controls) !important;
+    min-width: 0 !important;
+    max-width: var(--mobile-phone-left-controls) !important;
+    overflow: hidden !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-playAndPause),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-volume) {
+    flex: 0 0 21px !important;
+    width: 21px !important;
+    min-width: 21px !important;
+    max-width: 21px !important;
+    padding-inline: 0 !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-time) {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: calc(var(--mobile-phone-left-controls) - 42px) !important;
+    padding-inline: 0 !important;
+    overflow: hidden !important;
+    font-size: 10px !important;
+    line-height: 40px !important;
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center) {
+    display: flex !important;
+    flex: 0 0 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center .artplayer-plugin-danmuku),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    min-width: 0 !important;
+    max-width: calc(100% - var(--mobile-phone-left-controls) - 4px) !important;
+    overflow: visible !important;
+    transform: none !important;
+    scrollbar-width: none !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-quality),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-rate),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-subtitle),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+    display: inline-flex !important;
+    flex-shrink: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 40px !important;
+    padding-inline: 0 !important;
+    margin-left: 0 !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    color: rgba(255, 255, 255, 0.96) !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+    touch-action: manipulation !important;
+    transform: none !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
+    order: 10 !important;
+    flex: 0 0 var(--mobile-phone-danmu) !important;
+    width: var(--mobile-phone-danmu) !important;
+    min-width: var(--mobile-phone-danmu) !important;
+    max-width: var(--mobile-phone-danmu) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+    order: 11 !important;
+    flex: 0 0 var(--mobile-phone-danmu-settings) !important;
+    width: var(--mobile-phone-danmu-settings) !important;
+    min-width: var(--mobile-phone-danmu-settings) !important;
+    max-width: var(--mobile-phone-danmu-settings) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-quality) {
+    order: 12 !important;
+    flex: 0 0 var(--mobile-phone-quality) !important;
+    width: var(--mobile-phone-quality) !important;
+    min-width: var(--mobile-phone-quality) !important;
+    max-width: var(--mobile-phone-quality) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-rate) {
+    order: 13 !important;
+    flex: 0 0 var(--mobile-phone-rate) !important;
+    width: var(--mobile-phone-rate) !important;
+    min-width: var(--mobile-phone-rate) !important;
+    max-width: var(--mobile-phone-rate) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-subtitle) {
+    order: 14 !important;
+    flex: 0 0 var(--mobile-phone-subtitle) !important;
+    width: var(--mobile-phone-subtitle) !important;
+    min-width: var(--mobile-phone-subtitle) !important;
+    max-width: var(--mobile-phone-subtitle) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting) {
+    order: 15 !important;
+    flex: 0 0 var(--mobile-phone-icon) !important;
+    width: var(--mobile-phone-icon) !important;
+    min-width: var(--mobile-phone-icon) !important;
+    max-width: var(--mobile-phone-icon) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+    order: 16 !important;
+    flex: 0 0 var(--mobile-phone-icon) !important;
+    width: var(--mobile-phone-icon) !important;
+    min-width: var(--mobile-phone-icon) !important;
+    max-width: var(--mobile-phone-icon) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .mobile-art-text-control) {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    color: rgba(255, 255, 255, 0.96) !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+    pointer-events: none !important;
   }
 }
 </style>
