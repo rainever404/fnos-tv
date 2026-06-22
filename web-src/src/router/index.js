@@ -52,6 +52,20 @@ const routes = [
         component: () => import('../views/Play/VideoPlayer.vue')
     },
     {
+        path: '/settings',
+        redirect: '/settings/library'
+    },
+    {
+        path: '/settings/account',
+        name: 'SettingsAccount',
+        component: () => import('../views/Settings/SettingsLibrary.vue')
+    },
+    {
+        path: '/settings/preference',
+        name: 'SettingsPreference',
+        component: () => import('../views/Settings/SettingsLibrary.vue')
+    },
+    {
         path: '/settings/library',
         name: 'SettingsLibrary',
         component: () => import('../views/Settings/SettingsLibrary.vue')
@@ -60,6 +74,25 @@ const routes = [
         path: '/settings/appearance',
         name: 'SettingsAppearance',
         component: () => import('../views/Settings/SettingsLibrary.vue')
+    },
+    {
+        path: '/settings/users',
+        name: 'SettingsUsers',
+        component: () => import('../views/Settings/SettingsLibrary.vue')
+    },
+    {
+        path: '/settings/server',
+        name: 'SettingsServer',
+        component: () => import('../views/Settings/SettingsLibrary.vue')
+    },
+    {
+        path: '/settings/task',
+        name: 'SettingsTask',
+        component: () => import('../views/Settings/SettingsLibrary.vue')
+    },
+    {
+        path: '/settings/tasks',
+        redirect: '/settings/task'
     }
 ]
 const router = createRouter({

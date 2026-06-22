@@ -153,7 +153,7 @@ let ignoreMobileDanmuSettingsReleaseUntil = 0;
 let mobileDanmuSettingsPressStarted = false;
 let mobileDanmuSettingsPressCaptured = false;
 const MOBILE_DANMU_SETTINGS_PRESS_DEDUPE_MS = 140;
-const MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS = 900;
+const MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS = 420;
 const MOBILE_DANMU_SETTINGS_HIT_SLOP = 36;
 const MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR = [
   '.art-control-mobile-danmu-settings-trigger',
@@ -833,6 +833,12 @@ function findMobileDanmuSettingsTrigger(event) {
   if (!root || !point) {
     return null
   }
+  const pointTrigger = document.elementsFromPoint?.(point.x, point.y)
+      ?.map(item => item?.closest?.(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR))
+      ?.find(item => item && root.contains(item))
+  if (pointTrigger) {
+    return pointTrigger
+  }
   return Array.from(root.querySelectorAll(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR)).find(trigger => {
     const rect = trigger.getBoundingClientRect()
     return point.x >= rect.left - MOBILE_DANMU_SETTINGS_HIT_SLOP &&
@@ -868,10 +874,7 @@ function shouldSkipMobileDanmuSettingsActivator(event, now) {
         now - lastMobileDanmuSettingsTouchEndAt < MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS
   }
   if (type === 'click') {
-    const lastReleaseAt = Math.max(lastMobileDanmuSettingsTouchEndAt, lastMobileDanmuSettingsPointerUpAt)
-    return now - lastMobileDanmuSettingsTouchAt < MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS ||
-        (lastReleaseAt > lastMobileDanmuSettingsTouchAt &&
-            now - lastReleaseAt < MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS)
+    return now < ignoreMobileDanmuSettingsReleaseUntil
   }
   if (type === 'pointerup' && event.pointerType === 'mouse') {
     return false
@@ -899,8 +902,8 @@ function noteMobileDanmuSettingsActivator(event, now) {
   if (type === 'touchend') {
     lastMobileDanmuSettingsTouchEndAt = now
   }
-  if (type === 'click' && event?.pointerType !== 'mouse') {
-    lastMobileDanmuSettingsTouchAt = now
+  if (type === 'touchend' || type === 'pointerup' || type === 'mouseup') {
+    ignoreMobileDanmuSettingsReleaseUntil = now + MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS
   }
   lastMobileDanmuSettingsToggleAt = now
   mobileDanmuSettingsPressStarted = false
@@ -8852,4 +8855,194 @@ img.play-icon {
   pointer-events: auto !important;
   z-index: 2147483004 !important;
 }
+
+/* User mobile contract: portrait uses the same core entries as landscape. */
+@media (orientation: portrait), (max-width: 640px), (pointer: coarse), (hover: none) {
+  .player:not(.is-forced-landscape) {
+    --mobile-contract-left: clamp(84px, 24vw, 104px);
+    --mobile-contract-danmu: 22px;
+    --mobile-contract-danmu-settings: 32px;
+    --mobile-contract-quality: 34px;
+    --mobile-contract-rate: 22px;
+    --mobile-contract-subtitle: 28px;
+    --mobile-contract-icon: 22px;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-bottom),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
+    overflow: visible !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding-left: max(2px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(2px, env(safe-area-inset-right, 0px)) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
+    display: flex !important;
+    flex: 0 0 var(--mobile-contract-left) !important;
+    width: var(--mobile-contract-left) !important;
+    min-width: 0 !important;
+    max-width: var(--mobile-contract-left) !important;
+    overflow: hidden !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-playAndPause),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-volume) {
+    flex: 0 0 21px !important;
+    width: 21px !important;
+    min-width: 21px !important;
+    max-width: 21px !important;
+    padding-inline: 0 !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-time) {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: calc(var(--mobile-contract-left) - 42px) !important;
+    overflow: hidden !important;
+    padding-inline: 0 !important;
+    font-size: 9.5px !important;
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center) {
+    flex: 0 0 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center .artplayer-plugin-danmuku),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - var(--mobile-contract-left) - 6px) !important;
+    margin-left: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-quality),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-rate),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-subtitle),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+    display: inline-flex !important;
+    flex-shrink: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 40px !important;
+    padding-inline: 0 !important;
+    margin-left: 0 !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    color: rgba(255, 255, 255, 0.96) !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+    touch-action: manipulation !important;
+    transform: none !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
+    order: 10 !important;
+    flex: 0 0 var(--mobile-contract-danmu) !important;
+    width: var(--mobile-contract-danmu) !important;
+    min-width: var(--mobile-contract-danmu) !important;
+    max-width: var(--mobile-contract-danmu) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+    order: 11 !important;
+    flex: 0 0 var(--mobile-contract-danmu-settings) !important;
+    width: var(--mobile-contract-danmu-settings) !important;
+    min-width: var(--mobile-contract-danmu-settings) !important;
+    max-width: var(--mobile-contract-danmu-settings) !important;
+    z-index: 2147483005 !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-quality) {
+    order: 12 !important;
+    flex: 0 0 var(--mobile-contract-quality) !important;
+    width: var(--mobile-contract-quality) !important;
+    min-width: var(--mobile-contract-quality) !important;
+    max-width: var(--mobile-contract-quality) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-rate) {
+    order: 13 !important;
+    flex: 0 0 var(--mobile-contract-rate) !important;
+    width: var(--mobile-contract-rate) !important;
+    min-width: var(--mobile-contract-rate) !important;
+    max-width: var(--mobile-contract-rate) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-subtitle) {
+    order: 14 !important;
+    flex: 0 0 var(--mobile-contract-subtitle) !important;
+    width: var(--mobile-contract-subtitle) !important;
+    min-width: var(--mobile-contract-subtitle) !important;
+    max-width: var(--mobile-contract-subtitle) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting) {
+    order: 15 !important;
+    flex: 0 0 var(--mobile-contract-icon) !important;
+    width: var(--mobile-contract-icon) !important;
+    min-width: var(--mobile-contract-icon) !important;
+    max-width: var(--mobile-contract-icon) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+    order: 16 !important;
+    flex: 0 0 var(--mobile-contract-icon) !important;
+    width: var(--mobile-contract-icon) !important;
+    min-width: var(--mobile-contract-icon) !important;
+    max-width: var(--mobile-contract-icon) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .mobile-art-text-control) {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+    pointer-events: none !important;
+  }
+}
+
 </style>

@@ -58,8 +58,8 @@ const SearchGenreMap = ref({...fallbackSearchGenreMap});
 let searchTimer = null;
 let searchRequestId = 0;
 const userMenuItems = [
-  {key: 'password', label: '修改密码', icon: 'bx bx-lock-alt', action: 'settings', path: '/settings/library'},
-  {key: 'play-preference', label: '播放偏好设置', icon: 'bx bx-play-circle', action: 'settings', path: '/settings/library'},
+  {key: 'password', label: '修改密码', icon: 'bx bx-lock-alt', action: 'settings', path: '/settings/account'},
+  {key: 'play-preference', label: '播放偏好设置', icon: 'bx bx-play-circle', action: 'settings', path: '/settings/preference'},
   {key: 'appearance', label: '外观', icon: 'bx bx-palette', action: 'settings', path: '/settings/appearance'},
   {key: 'help', label: '帮助中心', icon: 'bx bx-help-circle', action: 'message', separated: true},
   {key: 'about', label: '关于飞牛影视', icon: 'bx bx-info-circle', action: 'message'},

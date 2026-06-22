@@ -1,5 +1,5 @@
 <script setup>
-import {computed, getCurrentInstance, onMounted, ref} from 'vue'
+import {computed, getCurrentInstance, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import VueCookies from 'vue-cookies'
 import {useMediaDbData} from '../../store.js'
@@ -12,26 +12,71 @@ const instance = getCurrentInstance()
 const COMMON = instance.appContext.config.globalProperties.$COMMON
 
 const loading = ref(true)
+const sectionLoading = ref(false)
 const scanning = ref(false)
+const savingPassword = ref(false)
+const savingPreference = ref(false)
+const savingServer = ref(false)
+const savingTaskSwitch = ref(false)
 const scanningLibraryGuid = ref('')
 const versionInfo = ref({})
 const mediaDbList = ref([])
 const mediaDbSum = ref({})
+const userInfo = ref({})
+const usersList = ref([])
+const serverInfo = ref({})
+const gpuList = ref([])
+const taskList = ref([])
+const taskSetting = ref({})
+const languageOptions = ref([
+  {code: '', label: '跟随服务器默认'},
+  {code: 'zh-CN', label: '简体中文'},
+  {code: 'en-US', label: 'English'},
+  {code: 'ja-JP', label: '日本語'}
+])
 const currentThemeMode = ref(VueCookies.get('theme_mode') || (VueCookies.get('dark') === 'false' ? 'light' : 'dark'))
 const cardStyle = ref(loadCardStyle())
+const passwordForm = ref({
+  password: '',
+  confirmPassword: ''
+})
+const preferenceForm = ref({
+  lan: '',
+  audio_lan: ''
+})
+const serverForm = ref({
+  server_name: '',
+  lan: '',
+  gpu_acc: false,
+  gpu_prefer: '',
+  cpu_allow_decoding: false,
+  direct_link_enable: false,
+  direct_link_allowed_level: '',
+  file_monitor: false
+})
 
 const accountNavItems = [
-  {key: 'password', label: '修改密码', icon: 'bx bx-lock-alt'},
-  {key: 'play', label: '播放偏好', icon: 'bx bx-play-circle'},
+  {key: 'account', label: '修改密码', icon: 'bx bx-lock-alt', path: '/settings/account'},
+  {key: 'preference', label: '播放偏好', icon: 'bx bx-play-circle', path: '/settings/preference'},
   {key: 'appearance', label: '外观', icon: 'bx bx-palette', path: '/settings/appearance'}
 ]
 
 const serverNavItems = [
   {key: 'library', label: '媒体库', icon: 'bx bxs-folder', path: '/settings/library'},
-  {key: 'users', label: '用户', icon: 'bx bx-user'},
-  {key: 'server', label: '设置', icon: 'bx bx-cog'},
-  {key: 'tasks', label: '任务计划', icon: 'bx bx-task'}
+  {key: 'users', label: '用户', icon: 'bx bx-user', path: '/settings/users'},
+  {key: 'server', label: '设置', icon: 'bx bx-cog', path: '/settings/server'},
+  {key: 'task', label: '任务计划', icon: 'bx bx-task', path: '/settings/task'}
 ]
+
+const titleMap = {
+  account: '帐号 - 修改密码',
+  preference: '帐号 - 播放偏好',
+  appearance: '帐号 - 外观',
+  library: '影视服务器 - 媒体库',
+  users: '影视服务器 - 用户',
+  server: '影视服务器 - 设置',
+  task: '影视服务器 - 任务计划'
+}
 
 const themeItems = [
   {key: 'system', label: '跟随系统'},
@@ -45,12 +90,27 @@ const cardStyleItems = [
   {key: 'resolution', label: '分辨率', sample: '1080'}
 ]
 
-const activeSettingsKey = computed(() => route.path === '/settings/appearance' ? 'appearance' : 'library')
-const contentTitle = computed(() => activeSettingsKey.value === 'appearance' ? '帐号 - 外观' : '影视服务器 - 媒体库')
-
+const activeSettingsKey = computed(() => {
+  const key = route.path.split('/').filter(Boolean).pop()
+  if (key === 'tasks') {
+    return 'task'
+  }
+  return titleMap[key] ? key : 'library'
+})
+const contentTitle = computed(() => titleMap[activeSettingsKey.value] || titleMap.library)
 const visibleLibraries = computed(() => {
   const list = Array.isArray(mediaDbList.value) ? mediaDbList.value : []
   return list.filter(item => item?.category !== 'Others')
+})
+const taskEnabled = computed(() => {
+  const value = taskSetting.value?.task_switch ?? taskSetting.value?.taskSwitch ?? taskSetting.value?.enabled
+  if (value === undefined || value === null || value === '') {
+    return false
+  }
+  return value === true || value === 1 || value === '1' || value === 'Enabled' || value === 'enabled'
+})
+const displayServerName = computed(() => {
+  return serverInfo.value?.server_name || serverInfo.value?.serverName || serverInfo.value?.name || serverForm.value.server_name || '飞牛影视'
 })
 
 function goHome() {
@@ -59,6 +119,33 @@ function goHome() {
 
 function normalizeData(res, fallback) {
   return res === undefined || res === null ? fallback : res
+}
+
+function normalizeList(res) {
+  if (Array.isArray(res)) {
+    return res
+  }
+  if (Array.isArray(res?.list)) {
+    return res.list
+  }
+  if (Array.isArray(res?.items)) {
+    return res.items
+  }
+  if (Array.isArray(res?.rows)) {
+    return res.rows
+  }
+  if (Array.isArray(res?.data)) {
+    return res.data
+  }
+  return []
+}
+
+async function safeRequest(method, api, data, fallback) {
+  try {
+    return normalizeData(await COMMON.requests(method, api, true, data), fallback)
+  } catch {
+    return fallback
+  }
 }
 
 async function loadSettingsData() {
@@ -70,11 +157,11 @@ async function loadSettingsData() {
       COMMON.requests('GET', '/api/v1/mediadb/list', true),
       COMMON.requests('GET', '/api/v1/mediadb/sum', true)
     ])
-    const officialList = normalizeLibraryList(normalizeData(mdbListRes.value, []))
-    const fallbackList = normalizeLibraryList(normalizeData(legacyListRes.value, MediaDbData.list || []))
-    versionInfo.value = normalizeData(versionRes.value, {})
+    const officialList = normalizeLibraryList(normalizeData(mdbListRes.status === 'fulfilled' ? mdbListRes.value : [], []))
+    const fallbackList = normalizeLibraryList(normalizeData(legacyListRes.status === 'fulfilled' ? legacyListRes.value : MediaDbData.list, []))
+    versionInfo.value = normalizeData(versionRes.status === 'fulfilled' ? versionRes.value : {}, {})
     mediaDbList.value = officialList.length ? officialList : fallbackList
-    mediaDbSum.value = normalizeData(sumRes.value, MediaDbData.sum || {})
+    mediaDbSum.value = normalizeData(sumRes.status === 'fulfilled' ? sumRes.value : MediaDbData.sum, {})
     MediaDbData.list = mediaDbList.value
     MediaDbData.sum = mediaDbSum.value
   } catch {
@@ -85,6 +172,82 @@ async function loadSettingsData() {
   }
 }
 
+async function loadActiveSection() {
+  const key = activeSettingsKey.value
+  if (key === 'library' || key === 'appearance') {
+    return
+  }
+  sectionLoading.value = true
+  try {
+    if (key === 'account' || key === 'preference') {
+      await loadPreferenceData()
+    } else if (key === 'users') {
+      await loadUsersData()
+    } else if (key === 'server') {
+      await loadServerData()
+    } else if (key === 'task') {
+      await loadTaskData()
+    }
+  } finally {
+    sectionLoading.value = false
+  }
+}
+
+async function loadPreferenceData() {
+  const [userRes, serverRes, iso6391Res, iso6392Res] = await Promise.allSettled([
+    COMMON.requests('GET', '/api/v1/user/info', true),
+    COMMON.requests('GET', '/api/v1/server/info', true),
+    COMMON.requests('GET', '/api/v1/tag/iso6391?lan=zh-CN', true),
+    COMMON.requests('GET', '/api/v1/tag/iso6392?lan=zh-CN', true)
+  ])
+  userInfo.value = normalizeData(userRes.status === 'fulfilled' ? userRes.value : userInfo.value, {})
+  serverInfo.value = normalizeData(serverRes.status === 'fulfilled' ? serverRes.value : serverInfo.value, {})
+  preferenceForm.value = {
+    lan: userInfo.value?.lan || '',
+    audio_lan: userInfo.value?.audio_lan || ''
+  }
+  languageOptions.value = mergeLanguageOptions([
+    ...languageOptions.value,
+    ...normalizeLanguageOptions(iso6391Res.status === 'fulfilled' ? iso6391Res.value : []),
+    ...normalizeLanguageOptions(iso6392Res.status === 'fulfilled' ? iso6392Res.value : [])
+  ])
+}
+
+async function loadUsersData() {
+  const [usersRes] = await Promise.allSettled([
+    COMMON.requests('GET', '/api/v1/manager/user/list', true)
+  ])
+  usersList.value = normalizeList(usersRes.status === 'fulfilled' ? usersRes.value : [])
+}
+
+async function loadServerData() {
+  const [serverRes, gpuRes] = await Promise.allSettled([
+    COMMON.requests('GET', '/api/v1/server/info', true),
+    COMMON.requests('GET', '/api/v1/server/gpu/list', true)
+  ])
+  serverInfo.value = normalizeData(serverRes.status === 'fulfilled' ? serverRes.value : serverInfo.value, {})
+  gpuList.value = normalizeList(gpuRes.status === 'fulfilled' ? gpuRes.value : [])
+  serverForm.value = {
+    server_name: serverInfo.value?.server_name || serverInfo.value?.serverName || serverInfo.value?.name || '',
+    lan: serverInfo.value?.lan || '',
+    gpu_acc: Boolean(serverInfo.value?.gpu_acc),
+    gpu_prefer: serverInfo.value?.gpu_prefer || '',
+    cpu_allow_decoding: Boolean(serverInfo.value?.cpu_allow_decoding),
+    direct_link_enable: Boolean(serverInfo.value?.direct_link_enable),
+    direct_link_allowed_level: serverInfo.value?.direct_link_allowed_level ?? '',
+    file_monitor: serverInfo.value?.file_monitor !== false
+  }
+}
+
+async function loadTaskData() {
+  const [listRes, settingRes] = await Promise.allSettled([
+    COMMON.requests('GET', '/api/v1/task/schedule/list', true),
+    COMMON.requests('POST', '/api/v1/task/schedule/getSetting', true, {})
+  ])
+  taskList.value = normalizeList(listRes.status === 'fulfilled' ? listRes.value : [])
+  taskSetting.value = normalizeData(settingRes.status === 'fulfilled' ? settingRes.value : taskSetting.value, {})
+}
+
 function normalizeLibraryList(list) {
   if (!Array.isArray(list)) {
     return []
@@ -93,6 +256,34 @@ function normalizeLibraryList(list) {
     ...item,
     title: item?.title || item?.name || '媒体库'
   }))
+}
+
+function normalizeLanguageOptions(list) {
+  if (!Array.isArray(list)) {
+    return []
+  }
+  return list.map(item => {
+    const code = item?.code || item?.id || item?.value || item?.key || item?.iso639_1 || item?.iso639_2
+    const label = item?.title || item?.label || item?.name || item?.zh || item?.cn || item?.value || code
+    return code ? {code: String(code), label: String(label)} : null
+  }).filter(Boolean)
+}
+
+function mergeLanguageOptions(list) {
+  const seen = new Set()
+  const result = []
+  for (const item of list) {
+    const code = String(item?.code ?? '')
+    if (seen.has(code)) {
+      continue
+    }
+    seen.add(code)
+    result.push({
+      code,
+      label: item?.label || code || '跟随服务器默认'
+    })
+  }
+  return result
 }
 
 function setThemeMode(mode) {
@@ -113,11 +304,9 @@ function isNavActive(item) {
 }
 
 function handleSettingsNav(item) {
-  if (item?.path) {
+  if (item?.path && route.path !== item.path) {
     router.push(item.path)
-    return
   }
-  showUnavailable(item.label)
 }
 
 function toggleCardStyle(key) {
@@ -206,18 +395,19 @@ function normalizeLibraryPath(value) {
 
 function formatDateValue(value) {
   if (!value) {
-    return ''
+    return '-'
   }
   const text = String(value)
   const match = text.match(/\d{4}[-/]\d{1,2}[-/]\d{1,2}/)
   if (match) {
     return match[0].replace(/\//g, '-')
   }
-  const date = new Date(Number(value) > 1000000000000 ? Number(value) : Number(value) * 1000)
+  const numeric = Number(value)
+  const date = new Date(Number.isFinite(numeric) ? (numeric > 1000000000000 ? numeric : numeric * 1000) : text)
   if (Number.isNaN(date.getTime())) {
     return text
   }
-  return date.toISOString().slice(0, 10)
+  return date.toISOString().slice(0, 19).replace('T', ' ')
 }
 
 function libraryUpdatedAt(item) {
@@ -232,7 +422,7 @@ function libraryUpdatedAt(item) {
     'updated_at',
     'mtime',
     'modified_time'
-  ])) || '-'
+  ]))
 }
 
 function previewItems(item) {
@@ -290,13 +480,157 @@ async function scanLibrary(item) {
   }
 }
 
-function showUnavailable(label) {
-  COMMON.ShowMsg(`${label}功能请在官方飞牛影视中操作`)
+async function savePassword() {
+  const password = passwordForm.value.password || ''
+  const confirmPassword = passwordForm.value.confirmPassword || ''
+  if (password.length < 6 || password.length > 127) {
+    COMMON.ShowMsg('密码长度需为 6-127 位')
+    return
+  }
+  if (password !== confirmPassword) {
+    COMMON.ShowMsg('两次输入的密码不一致')
+    return
+  }
+  savingPassword.value = true
+  try {
+    await COMMON.requests('POST', '/api/v1/user/passwd', true, {password})
+    passwordForm.value = {password: '', confirmPassword: ''}
+    COMMON.ShowMsg('密码已更新')
+  } catch {
+    COMMON.ShowMsg('密码更新失败')
+  } finally {
+    savingPassword.value = false
+  }
 }
 
-onMounted(() => {
-  loadSettingsData()
+async function savePreference() {
+  savingPreference.value = true
+  try {
+    await COMMON.requests('POST', '/api/v1/user/info', true, {
+      lan: preferenceForm.value.lan,
+      audio_lan: preferenceForm.value.audio_lan
+    })
+    userInfo.value = {
+      ...userInfo.value,
+      lan: preferenceForm.value.lan,
+      audio_lan: preferenceForm.value.audio_lan
+    }
+    COMMON.ShowMsg('播放偏好已保存')
+  } catch {
+    COMMON.ShowMsg('播放偏好保存失败')
+  } finally {
+    savingPreference.value = false
+  }
+}
+
+async function saveServerSettings() {
+  savingServer.value = true
+  try {
+    const payload = {
+      server_name: serverForm.value.server_name,
+      lan: serverForm.value.lan,
+      gpu_acc: serverForm.value.gpu_acc,
+      gpu_prefer: serverForm.value.gpu_prefer,
+      cpu_allow_decoding: serverForm.value.cpu_allow_decoding,
+      direct_link_enable: serverForm.value.direct_link_enable,
+      direct_link_allowed_level: serverForm.value.direct_link_allowed_level,
+      file_monitor: serverForm.value.file_monitor
+    }
+    await COMMON.requests('POST', '/api/v1/server/info', true, payload)
+    serverInfo.value = {
+      ...serverInfo.value,
+      ...payload
+    }
+    COMMON.ShowMsg('服务器设置已保存')
+  } catch {
+    COMMON.ShowMsg('服务器设置保存失败')
+  } finally {
+    savingServer.value = false
+  }
+}
+
+async function toggleTaskSwitch() {
+  const next = !taskEnabled.value
+  savingTaskSwitch.value = true
+  try {
+    await COMMON.requests('POST', '/api/v1/task/schedule/set', true, {
+      task_switch: next ? 1 : 0
+    })
+    taskSetting.value = {
+      ...taskSetting.value,
+      task_switch: next ? 1 : 0
+    }
+    COMMON.ShowMsg(next ? '任务计划已开启' : '任务计划已关闭')
+  } catch {
+    COMMON.ShowMsg('任务计划设置失败')
+  } finally {
+    savingTaskSwitch.value = false
+  }
+}
+
+async function unlockUser(item) {
+  const guid = item?.guid || item?.user_guid
+  if (!guid) {
+    COMMON.ShowMsg('缺少用户 guid')
+    return
+  }
+  try {
+    await COMMON.requests('POST', '/api/v1/manager/user/unlock', true, {guid})
+    COMMON.ShowMsg('已解除锁定')
+    await loadUsersData()
+  } catch {
+    COMMON.ShowMsg('解除锁定失败')
+  }
+}
+
+function userName(item) {
+  return item?.username || item?.name || item?.nick_name || '-'
+}
+
+function userPermission(item) {
+  if (item?.is_admin || item?.role === 'admin' || item?.role === 1) {
+    return '管理员'
+  }
+  if (item?.permission_name || item?.role_name) {
+    return item.permission_name || item.role_name
+  }
+  return '普通用户'
+}
+
+function taskName(item) {
+  const raw = item?.name || item?.task_name || item?.task || ''
+  const map = {
+    'scrap-item': '媒体库刮削',
+    'extra-subtitle': '自动下载字幕'
+  }
+  return map[raw] || raw || '-'
+}
+
+function taskStatus(item) {
+  if (item?.running || item?.status === 'running') {
+    return '运行中'
+  }
+  if (item?.last_run_status === false || item?.status === 'failed') {
+    return '失败'
+  }
+  return '等待下次运行'
+}
+
+function showReserved(label) {
+  COMMON.ShowMsg(`${label}已保留官方入口，后续会接入同款弹窗`)
+}
+
+onMounted(async () => {
+  await loadSettingsData()
+  await loadActiveSection()
 })
+
+watch(
+    activeSettingsKey,
+    async () => {
+      await loadActiveSection()
+    }
+)
 </script>
 
 <template>
@@ -341,8 +675,9 @@ onMounted(() => {
       </div>
 
       <div class="settings-version">
+        <div>{{ displayServerName }}</div>
         <div>版本号 {{ versionInfo.version || '0.9.7' }}</div>
-        <div>（服务版本 {{ versionInfo.mediasrvVersion || versionInfo.media_srv_version || '0.8.35' }} ）</div>
+        <div>服务版本 {{ versionInfo.mediasrvVersion || versionInfo.media_srv_version || '0.8.35' }}</div>
       </div>
     </aside>
 
@@ -351,138 +686,349 @@ onMounted(() => {
         <h1>{{ contentTitle }}</h1>
       </header>
 
-      <template v-if="activeSettingsKey === 'library'">
-      <div class="settings-toolbar">
-        <button class="settings-primary-button" type="button" @click="showUnavailable('新增媒体库')">
-          <i class='bx bx-plus'></i>
-          <span>新增媒体库</span>
-        </button>
-        <button class="settings-secondary-button" type="button" @click="showUnavailable('排序')">
-          <i class='bx bx-list-ul'></i>
-          <span>排序</span>
-        </button>
-        <button class="settings-secondary-button" type="button" :disabled="scanning || Boolean(scanningLibraryGuid)" @click="scanAllLibraries">
-          <i class='bx bx-refresh' :class="{ spinning: scanning }"></i>
-          <span>{{ scanning ? '正在扫描' : '扫描媒体库文件' }}</span>
-        </button>
-      </div>
-
-      <div class="settings-table-wrap">
-        <table class="settings-library-table">
-          <thead>
-          <tr>
-            <th>媒体库</th>
-            <th>媒体文件夹</th>
-            <th>类型</th>
-            <th>文件最近更新</th>
-            <th>操作</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-if="loading">
-            <td colspan="5" class="settings-empty-row">正在加载媒体库</td>
-          </tr>
-          <tr v-else-if="visibleLibraries.length === 0">
-            <td colspan="5" class="settings-empty-row">暂无媒体库</td>
-          </tr>
-          <template v-else>
-            <tr v-for="item in visibleLibraries" :key="item.guid || item.title">
-              <td>
-                <div class="settings-library-cell">
-                  <div class="settings-library-preview">
-                    <template v-if="previewItems(item).length">
-                      <img
-                          v-for="preview in previewItems(item)"
-                          :key="preview.guid || preview.poster || preview.posters"
-                          :src="previewUrl(preview)"
-                          alt=""
-                          loading="lazy"
-                      >
-                    </template>
-                    <img v-else :src="previewUrl(item)" alt="" loading="lazy">
-                    <div class="settings-library-overlay">{{ item.title || '媒体库' }}</div>
-                  </div>
-                  <div class="settings-library-meta">
-                    <strong>{{ item.title || '媒体库' }}</strong>
-                    <span>{{ libraryCount(item) }} 个项目</span>
-                  </div>
-                </div>
-              </td>
-              <td>
-                <div class="settings-folder-text" :title="libraryFolder(item)">{{ libraryFolder(item) }}</div>
-              </td>
-              <td>{{ libraryTypeLabel(item) }}</td>
-              <td>{{ libraryUpdatedAt(item) }}</td>
-              <td>
-                <div class="settings-actions">
-                  <button type="button" aria-label="删除媒体库" title="删除媒体库" @click="showUnavailable('删除媒体库')">
-                    <i class='bx bx-trash'></i>
-                  </button>
-                  <button type="button" aria-label="编辑媒体库" title="编辑媒体库" @click="showUnavailable('编辑媒体库')">
-                    <i class='bx bx-edit-alt'></i>
-                  </button>
-                  <button
-                      type="button"
-                      aria-label="扫描媒体库"
-                      title="扫描媒体库"
-                      :disabled="scanning || Boolean(scanningLibraryGuid)"
-                      @click="scanLibrary(item)"
-                  >
-                    <i class='bx bx-refresh' :class="{ spinning: scanningLibraryGuid === item.guid }"></i>
-                  </button>
-                  <button type="button" aria-label="更多" title="更多" @click="showUnavailable('更多')">
-                    <i class='bx bx-dots-horizontal-rounded'></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </template>
-          </tbody>
-        </table>
-      </div>
-      </template>
-
-      <div v-else class="appearance-content">
-        <section class="appearance-section">
-          <div class="appearance-section-title">主题模式</div>
-          <div class="appearance-segmented" role="group" aria-label="主题模式">
-            <button
-                v-for="item in themeItems"
-                :key="item.key"
-                class="appearance-option"
-                :class="{ active: currentThemeMode === item.key }"
-                type="button"
-                @click="setThemeMode(item.key)"
-            >
-              {{ item.label }}
+      <div class="settings-body">
+        <section v-if="activeSettingsKey === 'account'" class="settings-panel narrow-panel">
+          <div class="settings-section-heading">
+            <h2>修改密码</h2>
+            <p>修改当前登录用户的访问密码。</p>
+          </div>
+          <label class="settings-form-row">
+            <span>新密码</span>
+            <input v-model="passwordForm.password" type="password" autocomplete="new-password" placeholder="请输入 6-127 位密码">
+          </label>
+          <label class="settings-form-row">
+            <span>确认密码</span>
+            <input v-model="passwordForm.confirmPassword" type="password" autocomplete="new-password" placeholder="再次输入新密码">
+          </label>
+          <div class="settings-form-actions">
+            <button class="settings-primary-button" type="button" :disabled="savingPassword" @click="savePassword">
+              <i class='bx bx-check'></i>
+              <span>{{ savingPassword ? '保存中' : '保存' }}</span>
             </button>
           </div>
         </section>
 
-        <section class="appearance-section">
-          <div class="appearance-section-title">卡片样式</div>
-          <div class="appearance-card-row">
-            <div class="appearance-preview-card" aria-hidden="true">
-              <div v-if="cardStyle.rating" class="appearance-preview-rating">9.2</div>
-              <div class="appearance-preview-right">
-                <div v-if="cardStyle.resolution" class="appearance-preview-resolution">1080</div>
-                <div v-if="cardStyle.watched" class="appearance-preview-watched"><i class='bx bx-check'></i></div>
-              </div>
-              <div class="appearance-preview-title">红樱桃</div>
-            </div>
-            <div class="appearance-card-options">
+        <section v-else-if="activeSettingsKey === 'preference'" class="settings-panel narrow-panel">
+          <div class="settings-section-heading">
+            <h2>播放偏好</h2>
+            <p>新播放任务会优先使用这里的音频和字幕语言。</p>
+          </div>
+          <label class="settings-form-row">
+            <span>音频语言</span>
+            <select v-model="preferenceForm.audio_lan">
+              <option v-for="item in languageOptions" :key="`audio-${item.code}`" :value="item.code">{{ item.label }}</option>
+            </select>
+          </label>
+          <label class="settings-form-row">
+            <span>字幕语言</span>
+            <select v-model="preferenceForm.lan">
+              <option v-for="item in languageOptions" :key="`subtitle-${item.code}`" :value="item.code">{{ item.label }}</option>
+            </select>
+          </label>
+          <div class="settings-form-actions">
+            <button class="settings-primary-button" type="button" :disabled="savingPreference || sectionLoading" @click="savePreference">
+              <i class='bx bx-check'></i>
+              <span>{{ savingPreference ? '保存中' : '保存' }}</span>
+            </button>
+          </div>
+        </section>
+
+        <section v-else-if="activeSettingsKey === 'appearance'" class="appearance-content">
+          <section class="appearance-section">
+            <div class="appearance-section-title">主题模式</div>
+            <div class="appearance-segmented" role="group" aria-label="主题模式">
               <button
-                  v-for="item in cardStyleItems"
+                  v-for="item in themeItems"
                   :key="item.key"
-                  class="appearance-card-style"
-                  :class="{ active: cardStyle[item.key] }"
+                  class="appearance-option"
+                  :class="{ active: currentThemeMode === item.key }"
                   type="button"
-                  @click="toggleCardStyle(item.key)"
+                  @click="setThemeMode(item.key)"
               >
-                <span class="appearance-card-style-sample">{{ item.sample }}</span>
-                <span>{{ item.label }}</span>
+                {{ item.label }}
               </button>
             </div>
+          </section>
+
+          <section class="appearance-section">
+            <div class="appearance-section-title">卡片样式</div>
+            <div class="appearance-card-row">
+              <div class="appearance-preview-card" aria-hidden="true">
+                <div v-if="cardStyle.rating" class="appearance-preview-rating">9.2</div>
+                <div class="appearance-preview-right">
+                  <div v-if="cardStyle.resolution" class="appearance-preview-resolution">1080</div>
+                  <div v-if="cardStyle.watched" class="appearance-preview-watched"><i class='bx bx-check'></i></div>
+                </div>
+                <div class="appearance-preview-title">红樱桃</div>
+              </div>
+              <div class="appearance-card-options">
+                <button
+                    v-for="item in cardStyleItems"
+                    :key="item.key"
+                    class="appearance-card-style"
+                    :class="{ active: cardStyle[item.key] }"
+                    type="button"
+                    @click="toggleCardStyle(item.key)"
+                >
+                  <span class="appearance-card-style-sample">{{ item.sample }}</span>
+                  <span>{{ item.label }}</span>
+                </button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <template v-else-if="activeSettingsKey === 'library'">
+          <div class="settings-toolbar">
+            <button class="settings-primary-button" type="button" @click="showReserved('新增媒体库')">
+              <i class='bx bx-plus'></i>
+              <span>新增媒体库</span>
+            </button>
+            <button class="settings-secondary-button" type="button" @click="showReserved('排序')">
+              <i class='bx bx-list-ul'></i>
+              <span>排序</span>
+            </button>
+            <button class="settings-secondary-button" type="button" :disabled="scanning || Boolean(scanningLibraryGuid)" @click="scanAllLibraries">
+              <i class='bx bx-refresh' :class="{ spinning: scanning }"></i>
+              <span>{{ scanning ? '正在扫描' : '扫描媒体库文件' }}</span>
+            </button>
+          </div>
+
+          <div class="settings-table-wrap">
+            <table class="settings-library-table">
+              <thead>
+              <tr>
+                <th>媒体库</th>
+                <th>媒体文件夹</th>
+                <th>类型</th>
+                <th>文件最近更新</th>
+                <th>操作</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr v-if="loading">
+                <td colspan="5" class="settings-empty-row">正在加载媒体库</td>
+              </tr>
+              <tr v-else-if="visibleLibraries.length === 0">
+                <td colspan="5" class="settings-empty-row">暂无媒体库</td>
+              </tr>
+              <template v-else>
+                <tr v-for="item in visibleLibraries" :key="item.guid || item.title">
+                  <td>
+                    <div class="settings-library-cell">
+                      <div class="settings-library-preview">
+                        <template v-if="previewItems(item).length">
+                          <img
+                              v-for="preview in previewItems(item)"
+                              :key="preview.guid || preview.poster || preview.posters"
+                              :src="previewUrl(preview)"
+                              alt=""
+                              loading="lazy"
+                          >
+                        </template>
+                        <img v-else :src="previewUrl(item)" alt="" loading="lazy">
+                        <div class="settings-library-overlay">{{ item.title || '媒体库' }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="settings-folder-text" :title="libraryFolder(item)">{{ libraryFolder(item) }}</div>
+                  </td>
+                  <td>{{ libraryTypeLabel(item) }}</td>
+                  <td>{{ libraryUpdatedAt(item) }}</td>
+                  <td>
+                    <div class="settings-actions">
+                      <button type="button" aria-label="删除媒体库" title="删除媒体库" @click="showReserved('删除媒体库')">
+                        <i class='bx bx-trash'></i>
+                      </button>
+                      <button type="button" aria-label="编辑媒体库" title="编辑媒体库" @click="showReserved('编辑媒体库')">
+                        <i class='bx bx-edit-alt'></i>
+                      </button>
+                      <button
+                          type="button"
+                          aria-label="扫描媒体库"
+                          title="扫描媒体库"
+                          :disabled="scanning || Boolean(scanningLibraryGuid)"
+                          @click="scanLibrary(item)"
+                      >
+                        <i class='bx bx-refresh' :class="{ spinning: scanningLibraryGuid === item.guid }"></i>
+                      </button>
+                      <button type="button" aria-label="更多" title="更多" @click="showReserved('更多')">
+                        <i class='bx bx-dots-horizontal-rounded'></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
+
+        <section v-else-if="activeSettingsKey === 'users'" class="settings-panel">
+          <div class="settings-panel-head">
+            <div class="settings-section-heading">
+              <h2>用户</h2>
+              <p>查看飞牛影视用户和登录状态。</p>
+            </div>
+            <div class="settings-toolbar compact">
+              <button class="settings-primary-button" type="button" @click="showReserved('新增用户')">
+                <i class='bx bx-plus'></i>
+                <span>新增用户</span>
+              </button>
+              <button class="settings-secondary-button" type="button" :disabled="sectionLoading" @click="loadUsersData">
+                <i class='bx bx-refresh' :class="{ spinning: sectionLoading }"></i>
+                <span>刷新</span>
+              </button>
+            </div>
+          </div>
+          <div class="settings-simple-table-wrap">
+            <table class="settings-simple-table">
+              <thead>
+              <tr>
+                <th>用户</th>
+                <th>权限</th>
+                <th>最近登录</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr v-if="sectionLoading">
+                <td colspan="5" class="settings-empty-row">正在加载用户</td>
+              </tr>
+              <tr v-else-if="usersList.length === 0">
+                <td colspan="5" class="settings-empty-row">暂无用户</td>
+              </tr>
+              <template v-else>
+                <tr v-for="item in usersList" :key="item.guid || item.username || item.name">
+                  <td>
+                    <div class="settings-user-cell">
+                      <div class="settings-user-avatar">{{ userName(item).slice(0, 1).toLowerCase() }}</div>
+                      <span>{{ userName(item) }}</span>
+                    </div>
+                  </td>
+                  <td>{{ userPermission(item) }}</td>
+                  <td>{{ formatDateValue(item.last_login_time || item.lastLoginTime || item.update_time) }}</td>
+                  <td>
+                    <span class="settings-pill" :class="{ danger: item.banned || item.locked }">
+                      {{ item.banned || item.locked ? '已锁定' : '正常' }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="settings-actions">
+                      <button type="button" title="编辑用户" @click="showReserved('编辑用户')">
+                        <i class='bx bx-edit-alt'></i>
+                      </button>
+                      <button v-if="item.banned || item.locked" type="button" title="解除锁定" @click="unlockUser(item)">
+                        <i class='bx bx-lock-open-alt'></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section v-else-if="activeSettingsKey === 'server'" class="settings-panel">
+          <div class="settings-panel-head">
+            <div class="settings-section-heading">
+              <h2>服务器设置</h2>
+              <p>复刻官方服务器设置入口，保存时调用官方 `/server/info`。</p>
+            </div>
+            <button class="settings-primary-button" type="button" :disabled="savingServer || sectionLoading" @click="saveServerSettings">
+              <i class='bx bx-check'></i>
+              <span>{{ savingServer ? '保存中' : '保存' }}</span>
+            </button>
+          </div>
+          <div class="settings-form-grid">
+            <label class="settings-form-row">
+              <span>服务器名称</span>
+              <input v-model="serverForm.server_name" type="text" placeholder="飞牛影视">
+            </label>
+            <label class="settings-form-row">
+              <span>首选语言</span>
+              <select v-model="serverForm.lan">
+                <option v-for="item in languageOptions" :key="`server-${item.code}`" :value="item.code">{{ item.label }}</option>
+              </select>
+            </label>
+            <label class="settings-form-row">
+              <span>GPU 加速转码</span>
+              <input v-model="serverForm.gpu_acc" type="checkbox">
+            </label>
+            <label class="settings-form-row">
+              <span>GPU 优先设备</span>
+              <select v-model="serverForm.gpu_prefer">
+                <option value="">自动选择</option>
+                <option v-for="gpu in gpuList" :key="gpu.id || gpu.name || gpu.index" :value="gpu.id || gpu.name || gpu.index">
+                  {{ gpu.name || gpu.title || gpu.id || gpu.index }}
+                </option>
+              </select>
+            </label>
+            <label class="settings-form-row">
+              <span>允许 CPU 解码</span>
+              <input v-model="serverForm.cpu_allow_decoding" type="checkbox">
+            </label>
+            <label class="settings-form-row">
+              <span>允许直链播放</span>
+              <input v-model="serverForm.direct_link_enable" type="checkbox">
+            </label>
+            <label class="settings-form-row">
+              <span>直链允许等级</span>
+              <input v-model="serverForm.direct_link_allowed_level" type="text" placeholder="默认">
+            </label>
+            <label class="settings-form-row">
+              <span>文件夹监控</span>
+              <input v-model="serverForm.file_monitor" type="checkbox">
+            </label>
+          </div>
+        </section>
+
+        <section v-else-if="activeSettingsKey === 'task'" class="settings-panel">
+          <div class="settings-panel-head">
+            <div class="settings-section-heading">
+              <h2>任务计划</h2>
+              <p>查看官方计划任务，并控制任务计划总开关。</p>
+            </div>
+            <button
+                class="settings-switch-button"
+                type="button"
+                :class="{ active: taskEnabled }"
+                :disabled="savingTaskSwitch || sectionLoading"
+                @click="toggleTaskSwitch"
+            >
+              <span>{{ taskEnabled ? '已开启' : '已关闭' }}</span>
+            </button>
+          </div>
+          <div class="settings-simple-table-wrap">
+            <table class="settings-simple-table">
+              <thead>
+              <tr>
+                <th>任务</th>
+                <th>上次开始</th>
+                <th>上次结束</th>
+                <th>状态</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr v-if="sectionLoading">
+                <td colspan="4" class="settings-empty-row">正在加载任务计划</td>
+              </tr>
+              <tr v-else-if="taskList.length === 0">
+                <td colspan="4" class="settings-empty-row">暂无任务计划</td>
+              </tr>
+              <template v-else>
+                <tr v-for="item in taskList" :key="item.name || item.task_name">
+                  <td>{{ taskName(item) }}</td>
+                  <td>{{ formatDateValue(item.last_run_start_time || item.lastRunStartTime) }}</td>
+                  <td>{{ formatDateValue(item.last_run_end_time || item.lastRunEndTime) }}</td>
+                  <td><span class="settings-pill">{{ taskStatus(item) }}</span></td>
+                </tr>
+              </template>
+              </tbody>
+            </table>
           </div>
         </section>
       </div>
@@ -492,15 +1038,16 @@ onMounted(() => {
 
 <style scoped>
 .settings-page {
-  --settings-bg: #151516;
-  --settings-sidebar: #0f1011;
-  --settings-surface: #19191a;
-  --settings-surface-hover: #202123;
-  --settings-border: rgba(255, 255, 255, 0.09);
-  --settings-text: rgba(255, 255, 255, 0.94);
-  --settings-subtext: rgba(255, 255, 255, 0.62);
-  --settings-muted: rgba(255, 255, 255, 0.42);
-  --settings-primary: #0a84ff;
+  --settings-bg: var(--fn-bg, #ffffff);
+  --settings-sidebar: var(--fn-sidebar, #f3f4f6);
+  --settings-surface: var(--fn-popover, #ffffff);
+  --settings-surface-hover: var(--fn-popover-hover, #f4f6fb);
+  --settings-border: var(--fn-border, rgba(15, 23, 42, 0.08));
+  --settings-text: var(--fn-text, rgba(15, 23, 42, 0.9));
+  --settings-subtext: var(--fn-muted, rgba(0, 0, 0, 0.8));
+  --settings-muted: var(--fn-soft, rgba(15, 23, 42, 0.42));
+  --settings-primary: var(--fn-blue, #0066ff);
+  --settings-danger: #ff4d4f;
   height: 100vh;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
@@ -508,17 +1055,6 @@ onMounted(() => {
   background: var(--settings-bg);
   color: var(--settings-text);
   font-family: -apple-system, BlinkMacSystemFont, Helvetica Neue, PingFang SC, Microsoft YaHei, Source Han Sans SC, Noto Sans CJK SC, sans-serif;
-}
-
-:global(html[data-theme="light"]) .settings-page {
-  --settings-bg: #f5f6f8;
-  --settings-sidebar: #ffffff;
-  --settings-surface: #ffffff;
-  --settings-surface-hover: #eef2f8;
-  --settings-border: rgba(21, 24, 31, 0.1);
-  --settings-text: rgba(18, 22, 30, 0.92);
-  --settings-subtext: rgba(18, 22, 30, 0.62);
-  --settings-muted: rgba(18, 22, 30, 0.4);
 }
 
 .settings-sidebar {
@@ -551,6 +1087,7 @@ onMounted(() => {
 .appearance-card-style,
 .settings-primary-button,
 .settings-secondary-button,
+.settings-switch-button,
 .settings-actions button {
   appearance: none;
   border: 0;
@@ -630,7 +1167,7 @@ onMounted(() => {
 }
 
 .settings-nav-item.active {
-  background: var(--settings-surface-hover);
+  background: rgba(10, 132, 255, 0.14);
   color: var(--settings-primary);
 }
 
@@ -666,6 +1203,13 @@ onMounted(() => {
   letter-spacing: 0;
 }
 
+.settings-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 44px;
+}
+
 .settings-toolbar {
   flex: 0 0 auto;
   display: flex;
@@ -674,19 +1218,25 @@ onMounted(() => {
   padding: 22px 0 36px;
 }
 
+.settings-toolbar.compact {
+  padding: 0;
+  gap: 10px;
+}
+
 .settings-primary-button,
-.settings-secondary-button {
+.settings-secondary-button,
+.settings-switch-button {
   height: 36px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 0 18px;
   border-radius: 8px;
-  color: white;
   font-weight: 650;
 }
 
 .settings-primary-button {
+  color: white;
   background: var(--settings-primary);
 }
 
@@ -695,7 +1245,19 @@ onMounted(() => {
   color: var(--settings-text);
 }
 
-.settings-secondary-button:disabled {
+.settings-switch-button {
+  color: var(--settings-text);
+  background: var(--settings-surface-hover);
+}
+
+.settings-switch-button.active {
+  color: white;
+  background: var(--settings-primary);
+}
+
+.settings-primary-button:disabled,
+.settings-secondary-button:disabled,
+.settings-switch-button:disabled {
   opacity: 0.58;
   cursor: default;
 }
@@ -715,8 +1277,90 @@ onMounted(() => {
   }
 }
 
+.settings-panel {
+  margin-top: 34px;
+  max-width: 1080px;
+  padding-bottom: 42px;
+}
+
+.narrow-panel {
+  max-width: 640px;
+}
+
+.settings-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 26px;
+}
+
+.settings-section-heading h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.settings-section-heading p {
+  margin: 0;
+  color: var(--settings-subtext);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.settings-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 28px;
+}
+
+.settings-form-row {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-height: 44px;
+  margin-top: 18px;
+  color: var(--settings-text);
+  font-size: 14px;
+}
+
+.settings-form-grid .settings-form-row {
+  grid-template-columns: 132px minmax(0, 1fr);
+  margin-top: 0;
+}
+
+.settings-form-row span {
+  color: var(--settings-subtext);
+}
+
+.settings-form-row input[type="text"],
+.settings-form-row input[type="password"],
+.settings-form-row select {
+  width: 100%;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  color: var(--settings-text);
+  background: var(--settings-surface);
+  border: 1px solid var(--settings-border);
+  border-radius: 8px;
+  outline: none;
+}
+
+.settings-form-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--settings-primary);
+}
+
+.settings-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 28px;
+}
+
 .settings-table-wrap {
-  flex: 1 1 auto;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -724,14 +1368,16 @@ onMounted(() => {
   border-top: 1px solid var(--settings-border);
 }
 
-.settings-library-table {
+.settings-library-table,
+.settings-simple-table {
   width: 100%;
   min-width: 0;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
-.settings-library-table th {
+.settings-library-table th,
+.settings-simple-table th {
   height: 49px;
   padding: 0 16px;
   text-align: left;
@@ -763,14 +1409,18 @@ onMounted(() => {
   text-align: center;
 }
 
-.settings-library-table td {
-  height: 195px;
+.settings-library-table td,
+.settings-simple-table td {
   box-sizing: border-box;
   padding: 16px;
   color: var(--settings-text);
   font-size: 14px;
   border-bottom: 1px solid var(--settings-border);
   vertical-align: middle;
+}
+
+.settings-library-table td {
+  height: 195px;
 }
 
 .settings-library-cell {
@@ -825,10 +1475,6 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.settings-library-meta {
-  display: none;
-}
-
 .settings-folder-text {
   max-width: 100%;
   overflow: hidden;
@@ -840,7 +1486,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 14px;
 }
 
 .settings-actions button {
@@ -865,8 +1511,46 @@ onMounted(() => {
   color: var(--settings-muted);
 }
 
+.settings-simple-table-wrap {
+  overflow-x: auto;
+  border-top: 1px solid var(--settings-border);
+}
+
+.settings-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-user-avatar {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background: var(--settings-primary);
+  border-radius: 50%;
+  font-weight: 700;
+}
+
+.settings-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  color: var(--settings-primary);
+  background: rgba(10, 132, 255, 0.14);
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.settings-pill.danger {
+  color: var(--settings-danger);
+  background: rgba(255, 77, 79, 0.14);
+}
+
 .appearance-content {
-  flex: 1 1 auto;
   min-height: 0;
   padding: 34px 0 44px;
   overflow-y: auto;
@@ -1069,6 +1753,11 @@ onMounted(() => {
     height: 64px;
   }
 
+  .settings-form-grid,
+  .settings-form-row {
+    grid-template-columns: 1fr;
+  }
+
   .appearance-content {
     padding: 20px 0 28px;
   }
@@ -1084,14 +1773,14 @@ onMounted(() => {
   }
 
   .settings-table-wrap {
-    flex: none;
     min-height: 0;
     max-height: none;
     overflow-x: auto;
     padding-bottom: 0;
   }
 
-  .settings-library-table {
+  .settings-library-table,
+  .settings-simple-table {
     min-width: 920px;
   }
 
