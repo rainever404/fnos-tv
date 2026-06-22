@@ -153,6 +153,7 @@ let ignoreMobileDanmuSettingsReleaseUntil = 0;
 let mobileDanmuSettingsPressStarted = false;
 const MOBILE_DANMU_SETTINGS_PRESS_DEDUPE_MS = 140;
 const MOBILE_DANMU_SETTINGS_RELEASE_DEDUPE_MS = 900;
+const MOBILE_DANMU_SETTINGS_HIT_SLOP = 36;
 const MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR = [
   '.art-control-mobile-danmu-settings-trigger',
   '.artplayer-plugin-danmuku .apd-config',
@@ -664,7 +665,7 @@ function isPortraitMobilePlayer() {
 }
 
 function isForcedLandscapeActive() {
-  return forcedLandscapeActive.value || playerFrame.value?.classList.contains('is-forced-landscape')
+  return forcedLandscapeActive.value
 }
 
 function shouldForceMobileDanmuFallbackControls() {
@@ -833,10 +834,10 @@ function findMobileDanmuSettingsTrigger(event) {
   }
   return Array.from(root.querySelectorAll(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR)).find(trigger => {
     const rect = trigger.getBoundingClientRect()
-    return point.x >= rect.left - 18 &&
-        point.x <= rect.right + 18 &&
-        point.y >= rect.top - 18 &&
-        point.y <= rect.bottom + 18
+    return point.x >= rect.left - MOBILE_DANMU_SETTINGS_HIT_SLOP &&
+        point.x <= rect.right + MOBILE_DANMU_SETTINGS_HIT_SLOP &&
+        point.y >= rect.top - MOBILE_DANMU_SETTINGS_HIT_SLOP &&
+        point.y <= rect.bottom + MOBILE_DANMU_SETTINGS_HIT_SLOP
   }) || null
 }
 
@@ -939,8 +940,7 @@ function handleDirectMobileDanmuPanelTrigger(event) {
   if (isMousePointer && event.button !== 0) {
     return
   }
-  const target = event.target
-  const trigger = target?.closest?.(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR)
+  const trigger = findMobileDanmuSettingsTrigger(event)
   if (!trigger || !playerFrame.value?.contains(trigger)) {
     return
   }
@@ -1018,12 +1018,49 @@ function bindMobileDanmuPanelTriggerElement(trigger) {
 
 function bindMobileDanmuPanelTriggers() {
   const root = playerFrame.value
-  if (!root || !isMobileUiActive()) {
+  if (!root) {
     return
   }
   root.querySelectorAll(MOBILE_DANMU_SETTINGS_TRIGGER_SELECTOR).forEach(trigger => {
     bindMobileDanmuPanelTriggerElement(trigger)
   })
+}
+
+function createMobileFallbackCoreControl(control) {
+  const root = playerFrame.value
+  const rightControls = root?.querySelector?.('.art-video-player .art-controls-right')
+  if (!root || !rightControls) {
+    return
+  }
+  const selector = `.art-control-${control.name}`
+  if (root.querySelector(selector)) {
+    return
+  }
+  const button = document.createElement('div')
+  button.className = `art-control ${selector.slice(1)}`
+  button.innerHTML = control.html || ''
+  button.setAttribute('data-mobile-core-fallback', '1')
+  button.setAttribute('role', 'button')
+  button.setAttribute('tabindex', '0')
+  button.setAttribute('title', control.tooltip || '')
+  button.setAttribute('aria-label', control.tooltip || '')
+  button.style.touchAction = 'manipulation'
+  button.style.pointerEvents = 'auto'
+  button.addEventListener('click', event => {
+    event.preventDefault()
+    event.stopPropagation()
+    control.click?.(event)
+  })
+  button.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      control.click?.(event)
+    }
+  })
+  rightControls.appendChild(button)
+  if (control.name === 'mobile-danmu-settings-trigger') {
+    bindMobileDanmuPanelTriggerElement(button)
+  }
 }
 
 function isMobileArtControlVisible(selector) {
@@ -1091,6 +1128,9 @@ function ensureMobileCoreControls() {
     try {
       art.controls.add(control)
     } catch {
+    }
+    if (!root.querySelector(selector)) {
+      createMobileFallbackCoreControl(control)
     }
   })
 }
@@ -1352,12 +1392,12 @@ function schedulePlayerControlRefresh() {
 }
 
 function handleMobileDanmuPanelClick(event) {
-  if (!isMobileUiActive()) {
-    return
-  }
   const root = playerFrame.value
   const target = event.target
   const panelTrigger = findMobileDanmuSettingsTrigger(event)
+  if (!isMobileUiActive() && !panelTrigger) {
+    return
+  }
   if (panelTrigger && root?.contains(panelTrigger)) {
     keepMobileControlsVisible()
     if ((event?.type === 'pointerdown' || event?.type === 'pointerup') && event.pointerType === 'mouse' && event.button !== 0) {
@@ -1894,11 +1934,37 @@ function isPortraitViewport() {
 
 function shouldUseLandscapeFallback() {
   const orientationType = String(window.screen?.orientation?.type || '')
+  if (orientationType.startsWith('landscape')) {
+    return false
+  }
   return isPortraitViewport() || orientationType.startsWith('portrait')
 }
 
 function setImportantStyle(element, property, value) {
   element?.style?.setProperty(property, value, 'important')
+}
+
+function waitForMobileViewportDelay(ms) {
+  return new Promise(resolve => window.setTimeout(resolve, ms))
+}
+
+async function waitForNativeLandscapeViewport(timeout = 900) {
+  const start = window.performance?.now?.() || Date.now()
+  while ((window.performance?.now?.() || Date.now()) - start < timeout) {
+    if (!isPortraitLayoutViewport()) {
+      return true
+    }
+    await waitForMobileViewportDelay(80)
+  }
+  return !isPortraitLayoutViewport()
+}
+
+async function settleMobileLandscapeMode(timeout = 900) {
+  await lockLandscapeForMobile()
+  const nativeLandscape = await waitForNativeLandscapeViewport(timeout)
+  setForcedLandscape(!nativeLandscape && shouldUseLandscapeFallback())
+  syncMobileLandscapeFallback()
+  scheduleMobileDanmuFallbackSync()
 }
 
 function clearInlineStyles(element, properties) {
@@ -1920,9 +1986,12 @@ function applyMobileForcedLandscapeLayout(active) {
   const videoProps = ['width', 'height', 'max-width', 'max-height']
 
   if (!active) {
-    clearInlineStyles(frame, frameProps)
-    clearInlineStyles(artRoot, artProps)
-    clearInlineStyles(artVideoPlayer, videoProps)
+    const frames = new Set([frame, ...document.querySelectorAll('.player')].filter(Boolean))
+    frames.forEach(item => clearInlineStyles(item, frameProps))
+    const artRoots = new Set([artRoot, ...document.querySelectorAll('.art-player')].filter(Boolean))
+    artRoots.forEach(item => clearInlineStyles(item, artProps))
+    const artVideoPlayers = new Set([artVideoPlayer, ...document.querySelectorAll('.art-video-player')].filter(Boolean))
+    artVideoPlayers.forEach(item => clearInlineStyles(item, videoProps))
     return
   }
 
@@ -1971,6 +2040,11 @@ function setForcedLandscape(active) {
   if (frame) {
     frame.classList.toggle('is-forced-landscape', active)
   }
+  if (!active) {
+    document.querySelectorAll('.player.is-forced-landscape').forEach(item => {
+      item.classList.remove('is-forced-landscape')
+    })
+  }
   applyMobileForcedLandscapeLayout(active)
   art?.resize?.()
   scheduleMobileDanmuFallbackSync()
@@ -1990,13 +2064,12 @@ async function enterMobileLandscapeFullscreen() {
   }
   mobileLandscapeActive = true
   mobileLandscapeModeActive.value = true
-  setForcedLandscape(true)
+  setForcedLandscape(false)
   await requestBrowserFullscreen(playerFullscreenTarget())
-  await lockLandscapeForMobile()
-  syncMobileLandscapeFallback()
-  scheduleMobileDanmuFallbackSync()
-  window.setTimeout(syncMobileLandscapeFallback, 320)
-  window.setTimeout(scheduleMobileDanmuFallbackSync, 360)
+  await settleMobileLandscapeMode()
+  window.setTimeout(() => {
+    void settleMobileLandscapeMode(320)
+  }, 320)
 }
 
 async function exitMobileLandscapeFullscreen() {
@@ -2009,7 +2082,7 @@ async function exitMobileLandscapeFullscreen() {
 }
 
 async function toggleMobileLandscapeFullscreen() {
-  if (mobileLandscapeActive || mobileLandscapeModeActive.value || playerFrame.value?.classList.contains('is-forced-landscape')) {
+  if (mobileLandscapeActive || mobileLandscapeModeActive.value || forcedLandscapeActive.value) {
     await exitMobileLandscapeFullscreen()
   } else {
     await enterMobileLandscapeFullscreen()
@@ -2023,9 +2096,8 @@ function handleDocumentFullscreenChange() {
   if (fullscreenElement()) {
     mobileLandscapeActive = true
     mobileLandscapeModeActive.value = true
-    setForcedLandscape(true)
-    lockLandscapeForMobile()
-    syncMobileLandscapeFallback()
+    setForcedLandscape(false)
+    void settleMobileLandscapeMode()
   } else if (mobileLandscapeActive) {
     exitMobileLandscapeFullscreen()
   }
