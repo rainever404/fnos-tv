@@ -3,6 +3,7 @@
 import {getCurrentInstance, onMounted, onUnmounted, ref, computed, watch} from "vue";
 import {useMediaDbData} from '@/store.js'
 import {useRoute} from "vue-router";
+import {loadCardStyle} from '@/utils/appearance.js'
 
 const MediaDbData = useMediaDbData()
 const route = useRoute()
@@ -30,6 +31,7 @@ const size = ref(DEFAULT_PAGE_SIZE);
 const totalCount = ref(0);
 const MediaDbInfo = ref(null);
 const layoutMode = ref(loadStoredLayoutMode());
+const cardStyle = ref(loadCardStyle());
 const category = ref(null);
 const favoriteType = ref('all');
 const currentPage = ref(1);
@@ -945,6 +947,25 @@ function isWatched(item) {
   return Boolean(item?.played || item?.watched)
 }
 
+function showCardRating(item) {
+  return cardStyle.value.rating && formatRating(item)
+}
+
+function showCardResolution(item) {
+  return cardStyle.value.resolution && formatResolution(item)
+}
+
+function showCardWatched(item) {
+  return cardStyle.value.watched && isWatched(item)
+}
+
+function handleCardStyleUpdated(event) {
+  cardStyle.value = {
+    ...cardStyle.value,
+    ...(event?.detail || loadCardStyle())
+  }
+}
+
 function isPerson(item) {
   return (item?.type || item?.gallery_type || item?.ancestor_category) === 'Person'
 }
@@ -1251,6 +1272,7 @@ function setLayoutMode(value) {
 onMounted(async () => {
   document.addEventListener('click', handleToolbarOutsideClick)
   document.addEventListener('keydown', handleToolbarKeydown)
+  window.addEventListener('fnos-tv:set-card-style', handleCardStyleUpdated)
   // 获取每个分类的列表
   await reloadMediaList();
 
@@ -1259,6 +1281,7 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('click', handleToolbarOutsideClick)
   document.removeEventListener('keydown', handleToolbarKeydown)
+  window.removeEventListener('fnos-tv:set-card-style', handleCardStyleUpdated)
 })
 
 watch(
@@ -1472,10 +1495,10 @@ watch(
               <div v-if="isDirectory(item)" class="view-item-folder">
                 <i class='bx bx-folder'></i>
               </div>
-              <div v-if="formatRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
+              <div v-if="showCardRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
               <div class="view-item-tag-right">
-                <div v-if="formatResolution(item)" class="view-item-tag resolution-badge">{{ formatResolution(item) }}</div>
-                <div v-if="isWatched(item)" class="view-item-tag count">
+                <div v-if="showCardResolution(item)" class="view-item-tag resolution-badge">{{ formatResolution(item) }}</div>
+                <div v-if="showCardWatched(item)" class="view-item-tag count">
                   <i class='bx bx-check'></i>
                 </div>
               </div>

@@ -1,10 +1,12 @@
 <script setup>
 import {computed, getCurrentInstance, onMounted, ref} from 'vue'
-import {useRouter} from 'vue-router'
+import {useRoute, useRouter} from 'vue-router'
 import VueCookies from 'vue-cookies'
 import {useMediaDbData} from '../../store.js'
+import {loadCardStyle, saveCardStyle} from '../../utils/appearance.js'
 
 const router = useRouter()
+const route = useRoute()
 const MediaDbData = useMediaDbData()
 const instance = getCurrentInstance()
 const COMMON = instance.appContext.config.globalProperties.$COMMON
@@ -15,15 +17,16 @@ const versionInfo = ref({})
 const mediaDbList = ref([])
 const mediaDbSum = ref({})
 const currentThemeMode = ref(VueCookies.get('theme_mode') || (VueCookies.get('dark') === 'false' ? 'light' : 'dark'))
+const cardStyle = ref(loadCardStyle())
 
 const accountNavItems = [
   {key: 'password', label: '修改密码', icon: 'bx bx-lock-alt'},
   {key: 'play', label: '播放偏好', icon: 'bx bx-play-circle'},
-  {key: 'appearance', label: '外观', icon: 'bx bx-palette'}
+  {key: 'appearance', label: '外观', icon: 'bx bx-palette', path: '/settings/appearance'}
 ]
 
 const serverNavItems = [
-  {key: 'library', label: '媒体库', icon: 'bx bxs-folder', active: true},
+  {key: 'library', label: '媒体库', icon: 'bx bxs-folder', path: '/settings/library'},
   {key: 'users', label: '用户', icon: 'bx bx-user'},
   {key: 'server', label: '设置', icon: 'bx bx-cog'},
   {key: 'tasks', label: '任务计划', icon: 'bx bx-task'}
@@ -34,6 +37,15 @@ const themeItems = [
   {key: 'light', label: '浅色'},
   {key: 'dark', label: '深色'}
 ]
+
+const cardStyleItems = [
+  {key: 'rating', label: '评分', sample: '9.2'},
+  {key: 'watched', label: '已观看', sample: '✓'},
+  {key: 'resolution', label: '分辨率', sample: '1080'}
+]
+
+const activeSettingsKey = computed(() => route.path === '/settings/appearance' ? 'appearance' : 'library')
+const contentTitle = computed(() => activeSettingsKey.value === 'appearance' ? '帐号 - 外观' : '影视服务器 - 媒体库')
 
 const visibleLibraries = computed(() => {
   const list = Array.isArray(mediaDbList.value) ? mediaDbList.value : []
@@ -93,6 +105,25 @@ function setThemeMode(mode) {
       mode
     }
   }))
+}
+
+function isNavActive(item) {
+  return item.key === activeSettingsKey.value
+}
+
+function handleSettingsNav(item) {
+  if (item?.path) {
+    router.push(item.path)
+    return
+  }
+  showUnavailable(item.label)
+}
+
+function toggleCardStyle(key) {
+  cardStyle.value = saveCardStyle({
+    ...cardStyle.value,
+    [key]: !cardStyle.value?.[key]
+  })
 }
 
 function libraryCount(item) {
@@ -265,8 +296,9 @@ onMounted(() => {
             v-for="item in accountNavItems"
             :key="item.key"
             class="settings-nav-item"
+            :class="{ active: isNavActive(item) }"
             type="button"
-            @click="showUnavailable(item.label)"
+            @click="handleSettingsNav(item)"
         >
           <i :class="item.icon"></i>
           <span>{{ item.label }}</span>
@@ -279,29 +311,13 @@ onMounted(() => {
             v-for="item in serverNavItems"
             :key="item.key"
             class="settings-nav-item"
-            :class="{ active: item.active }"
+            :class="{ active: isNavActive(item) }"
             type="button"
-            @click="item.active ? null : showUnavailable(item.label)"
+            @click="handleSettingsNav(item)"
         >
           <i :class="item.icon"></i>
           <span>{{ item.label }}</span>
         </button>
-      </div>
-
-      <div class="settings-theme-block" aria-label="外观模式">
-        <div class="settings-theme-title">外观模式</div>
-        <div class="settings-theme-options">
-          <button
-              v-for="item in themeItems"
-              :key="item.key"
-              class="settings-theme-option"
-              :class="{ active: currentThemeMode === item.key }"
-              type="button"
-              @click="setThemeMode(item.key)"
-          >
-            {{ item.label }}
-          </button>
-        </div>
       </div>
 
       <div class="settings-version">
@@ -312,9 +328,10 @@ onMounted(() => {
 
     <section class="settings-content">
       <header class="settings-content-header">
-        <h1>影视服务器 - 媒体库</h1>
+        <h1>{{ contentTitle }}</h1>
       </header>
 
+      <template v-if="activeSettingsKey === 'library'">
       <div class="settings-toolbar">
         <button class="settings-primary-button" type="button" @click="showUnavailable('新增媒体库')">
           <i class='bx bx-plus'></i>
@@ -397,6 +414,52 @@ onMounted(() => {
           </tbody>
         </table>
       </div>
+      </template>
+
+      <div v-else class="appearance-content">
+        <section class="appearance-section">
+          <div class="appearance-section-title">主题模式</div>
+          <div class="appearance-segmented" role="group" aria-label="主题模式">
+            <button
+                v-for="item in themeItems"
+                :key="item.key"
+                class="appearance-option"
+                :class="{ active: currentThemeMode === item.key }"
+                type="button"
+                @click="setThemeMode(item.key)"
+            >
+              {{ item.label }}
+            </button>
+          </div>
+        </section>
+
+        <section class="appearance-section">
+          <div class="appearance-section-title">卡片样式</div>
+          <div class="appearance-card-row">
+            <div class="appearance-preview-card" aria-hidden="true">
+              <div v-if="cardStyle.rating" class="appearance-preview-rating">9.2</div>
+              <div class="appearance-preview-right">
+                <div v-if="cardStyle.resolution" class="appearance-preview-resolution">1080</div>
+                <div v-if="cardStyle.watched" class="appearance-preview-watched"><i class='bx bx-check'></i></div>
+              </div>
+              <div class="appearance-preview-title">红樱桃</div>
+            </div>
+            <div class="appearance-card-options">
+              <button
+                  v-for="item in cardStyleItems"
+                  :key="item.key"
+                  class="appearance-card-style"
+                  :class="{ active: cardStyle[item.key] }"
+                  type="button"
+                  @click="toggleCardStyle(item.key)"
+              >
+                <span class="appearance-card-style-sample">{{ item.sample }}</span>
+                <span>{{ item.label }}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
     </section>
   </main>
 </template>
@@ -458,7 +521,8 @@ onMounted(() => {
 
 .settings-back,
 .settings-nav-item,
-.settings-theme-option,
+.appearance-option,
+.appearance-card-style,
 .settings-primary-button,
 .settings-secondary-button,
 .settings-actions button {
@@ -544,38 +608,8 @@ onMounted(() => {
   color: var(--settings-primary);
 }
 
-.settings-theme-block {
-  margin-top: auto;
-  padding-top: 18px;
-}
-
-.settings-theme-title {
-  margin-bottom: 10px;
-  color: var(--settings-subtext);
-  font-size: 13px;
-}
-
-.settings-theme-options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.settings-theme-option {
-  height: 32px;
-  border-radius: 7px;
-  background: var(--settings-surface);
-  color: var(--settings-subtext);
-  font-size: 13px;
-}
-
-.settings-theme-option.active {
-  background: var(--settings-primary);
-  color: white;
-}
-
 .settings-version {
-  margin-top: 18px;
+  margin-top: auto;
   color: var(--settings-subtext);
   font-size: 13px;
   line-height: 1.7;
@@ -800,6 +834,165 @@ onMounted(() => {
   color: var(--settings-muted);
 }
 
+.appearance-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 34px 0 44px;
+  overflow-y: auto;
+}
+
+.appearance-section {
+  max-width: 720px;
+  padding: 0 0 34px;
+  margin-bottom: 30px;
+  border-bottom: 1px solid var(--settings-border);
+}
+
+.appearance-section-title {
+  margin-bottom: 18px;
+  color: var(--settings-text);
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 24px;
+}
+
+.appearance-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.appearance-option {
+  height: 36px;
+  min-width: 92px;
+  padding: 0 18px;
+  color: var(--settings-text);
+  background: var(--settings-surface-hover);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.appearance-option.active {
+  color: white;
+  background: var(--settings-primary);
+}
+
+.appearance-card-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.appearance-preview-card {
+  position: relative;
+  width: 150px;
+  height: 214px;
+  flex: 0 0 150px;
+  overflow: hidden;
+  background: linear-gradient(150deg, #8e1118 0%, #18181a 62%, #0f0f10 100%);
+  border: 1px solid var(--settings-border);
+  border-radius: 8px;
+}
+
+.appearance-preview-card::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 70px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.75), transparent);
+}
+
+.appearance-preview-rating,
+.appearance-preview-resolution,
+.appearance-preview-watched {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 8px;
+  color: var(--settings-primary);
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.appearance-preview-rating {
+  top: 10px;
+  left: 10px;
+  color: #f2c214;
+}
+
+.appearance-preview-right {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.appearance-preview-resolution,
+.appearance-preview-watched {
+  position: static;
+  color: #ffffff;
+}
+
+.appearance-preview-watched {
+  width: 22px;
+  padding: 0;
+  background: var(--settings-primary);
+  border-radius: 999px;
+}
+
+.appearance-preview-title {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appearance-card-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.appearance-card-style {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  color: var(--settings-text);
+  background: var(--settings-surface-hover);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.appearance-card-style.active {
+  color: white;
+  background: var(--settings-primary);
+}
+
+.appearance-card-style-sample {
+  min-width: 24px;
+  font-weight: 700;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .settings-page {
     height: auto;
@@ -830,10 +1023,6 @@ onMounted(() => {
     grid-column: 1 / -1;
   }
 
-  .settings-theme-block {
-    margin-top: 4px;
-  }
-
   .settings-version {
     margin-top: 14px;
   }
@@ -847,6 +1036,14 @@ onMounted(() => {
 
   .settings-content-header {
     height: 64px;
+  }
+
+  .appearance-content {
+    padding: 20px 0 28px;
+  }
+
+  .appearance-card-row {
+    flex-direction: column;
   }
 
   .settings-toolbar {

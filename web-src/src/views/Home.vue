@@ -2,6 +2,7 @@
 import {useMediaDbData} from '../store'
 import {getCurrentInstance, onMounted, ref, onUnmounted, h, computed} from "vue";
 import {useMessage, NIcon, NProgress} from 'naive-ui'
+import {loadCardStyle} from '../utils/appearance.js'
 
 const MediaDbData = useMediaDbData()
 const message = useMessage()
@@ -17,6 +18,7 @@ const showDropdown = ref(false)
 const dropdownX = ref(0)
 const dropdownY = ref(0)
 const currentContextItem = ref(null)
+const cardStyle = ref(loadCardStyle())
 let resizeTimer = null
 
 // 渲染图标的函数
@@ -199,6 +201,18 @@ function isFavorite(item) {
 
 function isWatched(item) {
   return Boolean(item?.played || item?.watched)
+}
+
+function showCardRating(item) {
+  return cardStyle.value.rating && formatRating(item)
+}
+
+function showCardResolution(item) {
+  return cardStyle.value.resolution && formatResolution(item)
+}
+
+function showCardWatched(item) {
+  return cardStyle.value.watched && isWatched(item)
 }
 
 function formatRating(item) {
@@ -392,6 +406,7 @@ const goPrev = () => {
 onMounted(async () => {
   window.addEventListener('resize', handleViewportResize)
   window.visualViewport?.addEventListener?.('resize', handleViewportResize)
+  window.addEventListener('fnos-tv:set-card-style', handleCardStyleUpdated)
   await GetPlayList();
   // 添加全局点击事件监听
   document.addEventListener('click', handleClickOutside)
@@ -401,12 +416,20 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleViewportResize)
   window.visualViewport?.removeEventListener?.('resize', handleViewportResize)
+  window.removeEventListener('fnos-tv:set-card-style', handleCardStyleUpdated)
   if (resizeTimer) {
     window.clearTimeout(resizeTimer)
     resizeTimer = null
   }
   document.removeEventListener('click', handleClickOutside)
 })
+
+function handleCardStyleUpdated(event) {
+  cardStyle.value = {
+    ...cardStyle.value,
+    ...(event?.detail || loadCardStyle())
+  }
+}
 </script>
 
 <template>
@@ -529,14 +552,14 @@ onUnmounted(() => {
                 <div class="poster-frame-shell">
                   <div class="view-item-header">
                     <div class="view-item-tag-list">
-                      <div v-if="formatRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
+                      <div v-if="showCardRating(item)" class="view-item-tag rating">{{ formatRating(item) }}</div>
                       <!-- <div v-if="item.Type != 'Movie' && item.ChildCount != 0" class="view-item-tag count">
                           {{ item.ChildCount }}
                       </div> -->
                       <!--                  <p>{{ item }}</p>-->
                       <div class="view-item-tag-right">
-                        <div v-if="formatResolution(item)" class="view-item-tag resolution-badge">{{ formatResolution(item) }}</div>
-                        <div v-if="isWatched(item)" class="view-item-tag count">
+                        <div v-if="showCardResolution(item)" class="view-item-tag resolution-badge">{{ formatResolution(item) }}</div>
+                        <div v-if="showCardWatched(item)" class="view-item-tag count">
                           <i class='bx bx-check'></i>
                         </div>
                       </div>

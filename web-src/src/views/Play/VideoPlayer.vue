@@ -1169,7 +1169,6 @@ function normalizeMobileCoreControlRow(root = playerFrame.value) {
   if (isPortraitMobilePlayer()) {
     const viewportWidth = Math.max(1, Math.round(window.visualViewport?.width || window.innerWidth || document.documentElement?.clientWidth || 393))
     const narrow = viewportWidth <= 360
-    const leftWidth = Math.round(Math.min(narrow ? 98 : 112, Math.max(narrow ? 88 : 96, viewportWidth * 0.28)))
     const widths = {
       '.art-control-mobile-danmu-toggle': narrow ? 22 : 24,
       '.art-control-mobile-danmu-settings-trigger': narrow ? 32 : 34,
@@ -1179,6 +1178,10 @@ function normalizeMobileCoreControlRow(root = playerFrame.value) {
       '.art-control-setting': narrow ? 22 : 24,
       '.art-control-mobile-landscape-fullscreen': narrow ? 22 : 24
     }
+    const rightWidth = Object.values(widths).reduce((sum, width) => sum + width, 0)
+    const leftMin = narrow ? 96 : 112
+    const leftMax = narrow ? 124 : 148
+    const leftWidth = Math.round(Math.max(leftMin, Math.min(leftMax, viewportWidth - rightWidth - 14)))
     const controls = root.querySelector('.art-video-player .art-controls')
     const leftControls = root.querySelector('.art-video-player .art-controls-left')
     const centerControls = root.querySelector('.art-video-player .art-controls-center')
@@ -2703,6 +2706,8 @@ async function UpdateControl(_art) {
   for (let item of forData) {
     await addArtConfig(_art, 'controls', item)
   }
+  ensureMobileCoreControls()
+  normalizeMobileCoreControls()
 
   await addArtConfig(_art, 'setting', {
     name: "跳过片头片尾",
@@ -8311,6 +8316,249 @@ img.play-icon {
     white-space: nowrap !important;
     text-overflow: clip !important;
     pointer-events: none !important;
+  }
+}
+
+/* User mobile override: one bottom-row control set in portrait, matching landscape. */
+.player.is-mobile-player :deep(.art-video-player .apd-config-panel),
+.player.is-mobile-player :deep(.art-video-player .apd-style-panel),
+.player.is-mobile-player :deep(.art-video-player [class*="apd-config-panel"]),
+.player.is-mobile-player :deep(.art-video-player [class*="apd-style-panel"]) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+@media (orientation: portrait), (max-width: 640px), (pointer: coarse), (hover: none) {
+  .player:not(.is-forced-landscape) {
+    --mobile-final-left: clamp(104px, calc(100vw - 218px), 148px);
+    --mobile-final-danmu: 24px;
+    --mobile-final-danmu-settings: 34px;
+    --mobile-final-quality: 36px;
+    --mobile-final-rate: 24px;
+    --mobile-final-subtitle: 30px;
+    --mobile-final-icon: 24px;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-bottom) {
+    overflow: visible !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    padding-left: max(3px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(3px, env(safe-area-inset-right, 0px)) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left) {
+    display: flex !important;
+    flex: 0 0 var(--mobile-final-left) !important;
+    width: var(--mobile-final-left) !important;
+    min-width: 0 !important;
+    max-width: var(--mobile-final-left) !important;
+    overflow: hidden !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-playAndPause),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-volume) {
+    flex: 0 0 22px !important;
+    width: 22px !important;
+    min-width: 22px !important;
+    max-width: 22px !important;
+    padding-inline: 0 !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-left .art-control-time),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-time) {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: calc(var(--mobile-final-left) - 44px) !important;
+    overflow: hidden !important;
+    padding-inline: 0 !important;
+    font-size: 10px !important;
+    line-height: 40px !important;
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center) {
+    display: flex !important;
+    flex: 0 0 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-center .artplayer-plugin-danmuku),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-画质),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-倍速),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-字幕),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreen),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-fullscreenWeb) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-controls-right) {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - var(--mobile-final-left) - 8px) !important;
+    overflow: visible !important;
+    margin-left: 0 !important;
+    transform: none !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-quality),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-rate),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-subtitle),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting),
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+    display: inline-flex !important;
+    flex-shrink: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 40px !important;
+    padding-inline: 0 !important;
+    margin-left: 0 !important;
+    overflow: visible !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    color: rgba(255, 255, 255, 0.96) !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+    touch-action: manipulation !important;
+    transform: none !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-toggle) {
+    order: 10 !important;
+    flex: 0 0 var(--mobile-final-danmu) !important;
+    width: var(--mobile-final-danmu) !important;
+    min-width: var(--mobile-final-danmu) !important;
+    max-width: var(--mobile-final-danmu) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-danmu-settings-trigger) {
+    order: 11 !important;
+    flex: 0 0 var(--mobile-final-danmu-settings) !important;
+    width: var(--mobile-final-danmu-settings) !important;
+    min-width: var(--mobile-final-danmu-settings) !important;
+    max-width: var(--mobile-final-danmu-settings) !important;
+    z-index: 2147483005 !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-quality) {
+    order: 12 !important;
+    flex: 0 0 var(--mobile-final-quality) !important;
+    width: var(--mobile-final-quality) !important;
+    min-width: var(--mobile-final-quality) !important;
+    max-width: var(--mobile-final-quality) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-rate) {
+    order: 13 !important;
+    flex: 0 0 var(--mobile-final-rate) !important;
+    width: var(--mobile-final-rate) !important;
+    min-width: var(--mobile-final-rate) !important;
+    max-width: var(--mobile-final-rate) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-subtitle) {
+    order: 14 !important;
+    flex: 0 0 var(--mobile-final-subtitle) !important;
+    width: var(--mobile-final-subtitle) !important;
+    min-width: var(--mobile-final-subtitle) !important;
+    max-width: var(--mobile-final-subtitle) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-setting) {
+    order: 15 !important;
+    flex: 0 0 var(--mobile-final-icon) !important;
+    width: var(--mobile-final-icon) !important;
+    min-width: var(--mobile-final-icon) !important;
+    max-width: var(--mobile-final-icon) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .art-control-mobile-landscape-fullscreen) {
+    order: 16 !important;
+    flex: 0 0 var(--mobile-final-icon) !important;
+    width: var(--mobile-final-icon) !important;
+    min-width: var(--mobile-final-icon) !important;
+    max-width: var(--mobile-final-icon) !important;
+  }
+
+  .player:not(.is-forced-landscape) :deep(.art-video-player .mobile-art-text-control) {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    color: rgba(255, 255, 255, 0.96) !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    text-overflow: clip !important;
+    pointer-events: none !important;
+  }
+
+  .player:not(.is-forced-landscape) .mobile-danmu-settings.is-mobile-portal.is-visible {
+    position: fixed !important;
+    top: auto !important;
+    left: auto !important;
+    right: max(10px, env(safe-area-inset-right, 0px)) !important;
+    bottom: max(68px, calc(env(safe-area-inset-bottom, 0px) + 68px)) !important;
+    width: min(342px, calc(100vw - 20px)) !important;
+    max-height: min(430px, calc(100svh - 102px)) !important;
+    display: block !important;
+    z-index: 2147483004 !important;
+  }
+}
+
+@media (max-width: 370px) and (orientation: portrait) {
+  .player:not(.is-forced-landscape) {
+    --mobile-final-left: clamp(96px, calc(100vw - 204px), 124px);
+    --mobile-final-danmu: 22px;
+    --mobile-final-danmu-settings: 32px;
+    --mobile-final-quality: 34px;
+    --mobile-final-rate: 22px;
+    --mobile-final-subtitle: 28px;
+    --mobile-final-icon: 22px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 640px) {
+  .player.is-mobile-player .mobile-danmu-settings.is-mobile-portal.is-visible,
+  .mobile-danmu-settings.is-mobile-portal.is-forced-landscape-portal.is-visible {
+    position: fixed !important;
+    top: auto !important;
+    left: auto !important;
+    right: max(12px, env(safe-area-inset-right, 0px)) !important;
+    bottom: max(62px, calc(env(safe-area-inset-bottom, 0px) + 62px)) !important;
+    width: min(342px, calc(100vw - 24px)) !important;
+    max-height: calc(100svh - 88px) !important;
+    display: block !important;
+    z-index: 2147483004 !important;
   }
 }
 </style>

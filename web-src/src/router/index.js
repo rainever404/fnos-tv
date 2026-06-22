@@ -55,6 +55,11 @@ const routes = [
         path: '/settings/library',
         name: 'SettingsLibrary',
         component: () => import('../views/Settings/SettingsLibrary.vue')
+    },
+    {
+        path: '/settings/appearance',
+        name: 'SettingsAppearance',
+        component: () => import('../views/Settings/SettingsLibrary.vue')
     }
 ]
 const router = createRouter({
