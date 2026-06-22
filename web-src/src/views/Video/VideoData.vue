@@ -26,17 +26,24 @@ const LanguageMap = ref({})
 const showTechInfoDialog = ref(false)
 const showOverviewDialog = ref(false)
 const showDetailMoreMenu = ref(false)
+const showRefreshMetadataDialog = ref(false)
+const refreshMetadataMode = ref(0)
+const refreshingMetadata = ref(false)
 const EpisodeCarouselRef = ref(null);
 const play_item_guid = ref(null);
 const play_guid = ref(null)
 const selectedMediaGuid = ref(null)
 const MIN_RESUME_SECONDS = 30
 const RESUME_END_BUFFER_SECONDS = 30
+const REFRESH_METADATA_MODES = [
+  {label: '替换全部', value: 0},
+  {label: '补全缺失', value: 1}
+]
 const detailMoreMenuItems = [
   {label: '管理版本'},
   {label: '手动匹配影片'},
   {label: '解除匹配影片'},
-  {label: '刷新元数据', separated: true},
+  {label: '刷新元数据', action: 'refresh-metadata', separated: true},
   {label: '编辑元数据'},
   {label: '删除', separated: true, danger: true}
 ]
@@ -618,7 +625,44 @@ function closeDetailMoreMenu() {
 
 function handleDetailMoreAction(item) {
   closeDetailMoreMenu()
+  if (item?.action === 'refresh-metadata') {
+    openRefreshMetadataDialog()
+    return
+  }
   COMMON.ShowMsg(`${item.label}功能暂未接入`)
+}
+
+function openRefreshMetadataDialog() {
+  refreshMetadataMode.value = 0
+  showRefreshMetadataDialog.value = true
+}
+
+function closeRefreshMetadataDialog() {
+  if (refreshingMetadata.value) {
+    return
+  }
+  showRefreshMetadataDialog.value = false
+}
+
+async function confirmRefreshMetadata() {
+  const itemGuid = detailActionGuid()
+  if (!itemGuid || refreshingMetadata.value) {
+    return
+  }
+  refreshingMetadata.value = true
+  try {
+    await COMMON.requests("POST", "/api/v1/item/refresh", true, {
+      item_guid: itemGuid,
+      refresh_mode: refreshMetadataMode.value
+    })
+    COMMON.ShowMsg('已开始刷新元数据')
+    showRefreshMetadataDialog.value = false
+  } catch (error) {
+    const message = error?.data?.msg || error?.response?.data?.msg || '刷新元数据失败'
+    COMMON.ShowMsg(message)
+  } finally {
+    refreshingMetadata.value = false
+  }
 }
 
 async function GetPersonList() {
@@ -726,6 +770,8 @@ onBeforeRouteUpdate(async (to, from) => {
   showTechInfoDialog.value = false
   showOverviewDialog.value = false
   showDetailMoreMenu.value = false
+  showRefreshMetadataDialog.value = false
+  refreshingMetadata.value = false
   await onMountedFun();
 });
 
@@ -1076,6 +1122,52 @@ onBeforeUnmount(() => {
         </div>
         <div class="overview-dialog-body">
           {{ overviewText }}
+        </div>
+      </div>
+    </div>
+    <div
+        v-if="showRefreshMetadataDialog"
+        class="tech-info-dialog-mask"
+        role="presentation"
+        @click.self="closeRefreshMetadataDialog"
+    >
+      <div class="tech-info-dialog refresh-metadata-dialog" role="dialog" aria-modal="true" aria-label="刷新元数据">
+        <div class="tech-info-dialog-header">
+          <h3>刷新元数据</h3>
+          <button
+              type="button"
+              class="tech-info-dialog-close"
+              aria-label="关闭"
+              :disabled="refreshingMetadata"
+              @click="closeRefreshMetadataDialog"
+          >
+            <i class='bx bx-x'></i>
+          </button>
+        </div>
+        <div class="refresh-metadata-body">
+          <p>选择刷新方式</p>
+          <div class="refresh-metadata-options" role="radiogroup" aria-label="刷新方式">
+            <button
+                v-for="mode in REFRESH_METADATA_MODES"
+                :key="mode.value"
+                type="button"
+                class="refresh-metadata-option"
+                :class="{ active: refreshMetadataMode === mode.value }"
+                :aria-pressed="refreshMetadataMode === mode.value"
+                :disabled="refreshingMetadata"
+                @click="refreshMetadataMode = mode.value"
+            >
+              {{ mode.label }}
+            </button>
+          </div>
+        </div>
+        <div class="refresh-metadata-footer">
+          <button type="button" class="refresh-metadata-cancel" :disabled="refreshingMetadata" @click="closeRefreshMetadataDialog">
+            取消
+          </button>
+          <button type="button" class="refresh-metadata-confirm" :disabled="refreshingMetadata" @click="confirmRefreshMetadata">
+            {{ refreshingMetadata ? '刷新中' : '确认刷新' }}
+          </button>
         </div>
       </div>
     </div>
@@ -2344,6 +2436,10 @@ span.button-text {
   width: min(720px, 100%);
 }
 
+.refresh-metadata-dialog {
+  width: min(450px, 100%);
+}
+
 .tech-info-dialog-header {
   display: flex;
   align-items: center;
@@ -2430,6 +2526,89 @@ span.button-text {
   font-size: 15px;
   line-height: 28px;
   white-space: pre-wrap;
+}
+
+.refresh-metadata-body {
+  padding: 20px 22px 8px;
+  box-sizing: border-box;
+}
+
+.refresh-metadata-body p {
+  margin: 0 0 12px;
+  color: var(--fn-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.refresh-metadata-options {
+  display: grid;
+  gap: 10px;
+}
+
+.refresh-metadata-option {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 42px;
+  padding: 0 16px;
+  color: var(--fn-text);
+  background: var(--fn-bg);
+  border: 1px solid var(--fn-border);
+  border-radius: 8px;
+  box-sizing: border-box;
+  font: inherit;
+  cursor: pointer;
+}
+
+.refresh-metadata-option.active {
+  color: var(--fn-blue);
+  border-color: var(--fn-blue);
+  background: color-mix(in srgb, var(--fn-blue) 10%, transparent);
+}
+
+.refresh-metadata-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 22px 20px;
+  box-sizing: border-box;
+}
+
+.refresh-metadata-cancel,
+.refresh-metadata-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.refresh-metadata-cancel {
+  color: var(--fn-text);
+  background: transparent;
+  border: 1px solid var(--fn-border);
+}
+
+.refresh-metadata-confirm {
+  color: #fff;
+  background: var(--fn-blue);
+  border: 1px solid var(--fn-blue);
+}
+
+.refresh-metadata-option:disabled,
+.refresh-metadata-cancel:disabled,
+.refresh-metadata-confirm:disabled,
+.tech-info-dialog-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .external-link-row {
